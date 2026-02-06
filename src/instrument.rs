@@ -4,7 +4,6 @@ use crate::primitives::{DecimalNumber, Tag};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
-use strum;
 use strum_macros::{Display, EnumString};
 use url::Url;
 
