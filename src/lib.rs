@@ -1,8 +1,9 @@
-mod client;
 mod account;
+mod client;
 mod errors;
-mod primitives;
 mod instrument;
+mod pricing;
+mod primitives;
 mod transaction;
 
 use crate::client::Client;
@@ -14,6 +15,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest};
 
     #[test]
     fn it_works() {
@@ -38,6 +40,16 @@ mod tests {
     async fn test_list_instruments() {
         let client = setup();
         let resp = client.list_instruments().await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_candlestick_data() {
+        let client = setup();
+        let req = FetchCandlestickDataRequest::new("USD_JPY".to_string())
+            .granularity(CandlestickGranularity::M1)
+            .count(50).unwrap();
+        let resp = client.fetch_candlestick_data(req).await.unwrap();
         println!("{:#?}", resp);
     }
 }

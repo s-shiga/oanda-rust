@@ -1,7 +1,12 @@
+use crate::errors::APIError;
+use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
+use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
+use std::ops::Not;
+use url::Url;
 
-pub type InstrumentName<'a> = &'a str;
+pub type InstrumentName = String;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "UPPERCASE")]
@@ -102,8 +107,180 @@ pub struct Instrument {
         skip_serializing_if = "Option::is_none"
     )]
     pub guaranteed_stop_loss_order_execution_premium: Option<DecimalNumber>,
-    #[serde(rename = "guaranteedStopLossOrderLevelRestriction", skip_serializing_if = "Option::is_none")]
-    pub guaranteed_stop_loss_order_level_restriction: Option<GuaranteedStopLossOrderLevelRestriction>,
+    #[serde(
+        rename = "guaranteedStopLossOrderLevelRestriction",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub guaranteed_stop_loss_order_level_restriction:
+        Option<GuaranteedStopLossOrderLevelRestriction>,
     pub financing: InstrumentFinancing,
     pub tags: Vec<Tag>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CandlestickGranularity {
+    S5,
+    S10,
+    S15,
+    S30,
+    M1,
+    M2,
+    M4,
+    M5,
+    M10,
+    M15,
+    M30,
+    H1,
+    H2,
+    H3,
+    H4,
+    H6,
+    H8,
+    H12,
+    D,
+    W,
+    M,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum WeeklyAlignment {
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday,
+    Sunday,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Candlestick {
+    pub time: DateTime<Local>,
+    pub bid: Option<CandlestickData>,
+    pub ask: Option<CandlestickData>,
+    pub mid: Option<CandlestickData>,
+    pub volume: i16, // check
+    pub complete: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CandlestickData {
+    #[serde(rename = "o")]
+    pub open: PriceValue,
+    #[serde(rename = "h")]
+    pub high: PriceValue,
+    #[serde(rename = "l")]
+    pub low: PriceValue,
+    #[serde(rename = "c")]
+    pub close: PriceValue,
+}
+
+pub struct FetchCandlestickDataRequest {
+    pub instrument: InstrumentName,
+    price: PricingComponent,
+    granularity: Option<CandlestickGranularity>,
+    count: Option<usize>,
+    from: Option<DateTime<Local>>,
+    to: Option<DateTime<Local>>,
+    smooth: Option<bool>,
+    include_first: Option<bool>,
+    daily_alignment: Option<u8>,
+    alignment_timezone: Option<String>,
+    weekly_alignment: Option<WeeklyAlignment>,
+}
+
+impl<'a> FetchCandlestickDataRequest {
+    pub fn new(instrument: InstrumentName) -> Self {
+        FetchCandlestickDataRequest {
+            instrument,
+            price: "".into(),
+            granularity: None,
+            count: None,
+            from: None,
+            to: None,
+            smooth: None,
+            include_first: None,
+            daily_alignment: None,
+            alignment_timezone: None,
+            weekly_alignment: None,
+        }
+    }
+
+    pub fn bid(mut self) -> Self {
+        self.price.push('B');
+        self
+    }
+
+    pub fn ask(mut self) -> Self {
+        self.price.push('A');
+        self
+    }
+
+    pub fn mid(mut self) -> Self {
+        self.price.push('M');
+        self
+    }
+
+    pub fn granularity(mut self, granularity: CandlestickGranularity) -> Self {
+        self.granularity = Some(granularity);
+        self
+    }
+
+    pub fn count(mut self, count: usize) -> Result<Self, APIError> {
+        (count <= 5000)
+            .then(|| {
+                self.count = Some(count);
+                self
+            })
+            .ok_or_else(|| APIError::InvalidParameter("count must be <= 5000".to_string()))
+    }
+
+    pub fn from(mut self, from: DateTime<Local>) -> Self {
+        self.from = Some(from);
+        self
+    }
+
+    pub fn to(mut self, to: DateTime<Local>) -> Self {
+        self.to = Some(to);
+        self
+    }
+
+    pub fn smooth(mut self, smooth: bool) -> Self {
+        self.smooth = Some(smooth);
+        self
+    }
+
+    pub fn include_first(mut self, include_first: bool) -> Self {
+        self.include_first = Some(include_first);
+        self
+    }
+
+    pub fn daily_alignment(mut self, daily_alignment: u8) -> Self {
+        self.daily_alignment = Some(daily_alignment);
+        self
+    }
+
+    pub fn alignment_timezone(mut self, alignment_timezone: String) -> Self {
+        self.alignment_timezone = Some(alignment_timezone);
+        self
+    }
+
+    pub fn weekly_alignment(mut self, weekly_alignment: WeeklyAlignment) -> Self {
+        self.weekly_alignment = Some(weekly_alignment);
+        self
+    }
+
+    pub fn set_params(&self, url: &mut Url) {
+        self.price.is_empty().not().then(|| {
+            url.query_pairs_mut()
+                .append_pair("price", self.price.as_str());
+        });
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FetchCandlestickDataResponse {
+    pub instrument: InstrumentName,
+    granularity: CandlestickGranularity,
+    candles: Vec<Candlestick>,
 }

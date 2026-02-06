@@ -3,6 +3,7 @@ use crate::errors::APIError;
 use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue};
 use reqwest::{Request, StatusCode};
 use url::Url;
+use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
 
 const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 const FX_TRADE_URL: &str = "https://api-fxtrade.oanda.com";
@@ -94,6 +95,22 @@ impl Client {
                 status,
                 message: resp.text().await?,
             }),
+        }
+    }
+    pub async fn fetch_candlestick_data(&self, req: FetchCandlestickDataRequest) -> Result<FetchCandlestickDataResponse, APIError> {
+        let mut url = self.base_url.join(format!("/v3/instruments/{}/candles", req.instrument).as_str()).unwrap();
+        req.set_params(&mut url);
+        let request = Request::new(reqwest::Method::GET, url);
+        let resp = self.http_client.execute(request).await?;
+        match resp.status() {
+            StatusCode::OK => {
+                let candlesticks_response = resp.json::<FetchCandlestickDataResponse>().await?;
+                Ok(candlesticks_response)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: resp.text().await?,
+            })
         }
     }
 }
