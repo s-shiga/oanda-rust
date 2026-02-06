@@ -1,6 +1,9 @@
 mod client;
 mod account;
 mod errors;
+mod primitives;
+mod instrument;
+mod transaction;
 
 use crate::client::Client;
 
