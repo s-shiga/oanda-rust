@@ -2,6 +2,8 @@
 name = "oanda-rust"
 version = "0.1.0"
 edition = "2024"
+repository = "https://github.com/s-shiga/oanda-rust"
+readme = "README.md"
 
 [dependencies]
 url = "2.5.8"
