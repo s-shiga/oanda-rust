@@ -142,6 +142,34 @@ pub enum CandlestickGranularity {
     M,
 }
 
+impl CandlestickGranularity {
+    fn as_str(&self) -> &'static str {
+        match self {
+            CandlestickGranularity::S5 => "S5",
+            CandlestickGranularity::S10 => "S10",
+            CandlestickGranularity::S15 => "S15",
+            CandlestickGranularity::S30 => "S30",
+            CandlestickGranularity::M1 => "M1",
+            CandlestickGranularity::M2 => "M2",
+            CandlestickGranularity::M4 => "M4",
+            CandlestickGranularity::M5 => "M5",
+            CandlestickGranularity::M10 => "M10",
+            CandlestickGranularity::M15 => "M15",
+            CandlestickGranularity::M30 => "M30",
+            CandlestickGranularity::H1 => "H1",
+            CandlestickGranularity::H2 => "H2",
+            CandlestickGranularity::H3 => "H3",
+            CandlestickGranularity::H4 => "H4",
+            CandlestickGranularity::H6 => "H6",
+            CandlestickGranularity::H8 => "H8",
+            CandlestickGranularity::H12 => "H12",
+            CandlestickGranularity::D => "D",
+            CandlestickGranularity::W => "W",
+            CandlestickGranularity::M => "M",
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum WeeklyAlignment {
     Monday,
@@ -151,6 +179,20 @@ pub enum WeeklyAlignment {
     Friday,
     Saturday,
     Sunday,
+}
+
+impl WeeklyAlignment {
+    fn as_str(&self) -> &'static str {
+        match self {
+            WeeklyAlignment::Monday => "Monday",
+            WeeklyAlignment::Tuesday => "Tuesday",
+            WeeklyAlignment::Wednesday => "Wednesday",
+            WeeklyAlignment::Thursday => "Thursday",
+            WeeklyAlignment::Friday => "Friday",
+            WeeklyAlignment::Saturday => "Saturday",
+            WeeklyAlignment::Sunday => "Sunday",
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -274,6 +316,46 @@ impl<'a> FetchCandlestickDataRequest {
         self.price.is_empty().not().then(|| {
             url.query_pairs_mut()
                 .append_pair("price", self.price.as_str());
+        });
+        self.granularity.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("granularity", &self.granularity.as_ref().unwrap().as_str());
+        });
+        self.count.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("count", &self.count.unwrap().to_string());
+        });
+        self.from.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("from", &self.from.unwrap().to_string());
+        });
+        self.to.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("to", &self.to.unwrap().to_string());
+        });
+        self.smooth.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("smooth", &self.smooth.unwrap().to_string());
+        });
+        self.include_first.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("includeFirst", &self.include_first.unwrap().to_string());
+        });
+        self.daily_alignment.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("dailyAlignment", &self.daily_alignment.unwrap().to_string());
+        });
+        self.alignment_timezone.is_some().then(|| {
+            url.query_pairs_mut().append_pair(
+                "alignmentTimezone",
+                &self.alignment_timezone.as_ref().unwrap().to_string(),
+            );
+        });
+        self.weekly_alignment.is_some().then(|| {
+            url.query_pairs_mut().append_pair(
+                "weeklyAlignment",
+                &self.weekly_alignment.as_ref().unwrap().as_str(),
+            );
         });
     }
 }
