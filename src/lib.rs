@@ -17,12 +17,4 @@ mod tests {
         let result = add(2, 2);
         assert_eq!(result, 4);
     }
-
-    #[tokio::test]
-    async fn list_accounts() {
-        let api_key = env!("OANDA_API_KEY_DEMO");
-        let client = Client::new_practice(api_key);
-        let account = client.list_accounts().await;
-        println!("{:?}", account);
-    }
 }

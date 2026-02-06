@@ -1,9 +1,6 @@
-use crate::account;
-use crate::errors::APIError;
 use url::Url;
-use reqwest::{Request, StatusCode};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
-use crate::account::ListAccountsResponse;
+use crate::account::AccountService;
 
 const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 const FX_TRADE_URL: &str = "https://api-fxtrade.oanda.com";
@@ -11,11 +8,10 @@ const FX_TRADE_PRACTICE_STREAMING_URL: &str = "https://stream-fxpractice.oanda.c
 const FX_TRADE_STREAMING_URL: &str = "https://stream-fxtrade.oanda.com";
 
 pub struct Client {
+    pub(crate) base_url: Url,
     #[allow(unused)]
-    base_url: Url,
-    #[allow(unused)]
-    base_streaming_url: Url,
-    client: reqwest::Client,
+    pub(crate) base_streaming_url: Url,
+    pub(crate) http_client: reqwest::Client,
 }
 
 impl Client {
@@ -24,7 +20,7 @@ impl Client {
         Client {
             base_url: Url::parse(FX_TRADE_URL).unwrap(),
             base_streaming_url: Url::parse(FX_TRADE_STREAMING_URL).unwrap(),
-            client: Client::build_client(api_key),
+            http_client: Client::build_client(api_key),
         }
     }
 
@@ -33,7 +29,7 @@ impl Client {
         Client {
             base_url: Url::parse(FX_TRADE_PRACTICE_URL).unwrap(),
             base_streaming_url: Url::parse(FX_TRADE_PRACTICE_STREAMING_URL).unwrap(),
-            client: Client::build_client(api_key),
+            http_client: Client::build_client(api_key),
         }
     }
     
@@ -44,18 +40,7 @@ impl Client {
         reqwest::ClientBuilder::new().default_headers(headers).build().unwrap()
     }
 
-    pub async fn list_accounts(&self) -> Result<Vec<account::AccountProperties>, APIError> {
-        let url = self.base_url.join("/v3/accounts").unwrap();
-        let request = Request::new(reqwest::Method::GET, url);
-        let resp = self.client.execute(request).await?;
-        match resp.status() {
-            StatusCode::OK => {
-                let list_account_response = resp.json::<ListAccountsResponse>().await?;
-                Ok(list_account_response.accounts)
-            }
-            status => {
-                Err(APIError::ApiErrorResponse {status, message: resp.text().await?})
-            }
-        }
+    pub fn account(&self) -> AccountService<'_> {
+        AccountService {client: self}
     }
 }
