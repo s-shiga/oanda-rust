@@ -4,6 +4,8 @@ use crate::primitives::{DecimalNumber, Tag};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
+use strum;
+use strum_macros::{Display, EnumString};
 use url::Url;
 
 pub type InstrumentName = String;
@@ -117,7 +119,7 @@ pub struct Instrument {
     pub tags: Vec<Tag>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display, EnumString)]
 pub enum CandlestickGranularity {
     S5,
     S10,
@@ -142,35 +144,7 @@ pub enum CandlestickGranularity {
     M,
 }
 
-impl CandlestickGranularity {
-    fn as_str(&self) -> &'static str {
-        match self {
-            CandlestickGranularity::S5 => "S5",
-            CandlestickGranularity::S10 => "S10",
-            CandlestickGranularity::S15 => "S15",
-            CandlestickGranularity::S30 => "S30",
-            CandlestickGranularity::M1 => "M1",
-            CandlestickGranularity::M2 => "M2",
-            CandlestickGranularity::M4 => "M4",
-            CandlestickGranularity::M5 => "M5",
-            CandlestickGranularity::M10 => "M10",
-            CandlestickGranularity::M15 => "M15",
-            CandlestickGranularity::M30 => "M30",
-            CandlestickGranularity::H1 => "H1",
-            CandlestickGranularity::H2 => "H2",
-            CandlestickGranularity::H3 => "H3",
-            CandlestickGranularity::H4 => "H4",
-            CandlestickGranularity::H6 => "H6",
-            CandlestickGranularity::H8 => "H8",
-            CandlestickGranularity::H12 => "H12",
-            CandlestickGranularity::D => "D",
-            CandlestickGranularity::W => "W",
-            CandlestickGranularity::M => "M",
-        }
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display, EnumString)]
 pub enum WeeklyAlignment {
     Monday,
     Tuesday,
@@ -179,20 +153,6 @@ pub enum WeeklyAlignment {
     Friday,
     Saturday,
     Sunday,
-}
-
-impl WeeklyAlignment {
-    fn as_str(&self) -> &'static str {
-        match self {
-            WeeklyAlignment::Monday => "Monday",
-            WeeklyAlignment::Tuesday => "Tuesday",
-            WeeklyAlignment::Wednesday => "Wednesday",
-            WeeklyAlignment::Thursday => "Thursday",
-            WeeklyAlignment::Friday => "Friday",
-            WeeklyAlignment::Saturday => "Saturday",
-            WeeklyAlignment::Sunday => "Sunday",
-        }
-    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -319,7 +279,7 @@ impl<'a> FetchCandlestickDataRequest {
         });
         self.granularity.is_some().then(|| {
             url.query_pairs_mut()
-                .append_pair("granularity", &self.granularity.as_ref().unwrap().as_str());
+                .append_pair("granularity", &self.granularity.as_ref().unwrap().to_string());
         });
         self.count.is_some().then(|| {
             url.query_pairs_mut()
@@ -354,7 +314,7 @@ impl<'a> FetchCandlestickDataRequest {
         self.weekly_alignment.is_some().then(|| {
             url.query_pairs_mut().append_pair(
                 "weeklyAlignment",
-                &self.weekly_alignment.as_ref().unwrap().as_str(),
+                &self.weekly_alignment.as_ref().unwrap().to_string(),
             );
         });
     }
