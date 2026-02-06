@@ -4,6 +4,7 @@ use crate::primitives::{DecimalNumber, Tag};
 use chrono::{DateTime, Local};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
+use strum_macros::{Display, EnumString};
 use url::Url;
 
 pub type InstrumentName = String;
@@ -117,7 +118,7 @@ pub struct Instrument {
     pub tags: Vec<Tag>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display, EnumString)]
 pub enum CandlestickGranularity {
     S5,
     S10,
@@ -142,7 +143,7 @@ pub enum CandlestickGranularity {
     M,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display, EnumString)]
 pub enum WeeklyAlignment {
     Monday,
     Tuesday,
@@ -274,6 +275,46 @@ impl<'a> FetchCandlestickDataRequest {
         self.price.is_empty().not().then(|| {
             url.query_pairs_mut()
                 .append_pair("price", self.price.as_str());
+        });
+        self.granularity.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("granularity", &self.granularity.as_ref().unwrap().to_string());
+        });
+        self.count.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("count", &self.count.unwrap().to_string());
+        });
+        self.from.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("from", &self.from.unwrap().to_string());
+        });
+        self.to.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("to", &self.to.unwrap().to_string());
+        });
+        self.smooth.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("smooth", &self.smooth.unwrap().to_string());
+        });
+        self.include_first.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("includeFirst", &self.include_first.unwrap().to_string());
+        });
+        self.daily_alignment.is_some().then(|| {
+            url.query_pairs_mut()
+                .append_pair("dailyAlignment", &self.daily_alignment.unwrap().to_string());
+        });
+        self.alignment_timezone.is_some().then(|| {
+            url.query_pairs_mut().append_pair(
+                "alignmentTimezone",
+                &self.alignment_timezone.as_ref().unwrap().to_string(),
+            );
+        });
+        self.weekly_alignment.is_some().then(|| {
+            url.query_pairs_mut().append_pair(
+                "weeklyAlignment",
+                &self.weekly_alignment.as_ref().unwrap().to_string(),
+            );
         });
     }
 }
