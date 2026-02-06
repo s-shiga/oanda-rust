@@ -1,9 +1,10 @@
 use crate::account::{AccountID, ListAccountsResponse, ListInstrumentsResponse};
 use crate::errors::APIError;
-use reqwest::header::{ACCEPT, AUTHORIZATION, HeaderMap, HeaderValue};
+use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
+use crate::order::{ListOrdersRequest, ListOrdersResponse};
+use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::{Request, StatusCode};
 use url::Url;
-use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
 
 const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 const FX_TRADE_URL: &str = "https://api-fxtrade.oanda.com";
@@ -59,16 +60,16 @@ impl Client {
 
     pub async fn list_accounts(&self) -> Result<ListAccountsResponse, APIError> {
         let url = self.base_url.join("/v3/accounts").unwrap();
-        let request = Request::new(reqwest::Method::GET, url);
-        let resp = self.http_client.execute(request).await?;
-        match resp.status() {
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
             StatusCode::OK => {
-                let list_account_response = resp.json::<ListAccountsResponse>().await?;
-                Ok(list_account_response)
+                let resp = http_resp.json::<ListAccountsResponse>().await?;
+                Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
                 status,
-                message: resp.text().await?,
+                message: http_resp.text().await?,
             }),
         }
     }
@@ -84,32 +85,67 @@ impl Client {
                 .as_str(),
             )
             .unwrap();
-        let request = Request::new(reqwest::Method::GET, url);
-        let resp = self.http_client.execute(request).await?;
-        match resp.status() {
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
             StatusCode::OK => {
-                let list_instruments_response = resp.json::<ListInstrumentsResponse>().await?;
-                Ok(list_instruments_response)
+                let resp = http_resp.json::<ListInstrumentsResponse>().await?;
+                Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
                 status,
-                message: resp.text().await?,
+                message: http_resp.text().await?,
             }),
         }
     }
-    pub async fn fetch_candlestick_data(&self, req: FetchCandlestickDataRequest) -> Result<FetchCandlestickDataResponse, APIError> {
-        let mut url = self.base_url.join(format!("/v3/instruments/{}/candles", req.instrument).as_str()).unwrap();
+    pub async fn fetch_candlestick_data(
+        &self,
+        req: FetchCandlestickDataRequest,
+    ) -> Result<FetchCandlestickDataResponse, APIError> {
+        let mut url = self
+            .base_url
+            .join(format!("/v3/instruments/{}/candles", req.instrument).as_str())
+            .unwrap();
         req.set_params(&mut url);
-        let request = Request::new(reqwest::Method::GET, url);
-        let resp = self.http_client.execute(request).await?;
-        match resp.status() {
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
             StatusCode::OK => {
-                let candlesticks_response = resp.json::<FetchCandlestickDataResponse>().await?;
-                Ok(candlesticks_response)
+                let resp = http_resp.json::<FetchCandlestickDataResponse>().await?;
+                Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
                 status,
-                message: resp.text().await?,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn list_orders(
+        &self,
+        req: ListOrdersRequest,
+    ) -> Result<ListOrdersResponse, APIError> {
+        let mut url = self
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/orders",
+                    self.account_id.as_ref().expect("Missing client account_id")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListOrdersResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
             })
         }
     }

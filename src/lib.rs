@@ -5,8 +5,9 @@ mod instrument;
 mod pricing;
 mod primitives;
 mod transaction;
+mod order;
 
-use crate::client::Client;
+pub use crate::client::Client;
 
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
@@ -15,7 +16,8 @@ pub fn add(left: u64, right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest};
+    use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest, InstrumentName};
+    use crate::order::ListOrdersRequest;
 
     #[test]
     fn it_works() {
@@ -50,6 +52,14 @@ mod tests {
             .granularity(CandlestickGranularity::M1)
             .count(50).unwrap();
         let resp = client.fetch_candlestick_data(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_list_orders() {
+        let client = setup();
+        let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
+        let resp = client.list_orders(req).await.unwrap();
         println!("{:#?}", resp);
     }
 }
