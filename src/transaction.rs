@@ -394,7 +394,7 @@ pub enum AccountFinancingMode {
     Daily,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionFilter {
     Order,
@@ -1912,6 +1912,52 @@ pub struct ListTransactionsResponse {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetTransactionDetailsResponse {
     pub transaction: Transaction,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+pub struct GetTransactionsByIDRangeRequest {
+    from: TransactionID,
+    to: TransactionID,
+    filter: Vec<TransactionFilter>,
+}
+
+impl GetTransactionsByIDRangeRequest {
+    pub fn new(from: TransactionID, to: TransactionID) -> Self {
+        GetTransactionsByIDRangeRequest {
+            from,
+            to,
+            filter: Vec::new(),
+        }
+    }
+
+    pub fn filter(mut self, filter: TransactionFilter) -> Self {
+        self.filter.push(filter);
+        self
+    }
+
+    pub(crate) fn set_params(&self, url: &mut Url) {
+        url.query_pairs_mut()
+            .append_pair("from", &self.from.to_string())
+            .append_pair("to", &self.to.to_string());
+        if self.filter.len() > 0 {
+            url.query_pairs_mut().append_pair(
+                "type",
+                &self
+                    .filter
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+                    .as_str(),
+            );
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetTransactionsResponse {
+    transactions: Vec<Transaction>,
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }

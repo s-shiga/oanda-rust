@@ -18,7 +18,7 @@ mod tests {
     use super::*;
     use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest};
     use crate::order::ListOrdersRequest;
-    use crate::transaction::ListTransactionsRequest;
+    use crate::transaction::{GetTransactionsByIDRangeRequest, ListTransactionsRequest};
 
     #[test]
     fn it_works() {
@@ -76,6 +76,14 @@ mod tests {
     async fn test_get_transaction_details() {
         let client = setup();
         let resp = client.get_transaction_details("456".to_string()).await.unwrap();
+        println!("{:#?}", resp);
+    }
+    
+    #[tokio::test]
+    async fn test_get_transactions_by_id_range() {
+        let client = setup();
+        let req = GetTransactionsByIDRangeRequest::new("500".to_string(), "510".to_string());
+        let resp = client.get_transactions_by_id_range(req).await.unwrap();
         println!("{:#?}", resp);
     }
 }
