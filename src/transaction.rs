@@ -592,7 +592,47 @@ pub enum TransactionRejectReason {
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Transaction {}
+#[serde(untagged)]
+pub enum Transaction {
+    OrderFillTransaction(OrderFillTransaction),
+    OrderCancelTransaction(OrderCancelTransaction),
+    OrderCancelRejectTransaction(OrderCancelRejectTransaction),
+    OrderClientExtensionsModifyTransaction(OrderClientExtensionsModifyTransaction),
+    OrderClientExtensionsModifyRejectTransaction(OrderClientExtensionsModifyRejectTransaction),
+    CreateTransaction(CreateTransaction),
+    CloseTransaction(CloseTransaction),
+    ReopenTransaction(ReopenTransaction),
+    ClientConfigureTransaction(ClientConfigureTransaction),
+    ClientConfigureRejectTransaction(ClientConfigureRejectTransaction),
+    TransferFundsTransaction(TransferFundsTransaction),
+    TransferFundsRejectTransaction(TransferFundsRejectTransaction),
+    MarketOrderTransaction(MarketOrderTransaction),
+    MarketOrderRejectTransaction(MarketOrderRejectTransaction),
+    FixedPriceOrderTransaction(FixedPriceOrderTransaction),
+    LimitOrderTransaction(LimitOrderTransaction),
+    LimitOrderRejectTransaction(LimitOrderRejectTransaction),
+    StopOrderTransaction(StopOrderTransaction),
+    StopOrderRejectTransaction(StopOrderRejectTransaction),
+    MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
+    MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
+    TakeProfitOrderTransaction(TakeProfitOrderTransaction),
+    TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
+    StopLossOrderTransaction(StopLossOrderTransaction),
+    StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
+    GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
+    GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
+    TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
+    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderTransaction),
+    TradeClientExtensionsModifyTransaction(TradeClientExtensionsModifyTransaction),
+    TradeClientExtensionsModifyRejectTransaction(TradeClientExtensionsModifyRejectTransaction),
+    MarginCallEnterTransaction(MarginCallEnterTransaction),
+    MarginCallExtendTransaction(MarginCallExtendTransaction),
+    MarginCallExitTransaction(MarginCallExitTransaction),
+    DelayedTradeClosureTransaction(DelayedTradeClosureTransaction),
+    DailyFinancingTransaction(DailyFinancingTransaction),
+    DividendAdjustmentTransaction(DividendAdjustmentTransaction),
+    ResetResettablePLTransaction(ResetResettablePLTransaction),
+}
 
 // ---------------------------------------------------------------------------
 // Transaction Structs
@@ -1867,4 +1907,11 @@ pub struct ListTransactionsResponse {
     #[serde(rename = "pageSize")]
     pub page_size: Option<i64>,
     pub pages: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetTransactionDetailsResponse {
+    pub transaction: Transaction,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
 }

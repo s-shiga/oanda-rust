@@ -16,7 +16,7 @@ pub fn add(left: u64, right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest, InstrumentName};
+    use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest};
     use crate::order::ListOrdersRequest;
     use crate::transaction::ListTransactionsRequest;
 
@@ -63,12 +63,19 @@ mod tests {
         let resp = client.list_orders(req).await.unwrap();
         println!("{:#?}", resp);
     }
-    
+
     #[tokio::test]
     async fn test_list_transactions() {
         let client = setup();
         let req = ListTransactionsRequest::new();
         let resp = client.list_transactions(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_transaction_details() {
+        let client = setup();
+        let resp = client.get_transaction_details("456".to_string()).await.unwrap();
         println!("{:#?}", resp);
     }
 }
