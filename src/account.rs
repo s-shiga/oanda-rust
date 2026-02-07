@@ -1,5 +1,5 @@
 use crate::instrument::Instrument;
-use crate::transaction::TransactionId;
+use crate::transaction::TransactionID;
 use serde::{Deserialize, Serialize};
 
 pub type AccountID = String;
@@ -20,5 +20,5 @@ pub struct ListAccountsResponse {
 pub struct ListInstrumentsResponse {
     pub instruments: Vec<Instrument>,
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionId,
+    pub last_transaction_id: TransactionID,
 }

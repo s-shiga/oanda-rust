@@ -1,5 +1,5 @@
 use crate::instrument::InstrumentName;
-use crate::transaction::{ClientExtensions, ClientID, TransactionId};
+use crate::transaction::{ClientExtensions, ClientID, TransactionID};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
@@ -170,5 +170,5 @@ impl ListOrdersRequest {
 pub struct ListOrdersResponse {
     pub orders: Vec<Order>,
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionId,
+    pub last_transaction_id: TransactionID,
 }
