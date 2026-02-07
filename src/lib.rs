@@ -18,6 +18,7 @@ mod tests {
     use super::*;
     use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest, InstrumentName};
     use crate::order::ListOrdersRequest;
+    use crate::transaction::ListTransactionsRequest;
 
     #[test]
     fn it_works() {
@@ -60,6 +61,14 @@ mod tests {
         let client = setup();
         let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
         let resp = client.list_orders(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+    
+    #[tokio::test]
+    async fn test_list_transactions() {
+        let client = setup();
+        let req = ListTransactionsRequest::new();
+        let resp = client.list_transactions(req).await.unwrap();
         println!("{:#?}", resp);
     }
 }
