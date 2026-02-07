@@ -5,6 +5,8 @@ use crate::pricing::PriceValue;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use strum_macros::Display;
+use url::Url;
 
 pub type TransactionID = String;
 pub type ClientID = String;
@@ -179,7 +181,7 @@ pub struct TransactionHeartbeat {
 // Enums
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionType {
     Create,
@@ -1800,6 +1802,61 @@ pub struct ListTransactionsRequest {
     pub to: Option<DateTime<Utc>>,
     pub page_size: Option<u16>,
     pub transaction_type: Vec<TransactionType>,
+}
+
+impl ListTransactionsRequest {
+    pub fn new() -> Self {
+        ListTransactionsRequest {
+            from: None,
+            to: None,
+            page_size: None,
+            transaction_type: Vec::new(),
+        }
+    }
+
+    pub fn from(mut self, from: DateTime<Utc>) -> Self {
+        self.from = Some(from);
+        self
+    }
+
+    pub fn to(mut self, to: DateTime<Utc>) -> Self {
+        self.to = Some(to);
+        self
+    }
+
+    pub fn page_size(mut self, page_size: u16) -> Self {
+        self.page_size = Some(page_size);
+        self
+    }
+
+    pub fn transaction_type(mut self, transaction_type: TransactionType) -> Self {
+        self.transaction_type.push(transaction_type);
+        self
+    }
+
+    pub(crate) fn set_params(&self, url: &mut Url) {
+        if let Some(from) = self.from {
+            url.query_pairs_mut().append_pair("from", &from.to_string());
+        }
+        if let Some(to) = self.to {
+            url.query_pairs_mut().append_pair("to", &to.to_string());
+        }
+        if let Some(page_size) = self.page_size {
+            url.query_pairs_mut()
+                .append_pair("pageSize", page_size.to_string().as_str());
+        }
+        if self.transaction_type.len() > 0 {
+            url.query_pairs_mut().append_pair(
+                "transactionType",
+                self.transaction_type
+                    .iter()
+                    .map(|t| t.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+                    .as_str(),
+            );
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]
