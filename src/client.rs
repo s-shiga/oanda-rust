@@ -2,6 +2,7 @@ use crate::account::{AccountID, ListAccountsResponse, ListInstrumentsResponse};
 use crate::errors::APIError;
 use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
 use crate::order::{ListOrdersRequest, ListOrdersResponse};
+use crate::transaction::{ListTransactionsRequest, ListTransactionsResponse};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::{Request, StatusCode};
 use url::Url;
@@ -146,7 +147,36 @@ impl Client {
             status => Err(APIError::ApiErrorResponse {
                 status,
                 message: http_resp.text().await?,
-            })
+            }),
+        }
+    }
+
+    pub async fn list_transactions(
+        &self,
+        req: ListTransactionsRequest,
+    ) -> Result<ListTransactionsResponse, APIError> {
+        let mut url = self
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions",
+                    self.account_id.as_ref().expect("Missing client account_id")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListTransactionsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
         }
     }
 }
