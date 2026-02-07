@@ -4,7 +4,8 @@ use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataRespons
 use crate::order::{ListOrdersRequest, ListOrdersResponse};
 use crate::transaction::{
     GetTransactionDetailsResponse, GetTransactionsByIDRangeRequest, GetTransactionsResponse,
-    ListTransactionsRequest, ListTransactionsResponse, TransactionID,
+    GetTransactionsBySinceIDRequest, ListTransactionsRequest, ListTransactionsResponse,
+    TransactionID,
 };
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::{Request, StatusCode};
@@ -224,15 +225,18 @@ impl Client {
         &self,
         req: GetTransactionsByIDRangeRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.base_url.join(
-            format!(
-                "/v3/accounts/{}/transactions/idrange",
-                self.account_id
-                    .as_ref()
-                    .expect("Missing account_id in client")
+        let mut url = self
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions/idrange",
+                    self.account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
             )
-            .as_str(),
-        ).unwrap();
+            .unwrap();
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.http_client.execute(http_req).await?;
@@ -244,7 +248,38 @@ impl Client {
             status => Err(APIError::ApiErrorResponse {
                 status,
                 message: http_resp.text().await?,
-            })
+            }),
+        }
+    }
+
+    pub async fn get_transactions_by_since_id(
+        &self,
+        req: GetTransactionsBySinceIDRequest,
+    ) -> Result<GetTransactionsResponse, APIError> {
+        let mut url = self
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions/sinceid",
+                    self.account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<GetTransactionsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
         }
     }
 }

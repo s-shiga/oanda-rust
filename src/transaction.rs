@@ -1961,3 +1961,38 @@ pub struct GetTransactionsResponse {
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
+
+pub struct GetTransactionsBySinceIDRequest {
+    id: TransactionID,
+    filter: Vec<TransactionFilter>,
+}
+
+impl GetTransactionsBySinceIDRequest {
+    pub fn new(id: TransactionID) -> Self {
+        GetTransactionsBySinceIDRequest {
+            id,
+            filter: Vec::new(),
+        }
+    }
+
+    pub fn filter(mut self, filter: TransactionFilter) -> Self {
+        self.filter.push(filter);
+        self
+    }
+
+    pub(crate) fn set_params(&self, url: &mut Url) {
+        url.query_pairs_mut()
+            .append_pair("id", &self.id.to_string());
+        if self.filter.len() > 0 {
+            url.query_pairs_mut().append_pair(
+                "filter",
+                &self
+                    .filter
+                    .iter()
+                    .map(|f| f.to_string())
+                    .collect::<Vec<String>>()
+                    .join(","),
+            );
+        }
+    }
+}
