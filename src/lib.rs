@@ -3,6 +3,7 @@ pub mod client;
 pub mod errors;
 pub mod instrument;
 pub mod order;
+pub mod position;
 pub mod pricing;
 pub mod primitives;
 pub mod stream;

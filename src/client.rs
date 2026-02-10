@@ -2,6 +2,7 @@ use crate::account::{AccountID, ListAccountsResponse, ListInstrumentsResponse};
 use crate::errors::APIError;
 use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
 use crate::order::{ListOrdersRequest, ListOrdersResponse};
+use crate::position::PositionService;
 use crate::transaction::{
     GetTransactionDetailsResponse, GetTransactionsByIDRangeRequest,
     GetTransactionsBySinceIDRequest, GetTransactionsResponse, ListTransactionsRequest,
@@ -21,7 +22,7 @@ pub struct Client {
     pub(crate) account_id: Option<AccountID>,
 }
 
-impl Client {
+impl<'a> Client {
     #[allow(unused)]
     pub fn new(api_key: &str) -> Client {
         Client {
@@ -56,6 +57,10 @@ impl Client {
     pub fn with_account_id(mut self, account_id: AccountID) -> Self {
         self.account_id = Some(account_id);
         self
+    }
+
+    pub fn position(&'a self) -> PositionService<'a> {
+        PositionService::new(self)
     }
 
     pub async fn list_accounts(&self) -> Result<ListAccountsResponse, APIError> {
@@ -280,32 +285,33 @@ impl Client {
 }
 
 #[cfg(test)]
+pub(crate) fn setup_test_client() -> Client {
+    let api_key = env!("OANDA_API_KEY_DEMO");
+    let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
+    Client::new_practice(api_key).with_account_id(account_id)
+}
+
 mod tests {
     use super::*;
     use crate::instrument::CandlestickGranularity;
-    fn setup() -> Client {
-        let api_key = env!("OANDA_API_KEY_DEMO");
-        let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
-        Client::new_practice(api_key).with_account_id(account_id)
-    }
 
     #[tokio::test]
     async fn test_list() {
-        let client = setup();
+        let client = setup_test_client();
         let account = client.list_accounts().await.unwrap();
         println!("{:#?}", account);
     }
 
     #[tokio::test]
     async fn test_list_instruments() {
-        let client = setup();
+        let client = setup_test_client();
         let resp = client.list_instruments().await.unwrap();
         println!("{:#?}", resp);
     }
 
     #[tokio::test]
     async fn test_fetch_candlestick_data() {
-        let client = setup();
+        let client = setup_test_client();
         let req = FetchCandlestickDataRequest::new("USD_JPY".to_string())
             .granularity(CandlestickGranularity::M1)
             .count(50)
@@ -316,7 +322,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_orders() {
-        let client = setup();
+        let client = setup_test_client();
         let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
         let resp = client.list_orders(req).await.unwrap();
         println!("{:#?}", resp);
@@ -324,7 +330,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_list_transactions() {
-        let client = setup();
+        let client = setup_test_client();
         let req = ListTransactionsRequest::new();
         let resp = client.list_transactions(req).await.unwrap();
         println!("{:#?}", resp);
@@ -332,7 +338,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_transaction_details() {
-        let client = setup();
+        let client = setup_test_client();
         let resp = client
             .get_transaction_details("456".to_string())
             .await
@@ -342,7 +348,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_transactions_by_id_range() {
-        let client = setup();
+        let client = setup_test_client();
         let req = GetTransactionsByIDRangeRequest::new("500".to_string(), "510".to_string());
         let resp = client.get_transactions_by_id_range(req).await.unwrap();
         println!("{:#?}", resp);
@@ -350,7 +356,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_transactions_by_since_id() {
-        let client = setup();
+        let client = setup_test_client();
         let req = GetTransactionsBySinceIDRequest::new("500".to_string());
         let resp = client.get_transactions_by_since_id(req).await.unwrap();
         println!("{:#?}", resp);
