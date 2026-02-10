@@ -61,7 +61,7 @@ pub struct OrderIdentifier {
     pub client_order_id: ClientID,
 }
 
-type OrderSpecifier = String;
+pub type OrderSpecifier = String;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum TimeInForce {
