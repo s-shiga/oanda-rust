@@ -52,6 +52,13 @@ pub struct PositionListResponse {
     pub last_transaction_id: TransactionID,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PositionDetailsResponse {
+    pub position: Position,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
 pub struct PositionService<'a> {
     client: &'a Client,
 }
@@ -112,6 +119,24 @@ impl<'a> PositionService<'a> {
             }),
         }
     }
+
+    pub async fn details(&self, instrument: InstrumentName) -> Result<PositionDetailsResponse, APIError> {
+        let url = self.client.base_url.join(
+            format!("/v3/accounts/{}/positions/{}", self.client.account_id.as_ref().expect("Missing account_id"), instrument).as_str()
+        ).unwrap();
+        let http_req = Request::new(Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<PositionDetailsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -130,5 +155,12 @@ mod tests {
         let client = setup_test_client();
         let positions = client.position().list_open().await.unwrap();
         println!("{:#?}", positions);
+    }
+
+    #[tokio::test]
+    async fn test_position_details() {
+        let client = setup_test_client();
+        let details = client.position().details(String::from("USD_JPY")).await.unwrap();
+        println!("{:#?}", details);
     }
 }
