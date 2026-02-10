@@ -170,8 +170,6 @@ pub struct HomeConversionFactors {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionHeartbeat {
-    #[serde(rename = "type")]
-    pub heartbeat_type: String,
     pub time: DateTime<Utc>,
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
@@ -1995,4 +1993,12 @@ impl GetTransactionsBySinceIDRequest {
             );
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum TransactionStreamItem {
+    HEARTBEAT(TransactionHeartbeat),
+    #[serde(untagged)]
+    Transaction(Transaction),
 }

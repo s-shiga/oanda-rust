@@ -2,10 +2,10 @@ mod account;
 mod client;
 mod errors;
 mod instrument;
+mod order;
 mod pricing;
 mod primitives;
 mod transaction;
-mod order;
 
 pub use crate::client::Client;
 
@@ -16,9 +16,13 @@ pub fn add(left: u64, right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::StreamClient;
     use crate::instrument::{CandlestickGranularity, FetchCandlestickDataRequest};
     use crate::order::ListOrdersRequest;
-    use crate::transaction::{GetTransactionsByIDRangeRequest, GetTransactionsBySinceIDRequest, ListTransactionsRequest};
+    use crate::transaction::{
+        GetTransactionsByIDRangeRequest, GetTransactionsBySinceIDRequest, ListTransactionsRequest,
+    };
+    use tokio::time::{timeout, Duration};
 
     #[test]
     fn it_works() {
@@ -30,6 +34,12 @@ mod tests {
         let api_key = env!("OANDA_API_KEY_DEMO");
         let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
         Client::new_practice(api_key).with_account_id(account_id)
+    }
+
+    fn setup_stream() -> StreamClient {
+        let api_key = env!("OANDA_API_KEY_DEMO");
+        let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
+        StreamClient::new_practice(api_key).with_account_id(account_id)
     }
 
     #[tokio::test]
@@ -51,7 +61,8 @@ mod tests {
         let client = setup();
         let req = FetchCandlestickDataRequest::new("USD_JPY".to_string())
             .granularity(CandlestickGranularity::M1)
-            .count(50).unwrap();
+            .count(50)
+            .unwrap();
         let resp = client.fetch_candlestick_data(req).await.unwrap();
         println!("{:#?}", resp);
     }
@@ -75,7 +86,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_details() {
         let client = setup();
-        let resp = client.get_transaction_details("456".to_string()).await.unwrap();
+        let resp = client
+            .get_transaction_details("456".to_string())
+            .await
+            .unwrap();
         println!("{:#?}", resp);
     }
 
@@ -93,5 +107,14 @@ mod tests {
         let req = GetTransactionsBySinceIDRequest::new("500".to_string());
         let resp = client.get_transactions_by_since_id(req).await.unwrap();
         println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_stream_transactions() {
+        let client = setup_stream();
+        let _ = timeout(Duration::from_secs(10), client.stream_transactions(|item| {
+            println!("{:#?}", item);
+            Ok(())
+        })).await;
     }
 }
