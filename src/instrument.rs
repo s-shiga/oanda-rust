@@ -277,8 +277,10 @@ impl<'a> FetchCandlestickDataRequest {
                 .append_pair("price", self.price.as_str());
         });
         self.granularity.is_some().then(|| {
-            url.query_pairs_mut()
-                .append_pair("granularity", &self.granularity.as_ref().unwrap().to_string());
+            url.query_pairs_mut().append_pair(
+                "granularity",
+                &self.granularity.as_ref().unwrap().to_string(),
+            );
         });
         self.count.is_some().then(|| {
             url.query_pairs_mut()

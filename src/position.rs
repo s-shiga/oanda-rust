@@ -1,9 +1,9 @@
-use reqwest::{Method, Request, StatusCode};
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{AccountUnits, TradeID, TransactionID};
+use reqwest::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -83,7 +83,7 @@ impl<'a> PositionService<'a> {
             status => Err(APIError::ApiErrorResponse {
                 status,
                 message: http_resp.text().await?,
-            })
+            }),
         }
     }
 }

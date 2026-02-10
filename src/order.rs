@@ -20,7 +20,7 @@ pub struct MarketOrder {
     pub create_time: DateTime<Utc>,
     pub state: OrderState,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
-    pub client_extensions: Option<ClientExtensions>
+    pub client_extensions: Option<ClientExtensions>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
