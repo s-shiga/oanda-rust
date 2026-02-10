@@ -86,6 +86,32 @@ impl<'a> PositionService<'a> {
             }),
         }
     }
+
+    pub async fn list_open(&self) -> Result<PositionListResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/openPositions",
+                    self.client.account_id.as_ref().expect("Missing account_id")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let http_req = Request::new(Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<PositionListResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -96,6 +122,13 @@ mod tests {
     async fn test_position_list() {
         let client = setup_test_client();
         let positions = client.position().list().await.unwrap();
+        println!("{:#?}", positions);
+    }
+
+    #[tokio::test]
+    async fn test_position_list_open() {
+        let client = setup_test_client();
+        let positions = client.position().list_open().await.unwrap();
         println!("{:#?}", positions);
     }
 }
