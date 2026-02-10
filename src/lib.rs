@@ -1,11 +1,11 @@
-mod account;
-mod client;
-mod errors;
-mod instrument;
-mod order;
-mod pricing;
-mod primitives;
-mod transaction;
+pub mod account;
+pub mod client;
+pub mod errors;
+pub mod instrument;
+pub mod order;
+pub mod pricing;
+pub mod primitives;
+pub mod transaction;
 
 pub use crate::client::Client;
 
