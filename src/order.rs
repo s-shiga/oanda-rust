@@ -1,7 +1,12 @@
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::instrument::InstrumentName;
-use crate::transaction::{ClientExtensions, ClientID, TransactionID};
+use crate::pricing::PriceValue;
+use crate::primitives::DecimalNumber;
+use crate::transaction::{
+    ClientExtensions, ClientID, StopLossDetails, TakeProfitDetails, TradeID,
+    TrailingStopLossDetails, GuaranteedStopLossDetails, TransactionID,
+};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -9,12 +14,38 @@ use std::ops::Not;
 use strum_macros::Display;
 use url::Url;
 
-type OrderID = u16;
+pub type OrderID = String;
+
+// ---------------------------------------------------------------------------
+// Order enum (tagged union)
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(tag = "type")]
 pub enum Order {
+    #[serde(rename = "MARKET")]
     MarketOrder(MarketOrder),
+    #[serde(rename = "LIMIT")]
+    LimitOrder(LimitOrder),
+    #[serde(rename = "STOP")]
+    StopOrder(StopOrder),
+    #[serde(rename = "MARKET_IF_TOUCHED")]
+    MarketIfTouchedOrder(MarketIfTouchedOrder),
+    #[serde(rename = "TAKE_PROFIT")]
+    TakeProfitOrder(TakeProfitOrder),
+    #[serde(rename = "STOP_LOSS")]
+    StopLossOrder(StopLossOrder),
+    #[serde(rename = "GUARANTEED_STOP_LOSS")]
+    GuaranteedStopLossOrder(GuaranteedStopLossOrder),
+    #[serde(rename = "TRAILING_STOP_LOSS")]
+    TrailingStopLossOrder(TrailingStopLossOrder),
+    #[serde(rename = "FIXED_PRICE")]
+    FixedPriceOrder(FixedPriceOrder),
 }
+
+// ---------------------------------------------------------------------------
+// Order Structs
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct MarketOrder {
@@ -24,7 +55,402 @@ pub struct MarketOrder {
     pub state: OrderState,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+    pub instrument: Option<InstrumentName>,
+    pub units: Option<DecimalNumber>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "priceBound")]
+    pub price_bound: Option<PriceValue>,
+    #[serde(rename = "positionFill")]
+    pub position_fill: Option<OrderPositionFill>,
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
 }
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LimitOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    pub instrument: Option<InstrumentName>,
+    pub units: Option<DecimalNumber>,
+    pub price: Option<PriceValue>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "positionFill")]
+    pub position_fill: Option<OrderPositionFill>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StopOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    pub instrument: Option<InstrumentName>,
+    pub units: Option<DecimalNumber>,
+    pub price: Option<PriceValue>,
+    #[serde(rename = "priceBound")]
+    pub price_bound: Option<PriceValue>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "positionFill")]
+    pub position_fill: Option<OrderPositionFill>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct MarketIfTouchedOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    pub instrument: Option<InstrumentName>,
+    pub units: Option<DecimalNumber>,
+    pub price: Option<PriceValue>,
+    #[serde(rename = "priceBound")]
+    pub price_bound: Option<PriceValue>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "positionFill")]
+    pub position_fill: Option<OrderPositionFill>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "initialMarketPrice")]
+    pub initial_market_price: Option<PriceValue>,
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TakeProfitOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "clientTradeID")]
+    pub client_trade_id: Option<ClientID>,
+    pub price: PriceValue,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct StopLossOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "clientTradeID")]
+    pub client_trade_id: Option<ClientID>,
+    pub price: Option<PriceValue>,
+    pub distance: Option<DecimalNumber>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub guaranteed: Option<bool>,
+    #[serde(rename = "guaranteedExecutionPremium")]
+    pub guaranteed_execution_premium: Option<DecimalNumber>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GuaranteedStopLossOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "clientTradeID")]
+    pub client_trade_id: Option<ClientID>,
+    pub price: PriceValue,
+    pub distance: Option<DecimalNumber>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "guaranteedExecutionPremium")]
+    pub guaranteed_execution_premium: Option<DecimalNumber>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TrailingStopLossOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "clientTradeID")]
+    pub client_trade_id: Option<ClientID>,
+    pub distance: DecimalNumber,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "triggerCondition")]
+    pub trigger_condition: Option<OrderTriggerCondition>,
+    #[serde(rename = "trailingStopValue")]
+    pub trailing_stop_value: Option<PriceValue>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "replacesOrderID")]
+    pub replaces_order_id: Option<OrderID>,
+    #[serde(rename = "replacedByOrderID")]
+    pub replaced_by_order_id: Option<OrderID>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FixedPriceOrder {
+    pub id: OrderID,
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    pub state: OrderState,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    pub instrument: Option<InstrumentName>,
+    pub units: Option<DecimalNumber>,
+    pub price: Option<PriceValue>,
+    #[serde(rename = "positionFill")]
+    pub position_fill: Option<OrderPositionFill>,
+    #[serde(rename = "tradeState")]
+    pub trade_state: Option<String>,
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
@@ -162,9 +588,9 @@ impl ListOrdersRequest {
             url.query_pairs_mut()
                 .append_pair("count", &self.count.unwrap().to_string().as_str());
         });
-        self.before_id.is_some().then(|| {
+        self.before_id.as_ref().map(|id| {
             url.query_pairs_mut()
-                .append_pair("beforeID", &self.before_id.unwrap().to_string().as_str());
+                .append_pair("beforeID", id.as_str());
         });
     }
 }
