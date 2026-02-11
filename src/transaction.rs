@@ -1,9 +1,12 @@
 use crate::account::AccountID;
+use crate::client::Client;
+use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::PriceValue;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
+use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use url::Url;
@@ -2001,4 +2004,187 @@ pub enum TransactionStreamItem {
     HEARTBEAT(TransactionHeartbeat),
     #[serde(untagged)]
     Transaction(Transaction),
+}
+
+pub struct TransactionService<'a> {
+    client: &'a Client,
+}
+
+impl<'a> TransactionService<'a> {
+    pub(crate) fn new(client: &'a Client) -> Self {
+        TransactionService { client }
+    }
+
+    pub async fn list(
+        &self,
+        req: ListTransactionsRequest,
+    ) -> Result<ListTransactionsResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListTransactionsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn get_details(
+        &self,
+        id: TransactionID,
+    ) -> Result<GetTransactionDetailsResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions/{}",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client"),
+                    id
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<GetTransactionDetailsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn get_by_id_range(
+        &self,
+        req: GetTransactionsByIDRangeRequest,
+    ) -> Result<GetTransactionsResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions/idrange",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<GetTransactionsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn get_by_since_id(
+        &self,
+        req: GetTransactionsBySinceIDRequest,
+    ) -> Result<GetTransactionsResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/transactions/sinceid",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<GetTransactionsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::client::setup_test_client;
+
+    #[tokio::test]
+    async fn test_list_transactions() {
+        let client = setup_test_client();
+        let req = ListTransactionsRequest::new();
+        let resp = client.transaction().list(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_transaction_details() {
+        let client = setup_test_client();
+        let resp = client
+            .transaction()
+            .get_details("530".to_string())
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_transactions_by_id_range() {
+        let client = setup_test_client();
+        let req = GetTransactionsByIDRangeRequest::new("500".to_string(), "510".to_string());
+        let resp = client.transaction().get_by_id_range(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_transactions_by_since_id() {
+        let client = setup_test_client();
+        let req = GetTransactionsBySinceIDRequest::new("520".to_string());
+        let resp = client.transaction().get_by_since_id(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
 }
