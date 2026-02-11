@@ -1,6 +1,6 @@
 use crate::account::{AccountID, AccountService};
 use crate::errors::APIError;
-use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
+use crate::instrument::InstrumentService;
 use crate::order::{ListOrdersRequest, ListOrdersResponse};
 use crate::position::PositionService;
 use crate::transaction::TransactionService;
@@ -59,35 +59,16 @@ impl<'a> Client {
         AccountService::new(self)
     }
 
+    pub fn instrument(&'a self) -> InstrumentService<'a> {
+        InstrumentService::new(self)
+    }
+
     pub fn transaction(&'a self) -> TransactionService<'a> {
         TransactionService::new(self)
     }
 
     pub fn position(&'a self) -> PositionService<'a> {
         PositionService::new(self)
-    }
-
-    pub async fn fetch_candlestick_data(
-        &self,
-        req: FetchCandlestickDataRequest,
-    ) -> Result<FetchCandlestickDataResponse, APIError> {
-        let mut url = self
-            .base_url
-            .join(format!("/v3/instruments/{}/candles", req.instrument).as_str())
-            .unwrap();
-        req.set_params(&mut url);
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<FetchCandlestickDataResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
     }
 
     pub async fn list_orders(
@@ -131,18 +112,6 @@ pub(crate) fn setup_test_client() -> Client {
 
 mod tests {
     use super::*;
-    use crate::instrument::CandlestickGranularity;
-
-    #[tokio::test]
-    async fn test_fetch_candlestick_data() {
-        let client = setup_test_client();
-        let req = FetchCandlestickDataRequest::new("USD_JPY".to_string())
-            .granularity(CandlestickGranularity::M1)
-            .count(50)
-            .unwrap();
-        let resp = client.fetch_candlestick_data(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
 
     #[tokio::test]
     async fn test_list_orders() {

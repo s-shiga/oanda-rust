@@ -1,7 +1,10 @@
+use crate::client::Client;
 use crate::errors::APIError;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
+use crate::transaction::TransactionID;
 use chrono::{DateTime, Local};
+use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
 use strum_macros::{Display, EnumString};
@@ -176,7 +179,14 @@ pub struct CandlestickData {
     pub close: PriceValue,
 }
 
-pub struct FetchCandlestickDataRequest {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ListInstrumentsResponse {
+    pub instruments: Vec<Instrument>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+pub struct FetchCandlesticksRequest {
     pub instrument: InstrumentName,
     price: PricingComponent,
     granularity: Option<CandlestickGranularity>,
@@ -190,9 +200,9 @@ pub struct FetchCandlestickDataRequest {
     weekly_alignment: Option<WeeklyAlignment>,
 }
 
-impl<'a> FetchCandlestickDataRequest {
+impl<'a> FetchCandlesticksRequest {
     pub fn new(instrument: InstrumentName) -> Self {
-        FetchCandlestickDataRequest {
+        FetchCandlesticksRequest {
             instrument,
             price: "".into(),
             granularity: None,
@@ -322,8 +332,95 @@ impl<'a> FetchCandlestickDataRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct FetchCandlestickDataResponse {
+pub struct FetchCandlesticksResponse {
     pub instrument: InstrumentName,
     granularity: CandlestickGranularity,
     candles: Vec<Candlestick>,
+}
+
+pub struct InstrumentService<'a> {
+    client: &'a Client,
+}
+
+impl<'a> InstrumentService<'a> {
+    pub fn new(client: &'a Client) -> Self {
+        InstrumentService { client }
+    }
+
+    pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/instruments",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListInstrumentsResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn fetch_candlesticks(
+        &self,
+        req: FetchCandlesticksRequest,
+    ) -> Result<FetchCandlesticksResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(format!("/v3/instruments/{}/candles", req.instrument).as_str())
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<FetchCandlesticksResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::setup_test_client;
+    use crate::instrument::{CandlestickGranularity, FetchCandlesticksRequest};
+
+    #[tokio::test]
+    async fn test_list_instruments() {
+        let client = setup_test_client();
+        let resp = client.instrument().list().await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_candlestick_data() {
+        let client = setup_test_client();
+        let req = FetchCandlesticksRequest::new("USD_JPY".to_string())
+            .granularity(CandlestickGranularity::M1)
+            .count(50)
+            .unwrap();
+        let resp = client.instrument().fetch_candlesticks(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
 }
