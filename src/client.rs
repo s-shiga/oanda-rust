@@ -1,11 +1,9 @@
 use crate::account::{AccountID, AccountService};
-use crate::errors::APIError;
 use crate::instrument::InstrumentService;
-use crate::order::{ListOrdersRequest, ListOrdersResponse};
+use crate::order::OrderService;
 use crate::position::PositionService;
 use crate::transaction::TransactionService;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
-use reqwest::{Request, StatusCode};
 use url::Url;
 
 const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
@@ -63,43 +61,16 @@ impl<'a> Client {
         InstrumentService::new(self)
     }
 
+    pub fn order(&'a self) -> OrderService<'a> {
+        OrderService::new(self)
+    }
+
     pub fn transaction(&'a self) -> TransactionService<'a> {
         TransactionService::new(self)
     }
 
     pub fn position(&'a self) -> PositionService<'a> {
         PositionService::new(self)
-    }
-
-    pub async fn list_orders(
-        &self,
-        req: ListOrdersRequest,
-    ) -> Result<ListOrdersResponse, APIError> {
-        let mut url = self
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders",
-                    self.account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
-        req.set_params(&mut url);
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListOrdersResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
     }
 }
 
@@ -108,16 +79,4 @@ pub(crate) fn setup_test_client() -> Client {
     let api_key = env!("OANDA_API_KEY_DEMO");
     let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
     Client::new_practice(api_key).with_account_id(account_id)
-}
-
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_list_orders() {
-        let client = setup_test_client();
-        let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
-        let resp = client.list_orders(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
 }

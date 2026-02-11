@@ -1,6 +1,9 @@
+use crate::client::Client;
+use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::transaction::{ClientExtensions, ClientID, TransactionID};
 use chrono::{DateTime, Utc};
+use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
 use strum_macros::Display;
@@ -171,4 +174,58 @@ pub struct ListOrdersResponse {
     pub orders: Vec<Order>,
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
+}
+
+pub struct OrderService<'a> {
+    client: &'a Client,
+}
+
+impl<'a> OrderService<'a> {
+    pub fn new(client: &'a Client) -> Self {
+        OrderService { client }
+    }
+
+    pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/orders",
+                    self.client
+                        .account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        req.set_params(&mut url);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListOrdersResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::client::setup_test_client;
+    use crate::order::ListOrdersRequest;
+
+    #[tokio::test]
+    async fn test_list_orders() {
+        let client = setup_test_client();
+        let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
+        let resp = client.order().list(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
 }
