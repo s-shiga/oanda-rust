@@ -4,8 +4,8 @@ use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{
-    ClientExtensions, ClientID, StopLossDetails, TakeProfitDetails, TradeID,
-    TrailingStopLossDetails, GuaranteedStopLossDetails, TransactionID,
+    ClientExtensions, ClientID, GuaranteedStopLossDetails, StopLossDetails, TakeProfitDetails,
+    TradeID, TrailingStopLossDetails, TransactionID,
 };
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -589,8 +589,7 @@ impl ListOrdersRequest {
                 .append_pair("count", &self.count.unwrap().to_string().as_str());
         });
         self.before_id.as_ref().map(|id| {
-            url.query_pairs_mut()
-                .append_pair("beforeID", id.as_str());
+            url.query_pairs_mut().append_pair("beforeID", id.as_str());
         });
     }
 }
@@ -640,6 +639,32 @@ impl<'a> OrderService<'a> {
             }),
         }
     }
+
+    pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/pendingOrders",
+                    self.client.account_id.as_ref().expect("Missing account_id")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<ListOrdersResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -652,6 +677,13 @@ mod tests {
         let client = setup_test_client();
         let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
         let resp = client.order().list(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_list_pending() {
+        let client = setup_test_client();
+        let resp = client.order().list_pending().await.unwrap();
         println!("{:#?}", resp);
     }
 }
