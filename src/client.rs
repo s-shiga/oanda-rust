@@ -1,4 +1,4 @@
-use crate::account::{AccountID, ListAccountsResponse, ListInstrumentsResponse};
+use crate::account::{AccountID, AccountService};
 use crate::errors::APIError;
 use crate::instrument::{FetchCandlestickDataRequest, FetchCandlestickDataResponse};
 use crate::order::{ListOrdersRequest, ListOrdersResponse};
@@ -55,6 +55,10 @@ impl<'a> Client {
         self
     }
 
+    pub fn account(&'a self) -> AccountService<'a> {
+        AccountService::new(self)
+    }
+
     pub fn transaction(&'a self) -> TransactionService<'a> {
         TransactionService::new(self)
     }
@@ -63,48 +67,6 @@ impl<'a> Client {
         PositionService::new(self)
     }
 
-    pub async fn list_accounts(&self) -> Result<ListAccountsResponse, APIError> {
-        let url = self.base_url.join("/v3/accounts").unwrap();
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListAccountsResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
-    }
-
-    pub async fn list_instruments(&self) -> Result<ListInstrumentsResponse, APIError> {
-        let url = self
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/instruments",
-                    self.account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListInstrumentsResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
-    }
     pub async fn fetch_candlestick_data(
         &self,
         req: FetchCandlestickDataRequest,
@@ -170,20 +132,6 @@ pub(crate) fn setup_test_client() -> Client {
 mod tests {
     use super::*;
     use crate::instrument::CandlestickGranularity;
-
-    #[tokio::test]
-    async fn test_list() {
-        let client = setup_test_client();
-        let account = client.list_accounts().await.unwrap();
-        println!("{:#?}", account);
-    }
-
-    #[tokio::test]
-    async fn test_list_instruments() {
-        let client = setup_test_client();
-        let resp = client.list_instruments().await.unwrap();
-        println!("{:#?}", resp);
-    }
 
     #[tokio::test]
     async fn test_fetch_candlestick_data() {
