@@ -3,7 +3,6 @@ use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::transaction::TransactionRejectReason::StopLossOrderGuaranteedHaltedTightenViolation;
 use crate::transaction::{
     ClientExtensions, ClientID, GuaranteedStopLossDetails, StopLossDetails, TakeProfitDetails,
     TradeID, TrailingStopLossDetails, TransactionID,
