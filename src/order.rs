@@ -1360,6 +1360,33 @@ impl<'a> OrderService<'a> {
         }
     }
 
+    pub async fn get_details(&self, specifier: OrderSpecifier) -> Result<OrderResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/orders/{}",
+                    self.client.account_id.as_ref().expect("Missing account_id"),
+                    specifier
+                )
+                    .as_str(),
+            )
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json::<OrderResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
     pub async fn replace(
         &self,
         specifier: OrderSpecifier,
@@ -1438,33 +1465,6 @@ impl<'a> OrderService<'a> {
         match http_resp.status() {
             StatusCode::OK => {
                 let resp = http_resp.json::<UpdateClientExtensionsResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
-    }
-
-    pub async fn get_details(&self, specifier: OrderSpecifier) -> Result<OrderResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders/{}",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<OrderResponse>().await?;
                 Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
