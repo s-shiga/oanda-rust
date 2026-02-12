@@ -1278,6 +1278,32 @@ impl<'a> OrderService<'a> {
         OrderService { client }
     }
 
+    pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/orders",
+                    self.client.account_id.as_ref().expect("Missing account_id")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let body = CreateOrderBody { order };
+        let http_resp = self.client.http_client.post(url).json(&body).send().await?;
+        match http_resp.status() {
+            StatusCode::CREATED => {
+                let resp = http_resp.json::<CreateOrderResponse>().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
     pub async fn list(&self, req: ListOrdersRequest) -> Result<OrdersResponse, APIError> {
         let mut url = self
             .client
@@ -1325,32 +1351,6 @@ impl<'a> OrderService<'a> {
         match http_resp.status() {
             StatusCode::OK => {
                 let resp = http_resp.json::<OrdersResponse>().await?;
-                Ok(resp)
-            }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
-        }
-    }
-
-    pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
-        let body = CreateOrderBody { order };
-        let http_resp = self.client.http_client.post(url).json(&body).send().await?;
-        match http_resp.status() {
-            StatusCode::CREATED => {
-                let resp = http_resp.json::<CreateOrderResponse>().await?;
                 Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
