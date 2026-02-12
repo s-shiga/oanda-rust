@@ -74,6 +74,26 @@ impl<'a> Client {
     }
 }
 
+#[macro_export]
+macro_rules! request_setter {
+    ($attr:ident, $ty:ty) => {
+        pub fn $attr(mut self, $attr: $ty) -> Self {
+            self.$attr = $attr;
+            self
+        }
+    };
+}
+
+#[macro_export] 
+macro_rules! request_option_setter {
+    ($attr:ident, $ty:ty) => {
+        pub fn $attr(mut self, $attr: $ty) -> Self {
+            self.$attr = Some($attr);
+            self
+        }
+    };
+}
+
 #[cfg(test)]
 pub(crate) fn setup_test_client() -> Client {
     let api_key = env!("OANDA_API_KEY_DEMO");

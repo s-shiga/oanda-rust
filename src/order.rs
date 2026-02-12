@@ -3,10 +3,12 @@ use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
+use crate::transaction::TransactionRejectReason::StopLossOrderGuaranteedHaltedTightenViolation;
 use crate::transaction::{
     ClientExtensions, ClientID, GuaranteedStopLossDetails, StopLossDetails, TakeProfitDetails,
     TradeID, TrailingStopLossDetails, TransactionID,
 };
+use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -475,185 +477,520 @@ pub enum OrderRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
-    #[serde(rename = "priceBound")]
+    pub time_in_force: TimeInForce,
+    #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "guaranteedStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "trailingStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tradeClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trade_client_extensions: Option<ClientExtensions>,
+}
+
+impl MarketOrderRequest {
+    pub fn new(instrument: InstrumentName, units: DecimalNumber) -> MarketOrderRequest {
+        MarketOrderRequest {
+            order_type: OrderType::Market,
+            instrument,
+            units,
+            time_in_force: TimeInForce::FOK,
+            price_bound: None,
+            position_fill: OrderPositionFill::Default,
+            client_extensions: None,
+            take_profit_on_fill: None,
+            stop_loss_on_fill: None,
+            guaranteed_stop_loss_on_fill: None,
+            trailing_stop_loss_on_fill: None,
+            trade_client_extensions: None,
+        }
+    }
+
+    pub fn ioc(mut self) -> Self {
+        self.time_in_force = TimeInForce::IOC;
+        self
+    }
+
+    request_setter!(position_fill, OrderPositionFill);
+    request_option_setter!(price_bound, PriceValue);
+    request_option_setter!(client_extensions, ClientExtensions);
+    request_option_setter!(take_profit_on_fill, TakeProfitDetails);
+    request_option_setter!(stop_loss_on_fill, StopLossDetails);
+    request_option_setter!(guaranteed_stop_loss_on_fill, GuaranteedStopLossDetails);
+    request_option_setter!(trailing_stop_loss_on_fill, TrailingStopLossDetails);
+    request_option_setter!(trade_client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LimitOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "guaranteedStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "trailingStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tradeClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trade_client_extensions: Option<ClientExtensions>,
+}
+
+impl LimitOrderRequest {
+    pub fn new(
+        instrument: InstrumentName,
+        units: DecimalNumber,
+        price: PriceValue,
+    ) -> LimitOrderRequest {
+        LimitOrderRequest {
+            order_type: OrderType::Limit,
+            instrument,
+            units,
+            price,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            position_fill: OrderPositionFill::Default,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+            take_profit_on_fill: None,
+            stop_loss_on_fill: None,
+            guaranteed_stop_loss_on_fill: None,
+            trailing_stop_loss_on_fill: None,
+            trade_client_extensions: None,
+        }
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    request_setter!(position_fill, OrderPositionFill);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
+    request_option_setter!(take_profit_on_fill, TakeProfitDetails);
+    request_option_setter!(stop_loss_on_fill, StopLossDetails);
+    request_option_setter!(guaranteed_stop_loss_on_fill, GuaranteedStopLossDetails);
+    request_option_setter!(trailing_stop_loss_on_fill, TrailingStopLossDetails);
+    request_option_setter!(trade_client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
     #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "guaranteedStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "trailingStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tradeClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trade_client_extensions: Option<ClientExtensions>,
+}
+
+impl StopOrderRequest {
+    pub fn new(instrument: InstrumentName, units: DecimalNumber, price: PriceValue) -> Self {
+        StopOrderRequest {
+            order_type: OrderType::Stop,
+            instrument,
+            units,
+            price,
+            price_bound: None,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            position_fill: OrderPositionFill::Default,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+            take_profit_on_fill: None,
+            stop_loss_on_fill: None,
+            guaranteed_stop_loss_on_fill: None,
+            trailing_stop_loss_on_fill: None,
+            trade_client_extensions: None,
+        }
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    request_option_setter!(price_bound, PriceValue);
+    request_setter!(position_fill, OrderPositionFill);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
+    request_option_setter!(take_profit_on_fill, TakeProfitDetails);
+    request_option_setter!(stop_loss_on_fill, StopLossDetails);
+    request_option_setter!(guaranteed_stop_loss_on_fill, GuaranteedStopLossDetails);
+    request_option_setter!(trailing_stop_loss_on_fill, TrailingStopLossDetails);
+    request_option_setter!(trade_client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketIfTouchedOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
     #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "guaranteedStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "trailingStopLossOnFill",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tradeClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trade_client_extensions: Option<ClientExtensions>,
+}
+
+impl MarketIfTouchedOrderRequest {
+    pub fn new(instrument: InstrumentName, units: DecimalNumber, price: PriceValue) -> Self {
+        MarketIfTouchedOrderRequest {
+            order_type: OrderType::MarketIfTouched,
+            instrument,
+            units,
+            price,
+            price_bound: None,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            position_fill: OrderPositionFill::Default,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+            take_profit_on_fill: None,
+            stop_loss_on_fill: None,
+            guaranteed_stop_loss_on_fill: None,
+            trailing_stop_loss_on_fill: None,
+            trade_client_extensions: None,
+        }
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    request_setter!(position_fill, OrderPositionFill);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
+    request_option_setter!(take_profit_on_fill, TakeProfitDetails);
+    request_option_setter!(stop_loss_on_fill, StopLossDetails);
+    request_option_setter!(guaranteed_stop_loss_on_fill, GuaranteedStopLossDetails);
+    request_option_setter!(trailing_stop_loss_on_fill, TrailingStopLossDetails);
+    request_option_setter!(trade_client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TakeProfitOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TakeProfitOrderRequest {
+    pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
+        TakeProfitOrderRequest {
+            order_type: OrderType::TakeProfit,
+            trade_id,
+            client_trade_id: None,
+            price,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+        }
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopLossOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<DecimalNumber>,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl StopLossOrderRequest {
+    pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
+        StopLossOrderRequest {
+            order_type: OrderType::StopLoss,
+            trade_id,
+            client_trade_id: None,
+            price,
+            distance: None,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+        }
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    request_option_setter!(client_trade_id, TradeID);
+    request_option_setter!(distance, PriceValue);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuaranteedStopLossOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<DecimalNumber>,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
+impl GuaranteedStopLossOrderRequest {
+    pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
+        GuaranteedStopLossOrderRequest {
+            order_type: OrderType::GuaranteedStopLoss,
+            trade_id,
+            client_trade_id: None,
+            price,
+            distance: None,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+        }
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    request_option_setter!(client_trade_id, ClientID);
+    request_option_setter!(distance, PriceValue);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrailingStopLossOrderRequest {
+    #[serde(rename = "type")]
+    pub order_type: OrderType,
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
     pub distance: DecimalNumber,
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TrailingStopLossOrderRequest {
+    pub fn new(trade_id: TradeID, distance: DecimalNumber) -> Self {
+        TrailingStopLossOrderRequest {
+            order_type: OrderType::TrailingStopLoss,
+            trade_id,
+            client_trade_id: None,
+            distance,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            trigger_condition: OrderTriggerCondition::Default,
+            client_extensions: None,
+        }
+    }
+
+    pub fn gfd(mut self) -> Self {
+        self.time_in_force = TimeInForce::GFD;
+        self
+    }
+
+    pub fn gtd(mut self, gtd_time: DateTime<Utc>) -> Self {
+        self.time_in_force = TimeInForce::GTD;
+        self.gtd_time = Some(gtd_time);
+        self
+    }
+
+    request_option_setter!(client_trade_id, ClientID);
+    request_setter!(trigger_condition, OrderTriggerCondition);
+    request_option_setter!(client_extensions, ClientExtensions);
 }
 
 // ---------------------------------------------------------------------------
@@ -715,7 +1052,10 @@ pub struct CancelOrderResponse {
 pub struct UpdateClientExtensionsBody {
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "tradeClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "tradeClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -831,6 +1171,17 @@ pub enum OrderTriggerCondition {
     Mid,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CreateOrderRequest {
+    order: OrderRequest,
+}
+
+impl CreateOrderRequest {
+    pub fn new(order: OrderRequest) -> CreateOrderRequest {
+        CreateOrderRequest { order }
+    }
+}
+
 pub struct ListOrdersRequest {
     ids: Vec<OrderID>,
     state: Option<OrderStateFilter>,
@@ -928,8 +1279,6 @@ impl<'a> OrderService<'a> {
         OrderService { client }
     }
 
-
-
     pub async fn list(&self, req: ListOrdersRequest) -> Result<OrdersResponse, APIError> {
         let mut url = self
             .client
@@ -999,13 +1348,7 @@ impl<'a> OrderService<'a> {
             )
             .unwrap();
         let body = CreateOrderBody { order };
-        let http_resp = self
-            .client
-            .http_client
-            .post(url)
-            .json(&body)
-            .send()
-            .await?;
+        let http_resp = self.client.http_client.post(url).json(&body).send().await?;
         match http_resp.status() {
             StatusCode::CREATED => {
                 let resp = http_resp.json::<CreateOrderResponse>().await?;
@@ -1036,13 +1379,7 @@ impl<'a> OrderService<'a> {
             )
             .unwrap();
         let body = CreateOrderBody { order };
-        let http_resp = self
-            .client
-            .http_client
-            .put(url)
-            .json(&body)
-            .send()
-            .await?;
+        let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         match http_resp.status() {
             StatusCode::CREATED => {
                 let resp = http_resp.json::<ReplaceOrderResponse>().await?;
@@ -1055,10 +1392,7 @@ impl<'a> OrderService<'a> {
         }
     }
 
-    pub async fn cancel(
-        &self,
-        specifier: OrderSpecifier,
-    ) -> Result<CancelOrderResponse, APIError> {
+    pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -1101,13 +1435,7 @@ impl<'a> OrderService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let http_resp = self
-            .client
-            .http_client
-            .put(url)
-            .json(&body)
-            .send()
-            .await?;
+        let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         match http_resp.status() {
             StatusCode::OK => {
                 let resp = http_resp.json::<UpdateClientExtensionsResponse>().await?;
@@ -1171,7 +1499,11 @@ mod tests {
     #[tokio::test]
     async fn test_get_details() {
         let client = setup_test_client();
-        let resp = client.order().get_details(String::from("100")).await.unwrap();
+        let resp = client
+            .order()
+            .get_details(String::from("100"))
+            .await
+            .unwrap();
         println!("{:#?}", resp);
     }
 }
