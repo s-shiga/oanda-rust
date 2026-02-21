@@ -2,7 +2,8 @@ use chrono::{DateTime, Utc};
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::order::{DynamicOrderState, Order};
-use crate::position::Position;
+use crate::position::{CalculatedPositionState, Position};
+use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::primitives::{Currency, DecimalNumber};
 use crate::transaction::{AccountUnits, TransactionID};
 use reqwest::{Request, StatusCode};
@@ -134,7 +135,7 @@ pub struct Account {
     pub last_margin_call_extension_time: Option<DateTime<Utc>>,
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
-    pub trades: Option<Vec<serde_json::Value>>,  // TradeSummary (trade module not yet defined)
+    pub trades: Option<Vec<TradeSummary>>,
     pub positions: Option<Vec<Position>>,
     pub orders: Option<Vec<Order>>,
 }
@@ -277,8 +278,8 @@ pub struct AccountChangesState {
     #[serde(rename = "lastMarginCallExtensionTime")]
     pub last_margin_call_extension_time: Option<DateTime<Utc>>,
     pub orders: Option<Vec<DynamicOrderState>>,
-    pub trades: Option<Vec<serde_json::Value>>,    // CalculatedTradeState (trade module not yet defined)
-    pub positions: Option<Vec<serde_json::Value>>, // CalculatedPositionState (trade module not yet defined)
+    pub trades: Option<Vec<CalculatedTradeState>>,
+    pub positions: Option<Vec<CalculatedPositionState>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -296,11 +297,11 @@ pub struct AccountChanges {
     #[serde(rename = "ordersTriggered")]
     pub orders_triggered: Option<Vec<Order>>,
     #[serde(rename = "tradesOpened")]
-    pub trades_opened: Option<Vec<serde_json::Value>>,  // TradeSummary (trade module not yet defined)
+    pub trades_opened: Option<Vec<TradeSummary>>,
     #[serde(rename = "tradesReduced")]
-    pub trades_reduced: Option<Vec<serde_json::Value>>, // TradeSummary
+    pub trades_reduced: Option<Vec<TradeSummary>>,
     #[serde(rename = "tradesClosed")]
-    pub trades_closed: Option<Vec<serde_json::Value>>,  // TradeSummary
+    pub trades_closed: Option<Vec<TradeSummary>>,
     pub positions: Option<Vec<Position>>,
     pub transactions: Option<Vec<serde_json::Value>>,   // Transaction (complex union type)
 }

@@ -46,6 +46,19 @@ pub struct PositionSide {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+pub struct CalculatedPositionState {
+    pub instrument: InstrumentName,
+    #[serde(rename = "netUnrealizedPL")]
+    pub net_unrealized_pl: AccountUnits,
+    #[serde(rename = "longUnrealizedPL")]
+    pub long_unrealized_pl: AccountUnits,
+    #[serde(rename = "shortUnrealizedPL")]
+    pub short_unrealized_pl: AccountUnits,
+    #[serde(rename = "marginUsed")]
+    pub margin_used: AccountUnits,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PositionListResponse {
     pub positions: Vec<Position>,
     #[serde(rename = "lastTransactionID")]
