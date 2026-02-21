@@ -133,10 +133,22 @@ impl<'a> PositionService<'a> {
         }
     }
 
-    pub async fn details(&self, instrument: InstrumentName) -> Result<PositionDetailsResponse, APIError> {
-        let url = self.client.base_url.join(
-            format!("/v3/accounts/{}/positions/{}", self.client.account_id.as_ref().expect("Missing account_id"), instrument).as_str()
-        ).unwrap();
+    pub async fn details(
+        &self,
+        instrument: InstrumentName,
+    ) -> Result<PositionDetailsResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/positions/{}",
+                    self.client.account_id.as_ref().expect("Missing account_id"),
+                    instrument
+                )
+                .as_str(),
+            )
+            .unwrap();
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
@@ -173,7 +185,11 @@ mod tests {
     #[tokio::test]
     async fn test_position_details() {
         let client = setup_test_client();
-        let details = client.position().details(String::from("USD_JPY")).await.unwrap();
+        let details = client
+            .position()
+            .details(String::from("USD_JPY"))
+            .await
+            .unwrap();
         println!("{:#?}", details);
     }
 }

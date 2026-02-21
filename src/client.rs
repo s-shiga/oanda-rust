@@ -94,7 +94,7 @@ macro_rules! request_setter {
     };
 }
 
-#[macro_export] 
+#[macro_export]
 macro_rules! request_option_setter {
     ($attr:ident, $ty:ty) => {
         pub fn $attr(mut self, $attr: $ty) -> Self {

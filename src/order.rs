@@ -3,7 +3,13 @@ use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{ClientExtensions, ClientID, GuaranteedStopLossDetails, MarketOrderDelayedTradeClose, MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose, OrderCancelTransaction, OrderCreateTransaction, OrderFillTransaction, OrderCreateRejectTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, Transaction, TransactionID};
+use crate::transaction::{
+    ClientExtensions, ClientID, GuaranteedStopLossDetails, MarketOrderDelayedTradeClose,
+    MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose,
+    OrderCancelTransaction, OrderCreateRejectTransaction, OrderCreateTransaction,
+    OrderFillTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails,
+    TransactionID,
+};
 use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -1509,8 +1515,16 @@ mod tests {
     async fn test_limit_order() {
         let client = setup_test_client();
         // Create limit order
-        let req = LimitOrderRequest::new("USD_JPY".to_string(), "10000".to_string(), "100.00".to_string());
-        let resp = client.order().create(OrderRequest::Limit(req)).await.unwrap();
+        let req = LimitOrderRequest::new(
+            "USD_JPY".to_string(),
+            "10000".to_string(),
+            "100.00".to_string(),
+        );
+        let resp = client
+            .order()
+            .create(OrderRequest::Limit(req))
+            .await
+            .unwrap();
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 

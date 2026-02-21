@@ -163,7 +163,6 @@ pub struct OpenTradeDividendAdjustment {
     pub dividend_adjustment: AccountUnits,
 }
 
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionHeartbeat {
     pub time: DateTime<Utc>,

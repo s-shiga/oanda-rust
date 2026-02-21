@@ -1,11 +1,13 @@
-use chrono::{DateTime, Utc};
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::instrument::InstrumentName;
-use crate::order::{GuaranteedStopLossOrder, OrderID, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder};
+use crate::order::{
+    GuaranteedStopLossOrder, OrderID, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
+};
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{AccountUnits, ClientExtensions, TransactionID, TradeID};
+use crate::transaction::{AccountUnits, ClientExtensions, TradeID, TransactionID};
+use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 

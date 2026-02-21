@@ -1,8 +1,8 @@
-use chrono::{DateTime, Utc};
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
+use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 

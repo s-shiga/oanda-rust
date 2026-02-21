@@ -1,11 +1,11 @@
-use chrono::{DateTime, Utc};
 use crate::client::Client;
 use crate::errors::APIError;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
-use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::primitives::{Currency, DecimalNumber};
+use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{AccountUnits, TransactionID};
+use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 
@@ -303,7 +303,7 @@ pub struct AccountChanges {
     #[serde(rename = "tradesClosed")]
     pub trades_closed: Option<Vec<TradeSummary>>,
     pub positions: Option<Vec<Position>>,
-    pub transactions: Option<Vec<serde_json::Value>>,   // Transaction (complex union type)
+    pub transactions: Option<Vec<serde_json::Value>>, // Transaction (complex union type)
 }
 
 // ---------------------------------------------------------------------------
