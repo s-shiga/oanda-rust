@@ -3,10 +3,7 @@ use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{
-    ClientExtensions, ClientID, GuaranteedStopLossDetails, StopLossDetails, TakeProfitDetails,
-    TradeID, TrailingStopLossDetails, TransactionID,
-};
+use crate::transaction::{ClientExtensions, ClientID, GuaranteedStopLossDetails, OrderCancelTransaction, OrderCreateTransaction, OrderFillTransaction, OrderCreateRejectTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, Transaction, TransactionID};
 use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -1004,15 +1001,15 @@ pub struct CreateOrderBody {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateOrderResponse {
     #[serde(rename = "orderCreateTransaction")]
-    pub order_create_transaction: Option<serde_json::Value>,
+    pub order_create_transaction: Option<OrderCreateTransaction>,
     #[serde(rename = "orderFillTransaction")]
-    pub order_fill_transaction: Option<serde_json::Value>,
+    pub order_fill_transaction: Option<OrderFillTransaction>,
     #[serde(rename = "orderCancelTransaction")]
-    pub order_cancel_transaction: Option<serde_json::Value>,
+    pub order_cancel_transaction: Option<OrderCancelTransaction>,
     #[serde(rename = "orderReissueTransaction")]
-    pub order_reissue_transaction: Option<serde_json::Value>,
+    pub order_reissue_transaction: Option<OrderCreateTransaction>,
     #[serde(rename = "orderReissueRejectTransaction")]
-    pub order_reissue_reject_transaction: Option<serde_json::Value>,
+    pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,
     #[serde(rename = "lastTransactionID")]
@@ -1370,7 +1367,7 @@ impl<'a> OrderService<'a> {
                     self.client.account_id.as_ref().expect("Missing account_id"),
                     specifier
                 )
-                    .as_str(),
+                .as_str(),
             )
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
@@ -1478,7 +1475,7 @@ impl<'a> OrderService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::order::ListOrdersRequest;
+    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest};
 
     #[tokio::test]
     async fn test_list_orders() {
@@ -1496,13 +1493,20 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_get_details() {
+    async fn test_limit_order() {
         let client = setup_test_client();
-        let resp = client
-            .order()
-            .get_details(String::from("100"))
-            .await
-            .unwrap();
+        // Create limit order
+        let req = LimitOrderRequest::new("USD_JPY".to_string(), "10000".to_string(), "100.00".to_string());
+        let resp = client.order().create(OrderRequest::Limit(req)).await.unwrap();
+        println!("{:#?}", resp);
+        let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
+
+        // Get details
+        let resp = client.order().get_details(order_id.clone()).await.unwrap();
+        println!("{:#?}", resp);
+
+        // Cancel
+        let resp = client.order().cancel(order_id).await.unwrap();
         println!("{:#?}", resp);
     }
 }

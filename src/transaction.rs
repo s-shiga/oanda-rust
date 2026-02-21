@@ -607,23 +607,8 @@ pub enum Transaction {
     ClientConfigureRejectTransaction(ClientConfigureRejectTransaction),
     TransferFundsTransaction(TransferFundsTransaction),
     TransferFundsRejectTransaction(TransferFundsRejectTransaction),
-    MarketOrderTransaction(MarketOrderTransaction),
-    MarketOrderRejectTransaction(MarketOrderRejectTransaction),
-    FixedPriceOrderTransaction(FixedPriceOrderTransaction),
-    LimitOrderTransaction(LimitOrderTransaction),
-    LimitOrderRejectTransaction(LimitOrderRejectTransaction),
-    StopOrderTransaction(StopOrderTransaction),
-    StopOrderRejectTransaction(StopOrderRejectTransaction),
-    MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
-    MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
-    TakeProfitOrderTransaction(TakeProfitOrderTransaction),
-    TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
-    StopLossOrderTransaction(StopLossOrderTransaction),
-    StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
-    GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
-    GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
-    TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
-    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderTransaction),
+    OrderCreateTransaction(OrderCreateTransaction),
+    OrderCreateRejectTransaction(OrderCreateRejectTransaction),
     TradeClientExtensionsModifyTransaction(TradeClientExtensionsModifyTransaction),
     TradeClientExtensionsModifyRejectTransaction(TradeClientExtensionsModifyRejectTransaction),
     MarginCallEnterTransaction(MarginCallEnterTransaction),
@@ -633,6 +618,59 @@ pub enum Transaction {
     DailyFinancingTransaction(DailyFinancingTransaction),
     DividendAdjustmentTransaction(DividendAdjustmentTransaction),
     ResetResettablePLTransaction(ResetResettablePLTransaction),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OrderCreateTransaction {
+    MarketOrderTransaction(MarketOrderTransaction),
+    FixedPriceOrderTransaction(FixedPriceOrderTransaction),
+    LimitOrderTransaction(LimitOrderTransaction),
+    StopOrderTransaction(StopOrderTransaction),
+    MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
+    TakeProfitOrderTransaction(TakeProfitOrderTransaction),
+    StopLossOrderTransaction(StopLossOrderTransaction),
+    GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
+    TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
+}
+
+impl OrderCreateTransaction {
+    pub fn get_id(&self) -> OrderID {
+        match self {
+            OrderCreateTransaction::MarketOrderTransaction(transaction) => transaction.id.clone(),
+            OrderCreateTransaction::FixedPriceOrderTransaction(transaction) => {
+                transaction.id.clone()
+            }
+            OrderCreateTransaction::LimitOrderTransaction(transaction) => transaction.id.clone(),
+            OrderCreateTransaction::StopOrderTransaction(transaction) => transaction.id.clone(),
+            OrderCreateTransaction::MarketIfTouchedOrderTransaction(transaction) => {
+                transaction.id.clone()
+            }
+            OrderCreateTransaction::TakeProfitOrderTransaction(transaction) => {
+                transaction.id.clone()
+            }
+            OrderCreateTransaction::StopLossOrderTransaction(transaction) => transaction.id.clone(),
+            OrderCreateTransaction::GuaranteedStopLossOrderTransaction(transaction) => {
+                transaction.id.clone()
+            }
+            OrderCreateTransaction::TrailingStopLossOrderTransaction(transaction) => {
+                transaction.id.clone()
+            }
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum OrderCreateRejectTransaction {
+    MarketOrderRejectTransaction(MarketOrderRejectTransaction),
+    LimitOrderRejectTransaction(LimitOrderRejectTransaction),
+    StopOrderRejectTransaction(StopOrderRejectTransaction),
+    MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
+    TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
+    StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
+    GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
+    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderTransaction),
 }
 
 // ---------------------------------------------------------------------------
