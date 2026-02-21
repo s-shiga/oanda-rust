@@ -8,3 +8,4 @@ pub mod pricing;
 pub mod primitives;
 pub mod stream;
 pub mod transaction;
+pub mod trade;
