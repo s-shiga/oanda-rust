@@ -3,7 +3,7 @@ use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{ClientExtensions, ClientID, GuaranteedStopLossDetails, OrderCancelTransaction, OrderCreateTransaction, OrderFillTransaction, OrderCreateRejectTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, Transaction, TransactionID};
+use crate::transaction::{ClientExtensions, ClientID, GuaranteedStopLossDetails, MarketOrderDelayedTradeClose, MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose, OrderCancelTransaction, OrderCreateTransaction, OrderFillTransaction, OrderCreateRejectTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, Transaction, TransactionID};
 use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -85,6 +85,16 @@ pub struct MarketOrder {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
+    #[serde(rename = "tradeClose")]
+    pub trade_close: Option<MarketOrderTradeClose>,
+    #[serde(rename = "longPositionCloseout")]
+    pub long_position_closeout: Option<MarketOrderPositionCloseout>,
+    #[serde(rename = "shortPositionCloseout")]
+    pub short_position_closeout: Option<MarketOrderPositionCloseout>,
+    #[serde(rename = "marginCloseout")]
+    pub margin_closeout: Option<MarketOrderMarginCloseout>,
+    #[serde(rename = "delayedTradeClose")]
+    pub delayed_trade_close: Option<MarketOrderDelayedTradeClose>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -845,6 +855,8 @@ pub struct StopLossOrderRequest {
     pub price: PriceValue,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<DecimalNumber>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guaranteed: Option<bool>,
     #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
@@ -863,6 +875,7 @@ impl StopLossOrderRequest {
             client_trade_id: None,
             price,
             distance: None,
+            guaranteed: None,
             time_in_force: TimeInForce::GTC,
             gtd_time: None,
             trigger_condition: OrderTriggerCondition::Default,

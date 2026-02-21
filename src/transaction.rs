@@ -3,8 +3,8 @@ use crate::client::Client;
 use crate::errors::APIError;
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
-use crate::pricing::PriceValue;
-use crate::primitives::{Currency, DecimalNumber};
+use crate::pricing::{ClientPrice, PriceValue};
+use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -163,13 +163,6 @@ pub struct OpenTradeDividendAdjustment {
     pub dividend_adjustment: AccountUnits,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct HomeConversionFactors {
-    #[serde(rename = "gainQuoteHomeConversionFactor")]
-    pub gain_quote_home_conversion_factor: DecimalNumber,
-    #[serde(rename = "lossQuoteHomeConversionFactor")]
-    pub loss_quote_home_conversion_factor: DecimalNumber,
-}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionHeartbeat {
@@ -670,7 +663,7 @@ pub enum OrderCreateRejectTransaction {
     TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
     StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
     GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
-    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderTransaction),
+    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderRejectTransaction),
 }
 
 // ---------------------------------------------------------------------------
@@ -1577,7 +1570,7 @@ pub struct OrderFillTransaction {
     #[serde(rename = "fullVWAP")]
     pub full_vwap: Option<PriceValue>,
     #[serde(rename = "fullPrice")]
-    pub full_price: Option<PriceValue>,
+    pub full_price: Option<ClientPrice>,
     pub reason: Option<OrderFillReason>,
     pub pl: Option<AccountUnits>,
     pub financing: Option<AccountUnits>,
