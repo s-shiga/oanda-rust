@@ -2,6 +2,7 @@ use crate::account::{AccountID, AccountService};
 use crate::instrument::InstrumentService;
 use crate::order::OrderService;
 use crate::position::PositionService;
+use crate::pricing::PricingService;
 use crate::trade::TradeService;
 use crate::transaction::TransactionService;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
@@ -76,6 +77,10 @@ impl<'a> Client {
 
     pub fn trade(&'a self) -> TradeService<'a> {
         TradeService::new(self)
+    }
+
+    pub fn pricing(&'a self) -> PricingService<'a> {
+        PricingService::new(self)
     }
 }
 
