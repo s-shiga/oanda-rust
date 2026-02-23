@@ -2174,10 +2174,12 @@ mod tests {
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
+        // List orders
         let req = ListOrdersRequest::new().instrument("USD_JPY".to_string());
         let resp = client.order().list(req).await.unwrap();
         println!("{:#?}", resp);
 
+        // Replace the limit order
         let req = LimitOrderRequest::new(
             "USD_JPY".to_string(),
             "10000".to_string(),
@@ -2191,14 +2193,15 @@ mod tests {
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
+        // List pending orders
         let resp = client.order().list_pending().await.unwrap();
         println!("{:#?}", resp);
 
-        // Get details
+        // Get order details
         let resp = client.order().get_details(order_id.clone()).await.unwrap();
         println!("{:#?}", resp);
 
-        // Cancel
+        // Cancel the order
         let resp = client.order().cancel(order_id).await.unwrap();
         println!("{:#?}", resp);
     }
