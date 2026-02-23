@@ -565,6 +565,52 @@ impl<'a> AccountService<'a> {
             }),
         }
     }
+
+    pub async fn get_details(
+        &self,
+        account_id: &AccountID,
+    ) -> Result<serde_json::Value, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(format!("/v3/accounts/{}/", account_id).as_str())
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
+
+    pub async fn get_summary(
+        &self,
+        account_id: &AccountID,
+    ) -> Result<serde_json::Value, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(format!("/v3/accounts/{}/summary", account_id).as_str())
+            .unwrap();
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        match http_resp.status() {
+            StatusCode::OK => {
+                let resp = http_resp.json().await?;
+                Ok(resp)
+            }
+            status => Err(APIError::ApiErrorResponse {
+                status,
+                message: http_resp.text().await?,
+            }),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -576,5 +622,27 @@ mod tests {
         let client = setup_test_client();
         let account = client.account().list().await.unwrap();
         println!("{:#?}", account);
+    }
+
+    #[tokio::test]
+    async fn test_get_details() {
+        let client = setup_test_client();
+        let account_details = client
+            .account()
+            .get_details(&client.account_id.as_ref().unwrap())
+            .await
+            .unwrap();
+        println!("{:#?}", account_details);
+    }
+
+    #[tokio::test]
+    async fn test_get_summary() {
+        let client = setup_test_client();
+        let account_summary = client
+            .account()
+            .get_summary(&client.account_id.as_ref().unwrap())
+            .await
+            .unwrap();
+        println!("{:#?}", account_summary);
     }
 }
