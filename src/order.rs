@@ -2186,3 +2186,11 @@ mod tests {
         println!("{:#?}", resp);
     }
 }
+
+#[cfg(test)]
+pub(crate) async fn create_market_order(client: &Client) -> TransactionID {
+    let req = MarketOrderRequest::new("USD_JPY".to_string(), "10000".to_string());
+    let resp = client.order().create(OrderRequest::Market(req)).await.unwrap();
+    println!("{:#?}", resp);
+    resp.order_create_transaction.unwrap().get_id()
+}

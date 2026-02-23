@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 // ---------------------------------------------------------------------------
@@ -29,6 +30,24 @@ pub enum AcceptDatetimeFormat {
     Unix,
     #[serde(rename = "RFC3339")]
     Rfc3339,
+}
+
+pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Value {
+        DateTime(DateTime<Utc>),
+        None(String),
+    }
+
+    match Value::deserialize(deserializer)? {
+        Value::DateTime(dt) => Ok(Some(dt)),
+        Value::None(s) if s == "0" => Ok(None),
+        _ => Err(serde::de::Error::custom("unexpected datetime")),
+    }
 }
 
 // ---------------------------------------------------------------------------

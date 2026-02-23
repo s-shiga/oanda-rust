@@ -4,7 +4,7 @@ use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize};
 
 /// A price expressed as a decimal string (e.g. `"1.08523"`).
 ///
@@ -56,7 +56,24 @@ pub struct PriceBucket {
     /// The price at this level.
     pub price: PriceValue,
     /// The number of units available at this price level.
+    #[serde(deserialize_with = "deserialize_liquidity")]
     pub liquidity: i64,
+}
+
+fn deserialize_liquidity<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where D: Deserializer<'de>
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum Liquidity {
+        String(String),
+        Integer(i64),
+    }
+
+    match Liquidity::deserialize(deserializer)? {
+        Liquidity::String(s) => Ok(s.parse::<i64>().unwrap()),
+        Liquidity::Integer(i) => Ok(i),
+    }
 }
 
 // ---------------------------------------------------------------------------

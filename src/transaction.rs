@@ -627,7 +627,7 @@ pub enum OrderCreateTransaction {
 }
 
 impl OrderCreateTransaction {
-    pub fn get_id(&self) -> OrderID {
+    pub fn get_id(&self) -> TransactionID {
         match self {
             OrderCreateTransaction::MarketOrderTransaction(transaction) => transaction.id.clone(),
             OrderCreateTransaction::FixedPriceOrderTransaction(transaction) => {

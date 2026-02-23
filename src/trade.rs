@@ -368,7 +368,7 @@ impl<'a> TradeService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn get(&self, specifier: TradeSpecifier) -> Result<TradeResponse, APIError> {
+    pub async fn get_details(&self, specifier: TradeSpecifier) -> Result<TradeResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -428,6 +428,7 @@ impl<'a> TradeService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
+    use crate::order::create_market_order;
 
     #[tokio::test]
     async fn test_list_trades() {
@@ -437,9 +438,15 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_list_open_trades() {
+    async fn test_trades() {
         let client = setup_test_client();
+        // Create a trade
+        let id = create_market_order(&client).await;
         let resp = client.trade().list_open().await.unwrap();
+        println!("{:#?}", resp);
+        let resp = client.trade().get_details(id.clone()).await.unwrap();
+        println!("{:#?}", resp);
+        let resp = client.trade().close(id).await.unwrap();
         println!("{:#?}", resp);
     }
 }

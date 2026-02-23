@@ -2,7 +2,7 @@ use crate::client::Client;
 use crate::errors::APIError;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
-use crate::primitives::{Currency, DecimalNumber};
+use crate::primitives::{Currency, DecimalNumber, deserialize_datetime};
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{AccountUnits, TransactionID};
 use chrono::{DateTime, Utc};
@@ -45,7 +45,7 @@ pub struct Account {
     #[serde(rename = "guaranteedStopLossOrderMutability")]
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
-    #[serde(rename = "resettablePLTime")]
+    #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
     #[serde(rename = "marginRate")]
@@ -187,7 +187,7 @@ pub struct AccountSummary {
     #[serde(rename = "guaranteedStopLossOrderMutability")]
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
-    #[serde(rename = "resettablePLTime")]
+    #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
     #[serde(rename = "marginRate")]
@@ -419,7 +419,7 @@ pub struct GuaranteedStopLossOrderParameters {
 
 /// Controls whether Guaranteed Stop Loss Orders (GSLOs) are available on an account.
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[serde(rename_all = "UPPERCASE")]
 pub enum GuaranteedStopLossOrderMode {
     /// GSLOs are not available for this account.
     Disabled,
@@ -566,7 +566,7 @@ impl<'a> AccountService<'a> {
         }
     }
 
-    pub async fn get_details(&self, account_id: &AccountID) -> Result<serde_json::Value, APIError> {
+    pub async fn get_details(&self, account_id: &AccountID) -> Result<GetAccountDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -586,7 +586,7 @@ impl<'a> AccountService<'a> {
         }
     }
 
-    pub async fn get_summary(&self, account_id: &AccountID) -> Result<serde_json::Value, APIError> {
+    pub async fn get_summary(&self, account_id: &AccountID) -> Result<GetAccountSummaryResponse, APIError> {
         let url = self
             .client
             .base_url
