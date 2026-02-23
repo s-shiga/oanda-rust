@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::order::{
     GuaranteedStopLossOrder, OrderID, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
@@ -284,6 +284,12 @@ pub struct CloseTradeResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateClientExtensionsRequest {
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: ClientExtensions,
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -324,10 +330,13 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<TradesResponse>().await?),
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -354,10 +363,13 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<TradesResponse>().await?),
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -385,10 +397,13 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<TradeResponse>().await?),
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -417,10 +432,13 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.put(url).send().await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<CloseTradeResponse>().await?),
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 }
@@ -440,12 +458,19 @@ mod tests {
     #[tokio::test]
     async fn test_trades() {
         let client = setup_test_client();
+
         // Create a trade
         let id = create_market_order(&client).await;
+
+        // List trades
         let resp = client.trade().list_open().await.unwrap();
         println!("{:#?}", resp);
+
+        // Get trade details
         let resp = client.trade().get_details(id.clone()).await.unwrap();
         println!("{:#?}", resp);
+
+        // Close the trade
         let resp = client.trade().close(id).await.unwrap();
         println!("{:#?}", resp);
     }

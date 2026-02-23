@@ -10,6 +10,7 @@ use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use url::Url;
+use crate::request_option_setter;
 
 pub type TransactionID = String;
 pub type ClientID = String;
@@ -26,9 +27,26 @@ pub type OrderID = String;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientExtensions {
-    pub id: ClientID,
-    pub tag: ClientTag,
-    pub comment: ClientComment,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<ClientID>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag: Option<ClientTag>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<ClientComment>,
+}
+
+impl ClientExtensions {
+    pub fn new() -> Self {
+        ClientExtensions {
+            id: None,
+            tag: None,
+            comment: None,
+        }
+    }
+
+    request_option_setter!(id, ClientID);
+    request_option_setter!(tag, ClientTag);
+    request_option_setter!(comment, ClientComment);
 }
 
 // ---------------------------------------------------------------------------
@@ -2071,7 +2089,7 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<ListTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),
@@ -2104,7 +2122,7 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),
@@ -2137,7 +2155,7 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),
@@ -2170,7 +2188,7 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),

@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, ErrorResponse};
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
 use crate::primitives::{Currency, DecimalNumber, deserialize_datetime};
@@ -559,10 +559,13 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json::<ListAccountsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -579,10 +582,13 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -599,10 +605,13 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 }

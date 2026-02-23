@@ -1,12 +1,13 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, DetailedErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{
     ClientExtensions, ClientID, GuaranteedStopLossDetails, MarketOrderDelayedTradeClose,
     MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose,
-    OrderCancelTransaction, OrderCreateRejectTransaction, OrderCreateTransaction,
+    OrderCancelTransaction, OrderClientExtensionsModifyRejectTransaction,
+    OrderClientExtensionsModifyTransaction, OrderCreateRejectTransaction, OrderCreateTransaction,
     OrderFillTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails,
     TransactionID,
 };
@@ -16,6 +17,7 @@ use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use std::ops::Not;
 use strum_macros::Display;
+use thiserror::Error;
 use url::Url;
 
 /// A unique identifier for an order (e.g. `"12345"`).
@@ -1568,7 +1570,7 @@ pub struct CancelOrderResponse {
 ///
 /// At least one of `client_extensions` or `trade_client_extensions` must be set.
 #[derive(Debug, Serialize)]
-pub struct UpdateClientExtensionsBody {
+pub struct UpdateOrderClientExtensionsRequest {
     /// New client extensions for the order itself. Omitted if `None`.
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
@@ -1581,18 +1583,46 @@ pub struct UpdateClientExtensionsBody {
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
+impl UpdateOrderClientExtensionsRequest {
+    pub fn new() -> Self {
+        UpdateOrderClientExtensionsRequest {
+            client_extensions: None,
+            trade_client_extensions: None,
+        }
+    }
+
+    request_option_setter!(client_extensions, ClientExtensions);
+    request_option_setter!(trade_client_extensions, ClientExtensions);
+}
+
 /// Response body for a successful client-extensions update (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateClientExtensionsResponse {
     /// The transaction recording the modification.
     #[serde(rename = "orderClientExtensionsModifyTransaction")]
-    pub order_client_extensions_modify_transaction: Option<serde_json::Value>,
+    pub order_client_extensions_modify_transaction: OrderClientExtensionsModifyTransaction,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    pub related_transaction_ids: Vec<TransactionID>,
     /// ID of the most recent transaction on the account after this request.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: Option<TransactionID>,
+    pub last_transaction_id: TransactionID,
+}
+
+#[derive(Debug, Serialize, Deserialize, Error)]
+#[error("Order client extensions update error {error_code}: {error_message}")]
+pub struct UpdateClientExtensionsErrorResponse {
+    #[serde(rename = "orderClientExtensionsModifyRejectTransaction")]
+    pub order_client_extensions_modify_reject_transaction:
+        OrderClientExtensionsModifyRejectTransaction,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "errorCode")]
+    pub error_code: String,
+    #[serde(rename = "errorMessage")]
+    pub error_message: String,
 }
 
 // ---------------------------------------------------------------------------
@@ -1928,10 +1958,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<CreateOrderResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -1965,10 +1998,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -1998,10 +2034,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -2035,10 +2074,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<GetOrderDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -2074,10 +2116,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ReplaceOrderResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -2107,10 +2152,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<CancelOrderResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -2124,7 +2172,7 @@ impl<'a> OrderService<'a> {
     pub async fn update_client_extensions(
         &self,
         specifier: OrderSpecifier,
-        body: UpdateClientExtensionsBody,
+        req: UpdateOrderClientExtensionsRequest,
     ) -> Result<UpdateClientExtensionsResponse, APIError> {
         let url = self
             .client
@@ -2138,16 +2186,27 @@ impl<'a> OrderService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let http_resp = self.client.http_client.put(url).json(&body).send().await?;
+        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         match http_resp.status() {
             StatusCode::OK => {
                 let resp = http_resp.json::<UpdateClientExtensionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            StatusCode::BAD_REQUEST => {
+                let resp = http_resp
+                    .json::<UpdateClientExtensionsErrorResponse>()
+                    .await?;
+                Err(APIError::DetailedErrorResponse(
+                    DetailedErrorResponse::UpdateClientExtensionsErrorResponse(resp),
+                ))
+            }
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 }

@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
@@ -287,10 +287,13 @@ impl<'a> PricingService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<PricesResponse>().await?),
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 }

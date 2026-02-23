@@ -174,7 +174,7 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionListResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),
@@ -207,7 +207,7 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionListResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),
@@ -244,7 +244,7 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
+            status => Err(APIError::ErrorResponse {
                 status,
                 message: http_resp.text().await?,
             }),

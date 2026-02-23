@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, ErrorResponse};
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
@@ -375,14 +375,14 @@ impl<'a> FetchCandlesticksRequest {
     ///
     /// # Errors
     ///
-    /// Returns [`APIError::InvalidParameter`] if `count` is greater than 5000.
+    /// Returns [`APIError::InvalidRequest`] if `count` is greater than 5000.
     pub fn count(mut self, count: usize) -> Result<Self, APIError> {
         (count <= 5000)
             .then(|| {
                 self.count = Some(count);
                 self
             })
-            .ok_or_else(|| APIError::InvalidParameter("count must be <= 5000".to_string()))
+            .ok_or_else(|| APIError::InvalidRequest("count must be <= 5000".to_string()))
     }
 
     /// Sets the start of the requested time range (inclusive).
@@ -538,10 +538,13 @@ impl<'a> InstrumentService<'a> {
                 let resp = http_resp.json::<ListInstrumentsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 
@@ -566,10 +569,13 @@ impl<'a> InstrumentService<'a> {
                 let resp = http_resp.json::<FetchCandlesticksResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ApiErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            status => {
+                let resp = http_resp.json::<ErrorResponse>().await?;
+                Err(APIError::ErrorResponse {
+                    status,
+                    message: resp.error_message,
+                })
+            }
         }
     }
 }
