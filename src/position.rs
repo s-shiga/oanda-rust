@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{AccountUnits, TradeID, TransactionID};
@@ -174,10 +174,10 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionListResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 
@@ -207,10 +207,10 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionListResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 
@@ -244,10 +244,10 @@ impl<'a> PositionService<'a> {
                 let resp = http_resp.json::<PositionDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 }

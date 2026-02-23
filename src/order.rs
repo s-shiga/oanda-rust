@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::{APIError, DetailedErrorResponse, ErrorResponse};
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
@@ -1536,8 +1536,24 @@ pub struct ReplaceOrderResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ReplaceOrderErrorResponse {
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Order creation was rejected {error_code}: {error_message}")]
+pub struct OrderCreateRejectResponse {
+    #[serde(rename = "orderRejectTransaction")]
+    pub order_reject_transaction: OrderCreateRejectTransaction,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    #[serde(rename = "errorCode")]
+    pub error_code: String,
+    #[serde(rename = "errorMessage")]
+    pub error_message: String,
+}
+
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Order cancellation was rejected {error_code}: {error_message}")]
+pub struct OrderCancelRejectResponse {
     #[serde(rename = "orderCancelRejectTransaction")]
     pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
     #[serde(rename = "relatedTransactionIDs")]
@@ -1786,22 +1802,6 @@ pub enum OrderTriggerCondition {
     Mid,
 }
 
-/// JSON request body for `POST /v3/accounts/{accountID}/orders`.
-///
-/// Prefer constructing this via [`OrderRequest`] variants and
-/// [`OrderService::create`] directly.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct CreateOrderRequest {
-    order: OrderRequest,
-}
-
-impl CreateOrderRequest {
-    /// Wraps an [`OrderRequest`] in the JSON envelope expected by the API.
-    pub fn new(order: OrderRequest) -> CreateOrderRequest {
-        CreateOrderRequest { order }
-    }
-}
-
 /// Builder for a `GET /v3/accounts/{accountID}/orders` request.
 ///
 /// Construct via [`ListOrdersRequest::new`], configure with the builder
@@ -1958,12 +1958,15 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<CreateOrderResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            StatusCode::BAD_REQUEST => {
+                let resp = http_resp.json::<OrderCreateRejectResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
+                    resp,
+                )))
+            }
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -1998,12 +2001,9 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -2034,12 +2034,9 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -2074,12 +2071,9 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<GetOrderDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -2116,12 +2110,9 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ReplaceOrderResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -2152,12 +2143,9 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<CancelOrderResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -2196,16 +2184,13 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp
                     .json::<UpdateClientExtensionsErrorResponse>()
                     .await?;
-                Err(APIError::DetailedErrorResponse(
-                    DetailedErrorResponse::UpdateClientExtensionsErrorResponse(resp),
+                Err(APIError::ErrorResponse(
+                    ErrorResponse::UpdateClientExtensionsErrorResponse(resp),
                 ))
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }

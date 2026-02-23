@@ -1,16 +1,16 @@
 use crate::account::AccountID;
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
 use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
+use crate::request_option_setter;
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use url::Url;
-use crate::request_option_setter;
 
 pub type TransactionID = String;
 pub type ClientID = String;
@@ -2089,10 +2089,10 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<ListTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 
@@ -2122,10 +2122,10 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionDetailsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 
@@ -2155,10 +2155,10 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 
@@ -2188,10 +2188,10 @@ impl<'a> TransactionService<'a> {
                 let resp = http_resp.json::<GetTransactionsResponse>().await?;
                 Ok(resp)
             }
-            status => Err(APIError::ErrorResponse {
-                status,
-                message: http_resp.text().await?,
-            }),
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            }
         }
     }
 }

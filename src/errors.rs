@@ -1,39 +1,37 @@
-use reqwest::StatusCode;
+use crate::order::{
+    OrderCancelRejectResponse, OrderCreateRejectResponse, UpdateClientExtensionsErrorResponse,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use crate::order::UpdateClientExtensionsErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum APIError {
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
-
     #[error("HTTP request failed: {0}")]
     HTTPError(#[from] reqwest::Error),
-
     #[error("JSON error: {0}")]
     JSONError(#[from] serde_json::Error),
-
-    #[error("API returned error {status}: {message}")]
-    ErrorResponse {
-        status: StatusCode,
-        message: String,
-    },
-
     #[error(transparent)]
-    DetailedErrorResponse(#[from] DetailedErrorResponse),
+    ErrorResponse(#[from] ErrorResponse),
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[error("{error_message}")]
-pub struct ErrorResponse {
+pub struct CommonErrorResponse {
     #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[error(transparent)]
-pub enum DetailedErrorResponse {
+pub enum ErrorResponse {
+    #[error(transparent)]
+    CommonError(CommonErrorResponse),
+    #[error(transparent)]
+    OrderCreateError(OrderCreateRejectResponse),
+    #[error(transparent)]
+    OrderCancelError(OrderCancelRejectResponse),
     #[error(transparent)]
     UpdateClientExtensionsErrorResponse(#[from] UpdateClientExtensionsErrorResponse),
 }

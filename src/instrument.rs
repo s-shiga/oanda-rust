@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::{APIError, ErrorResponse};
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
@@ -538,12 +538,9 @@ impl<'a> InstrumentService<'a> {
                 let resp = http_resp.json::<ListInstrumentsResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
@@ -569,12 +566,9 @@ impl<'a> InstrumentService<'a> {
                 let resp = http_resp.json::<FetchCandlesticksResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }

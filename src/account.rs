@@ -1,8 +1,8 @@
 use crate::client::Client;
-use crate::errors::{APIError, ErrorResponse};
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
-use crate::primitives::{Currency, DecimalNumber, deserialize_datetime};
+use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{AccountUnits, TransactionID};
 use chrono::{DateTime, Utc};
@@ -559,17 +559,17 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json::<ListAccountsResponse>().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
 
-    pub async fn get_details(&self, account_id: &AccountID) -> Result<GetAccountDetailsResponse, APIError> {
+    pub async fn get_details(
+        &self,
+        account_id: &AccountID,
+    ) -> Result<GetAccountDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -582,17 +582,17 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
 
-    pub async fn get_summary(&self, account_id: &AccountID) -> Result<GetAccountSummaryResponse, APIError> {
+    pub async fn get_summary(
+        &self,
+        account_id: &AccountID,
+    ) -> Result<GetAccountSummaryResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -605,12 +605,9 @@ impl<'a> AccountService<'a> {
                 let resp = http_resp.json().await?;
                 Ok(resp)
             }
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }

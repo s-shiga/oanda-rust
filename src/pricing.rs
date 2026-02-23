@@ -1,5 +1,5 @@
 use crate::client::Client;
-use crate::errors::{APIError, ErrorResponse};
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
@@ -61,7 +61,8 @@ pub struct PriceBucket {
 }
 
 fn deserialize_liquidity<'de, D>(deserializer: D) -> Result<i64, D::Error>
-where D: Deserializer<'de>
+where
+    D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
     #[serde(untagged)]
@@ -287,12 +288,9 @@ impl<'a> PricingService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<PricesResponse>().await?),
-            status => {
-                let resp = http_resp.json::<ErrorResponse>().await?;
-                Err(APIError::ErrorResponse {
-                    status,
-                    message: resp.error_message,
-                })
+            _ => {
+                let resp = http_resp.json::<CommonErrorResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
             }
         }
     }
