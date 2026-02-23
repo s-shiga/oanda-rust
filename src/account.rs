@@ -13,77 +13,6 @@ use serde::{Deserialize, Serialize};
 pub type AccountID = String;
 
 // ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
-/// Controls whether Guaranteed Stop Loss Orders (GSLOs) are available on an account.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum GuaranteedStopLossOrderMode {
-    /// GSLOs are not available for this account.
-    Disabled,
-    /// GSLOs are available but not required.
-    Allowed,
-    /// Every trade on this account must have a GSLO attached.
-    Required,
-}
-
-/// Describes how a Guaranteed Stop Loss Order may be changed after it is created.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum GuaranteedStopLossOrderMutability {
-    /// The GSLO cannot be modified once placed.
-    Fixed,
-    /// The GSLO can be replaced with a new one.
-    Replaceable,
-    /// The GSLO can be cancelled.
-    Cancelable,
-    /// Only changes that widen the stop price are permitted.
-    PriceWidenOnly,
-}
-
-/// Determines how financing (swap/rollover) is applied to open positions.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AccountFinancingMode {
-    /// No financing charges or credits are applied.
-    NoFinancing,
-    /// Financing is calculated and applied every second.
-    SecondBySecond,
-    /// Financing is calculated and applied once per day.
-    Daily,
-}
-
-/// Determines how the margin requirement for multiple positions on the same
-/// instrument is aggregated.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum PositionAggregationMode {
-    /// Margin is the sum of the absolute values of all position sides.
-    AbsoluteSum,
-    /// Margin is determined by whichever side (long or short) is larger.
-    MaximalSide,
-    /// Margin is based on the net (long minus short) position size.
-    NetSum,
-}
-
-// ---------------------------------------------------------------------------
-// GuaranteedStopLossOrderParameters
-// ---------------------------------------------------------------------------
-
-/// Configures mutability rules for Guaranteed Stop Loss Orders, separately
-/// for when the market is open versus halted.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GuaranteedStopLossOrderParameters {
-    /// Mutability rule that applies while the market is open.
-    #[serde(rename = "mutabilityMarketOpen")]
-    pub mutability_market_open: GuaranteedStopLossOrderMutability,
-    /// Mutability rule that applies while the market is halted.
-    #[serde(rename = "mutabilityMarketHalted")]
-    pub mutability_market_halted: GuaranteedStopLossOrderMutability,
-}
-
-// ---------------------------------------------------------------------------
 // Account
 // ---------------------------------------------------------------------------
 
@@ -210,6 +139,23 @@ pub struct Account {
 }
 
 // ---------------------------------------------------------------------------
+// AccountProperties
+// ---------------------------------------------------------------------------
+
+/// Metadata about an account returned when listing all accounts accessible
+/// by the authenticated user (`GET /v3/accounts`).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct AccountProperties {
+    /// The account's unique identifier.
+    pub id: AccountID,
+    /// The MT4 account number linked to this account, if any.
+    #[serde(rename = "mt4AccountID")]
+    pub mt4_account_id: Option<i32>,
+    /// Arbitrary tags associated with the account.
+    pub tags: Vec<String>,
+}
+
+// ---------------------------------------------------------------------------
 // AccountSummary (same shape as Account but without open trades/positions/orders)
 // ---------------------------------------------------------------------------
 
@@ -329,20 +275,41 @@ pub struct AccountSummary {
 }
 
 // ---------------------------------------------------------------------------
-// AccountProperties
+// AccountChanges
 // ---------------------------------------------------------------------------
 
-/// Metadata about an account returned when listing all accounts accessible
-/// by the authenticated user (`GET /v3/accounts`).
+/// Describes every change applied to an account since a given transaction ID,
+/// returned by `GET /v3/accounts/{accountID}/changes`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AccountProperties {
-    /// The account's unique identifier.
-    pub id: AccountID,
-    /// The MT4 account number linked to this account, if any.
-    #[serde(rename = "mt4AccountID")]
-    pub mt4_account_id: Option<i32>,
-    /// Arbitrary tags associated with the account.
-    pub tags: Vec<String>,
+pub struct AccountChanges {
+    /// Orders that were created in the period.
+    #[serde(rename = "ordersCreated")]
+    pub orders_created: Option<Vec<Order>>,
+    /// Orders that were cancelled in the period.
+    #[serde(rename = "ordersCancelled")]
+    pub orders_cancelled: Option<Vec<Order>>,
+    /// Orders that were filled (executed) in the period.
+    #[serde(rename = "ordersFilled")]
+    pub orders_filled: Option<Vec<Order>>,
+    /// Orders that were triggered in the period.
+    #[serde(rename = "ordersTriggered")]
+    pub orders_triggered: Option<Vec<Order>>,
+    /// Trades that were newly opened in the period.
+    #[serde(rename = "tradesOpened")]
+    pub trades_opened: Option<Vec<TradeSummary>>,
+    /// Trades that were partially closed (reduced) in the period.
+    #[serde(rename = "tradesReduced")]
+    pub trades_reduced: Option<Vec<TradeSummary>>,
+    /// Trades that were fully closed in the period.
+    #[serde(rename = "tradesClosed")]
+    pub trades_closed: Option<Vec<TradeSummary>>,
+    /// Positions affected by changes in the period.
+    pub positions: Option<Vec<Position>>,
+    /// Transactions generated in the period.
+    ///
+    /// Stored as raw JSON values because the OANDA API returns a polymorphic
+    /// union of many transaction sub-types.
+    pub transactions: Option<Vec<serde_json::Value>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -431,41 +398,74 @@ pub struct AccountChangesState {
 }
 
 // ---------------------------------------------------------------------------
-// AccountChanges
+// GuaranteedStopLossOrderParameters
 // ---------------------------------------------------------------------------
 
-/// Describes every change applied to an account since a given transaction ID,
-/// returned by `GET /v3/accounts/{accountID}/changes`.
+/// Configures mutability rules for Guaranteed Stop Loss Orders, separately
+/// for when the market is open versus halted.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct AccountChanges {
-    /// Orders that were created in the period.
-    #[serde(rename = "ordersCreated")]
-    pub orders_created: Option<Vec<Order>>,
-    /// Orders that were cancelled in the period.
-    #[serde(rename = "ordersCancelled")]
-    pub orders_cancelled: Option<Vec<Order>>,
-    /// Orders that were filled (executed) in the period.
-    #[serde(rename = "ordersFilled")]
-    pub orders_filled: Option<Vec<Order>>,
-    /// Orders that were triggered in the period.
-    #[serde(rename = "ordersTriggered")]
-    pub orders_triggered: Option<Vec<Order>>,
-    /// Trades that were newly opened in the period.
-    #[serde(rename = "tradesOpened")]
-    pub trades_opened: Option<Vec<TradeSummary>>,
-    /// Trades that were partially closed (reduced) in the period.
-    #[serde(rename = "tradesReduced")]
-    pub trades_reduced: Option<Vec<TradeSummary>>,
-    /// Trades that were fully closed in the period.
-    #[serde(rename = "tradesClosed")]
-    pub trades_closed: Option<Vec<TradeSummary>>,
-    /// Positions affected by changes in the period.
-    pub positions: Option<Vec<Position>>,
-    /// Transactions generated in the period.
-    ///
-    /// Stored as raw JSON values because the OANDA API returns a polymorphic
-    /// union of many transaction sub-types.
-    pub transactions: Option<Vec<serde_json::Value>>,
+pub struct GuaranteedStopLossOrderParameters {
+    /// Mutability rule that applies while the market is open.
+    #[serde(rename = "mutabilityMarketOpen")]
+    pub mutability_market_open: GuaranteedStopLossOrderMutability,
+    /// Mutability rule that applies while the market is halted.
+    #[serde(rename = "mutabilityMarketHalted")]
+    pub mutability_market_halted: GuaranteedStopLossOrderMutability,
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Controls whether Guaranteed Stop Loss Orders (GSLOs) are available on an account.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum GuaranteedStopLossOrderMode {
+    /// GSLOs are not available for this account.
+    Disabled,
+    /// GSLOs are available but not required.
+    Allowed,
+    /// Every trade on this account must have a GSLO attached.
+    Required,
+}
+
+/// Describes how a Guaranteed Stop Loss Order may be changed after it is created.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum GuaranteedStopLossOrderMutability {
+    /// The GSLO cannot be modified once placed.
+    Fixed,
+    /// The GSLO can be replaced with a new one.
+    Replaceable,
+    /// The GSLO can be cancelled.
+    Cancelable,
+    /// Only changes that widen the stop price are permitted.
+    PriceWidenOnly,
+}
+
+/// Determines how financing (swap/rollover) is applied to open positions.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AccountFinancingMode {
+    /// No financing charges or credits are applied.
+    NoFinancing,
+    /// Financing is calculated and applied every second.
+    SecondBySecond,
+    /// Financing is calculated and applied once per day.
+    Daily,
+}
+
+/// Determines how the margin requirement for multiple positions on the same
+/// instrument is aggregated.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum PositionAggregationMode {
+    /// Margin is the sum of the absolute values of all position sides.
+    AbsoluteSum,
+    /// Margin is determined by whichever side (long or short) is larger.
+    MaximalSide,
+    /// Margin is based on the net (long minus short) position size.
+    NetSum,
 }
 
 // ---------------------------------------------------------------------------
@@ -566,10 +566,7 @@ impl<'a> AccountService<'a> {
         }
     }
 
-    pub async fn get_details(
-        &self,
-        account_id: &AccountID,
-    ) -> Result<serde_json::Value, APIError> {
+    pub async fn get_details(&self, account_id: &AccountID) -> Result<serde_json::Value, APIError> {
         let url = self
             .client
             .base_url
@@ -589,10 +586,7 @@ impl<'a> AccountService<'a> {
         }
     }
 
-    pub async fn get_summary(
-        &self,
-        account_id: &AccountID,
-    ) -> Result<serde_json::Value, APIError> {
+    pub async fn get_summary(&self, account_id: &AccountID) -> Result<serde_json::Value, APIError> {
         let url = self
             .client
             .base_url
