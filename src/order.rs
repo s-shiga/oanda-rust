@@ -1861,7 +1861,7 @@ impl ListOrdersRequest {
 /// Response body for `GET /v3/accounts/{accountID}/orders` and
 /// `GET /v3/accounts/{accountID}/pendingOrders`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OrdersResponse {
+pub struct ListOrdersResponse {
     /// The list of orders matching the request filters.
     pub orders: Vec<Order>,
     /// ID of the most recent transaction on the account.
@@ -1871,7 +1871,7 @@ pub struct OrdersResponse {
 
 /// Response body for `GET /v3/accounts/{accountID}/orders/{orderSpecifier}`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OrderResponse {
+pub struct GetOrderDetailsResponse {
     /// The requested order.
     pub order: Order,
     /// ID of the most recent transaction on the account.
@@ -1933,7 +1933,7 @@ impl<'a> OrderService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list(&self, req: ListOrdersRequest) -> Result<OrdersResponse, APIError> {
+    pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
         let mut url = self
             .client
             .base_url
@@ -1953,7 +1953,7 @@ impl<'a> OrderService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => {
-                let resp = http_resp.json::<OrdersResponse>().await?;
+                let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
@@ -1970,7 +1970,7 @@ impl<'a> OrderService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list_pending(&self) -> Result<OrdersResponse, APIError> {
+    pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -1986,7 +1986,7 @@ impl<'a> OrderService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => {
-                let resp = http_resp.json::<OrdersResponse>().await?;
+                let resp = http_resp.json::<ListOrdersResponse>().await?;
                 Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
@@ -2003,7 +2003,7 @@ impl<'a> OrderService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn get_details(&self, specifier: OrderSpecifier) -> Result<OrderResponse, APIError> {
+    pub async fn get_details(&self, specifier: OrderSpecifier) -> Result<GetOrderDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -2020,7 +2020,7 @@ impl<'a> OrderService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => {
-                let resp = http_resp.json::<OrderResponse>().await?;
+                let resp = http_resp.json::<GetOrderDetailsResponse>().await?;
                 Ok(resp)
             }
             status => Err(APIError::ApiErrorResponse {
