@@ -85,19 +85,19 @@ pub struct MarketOrder {
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
-    pub instrument: Option<InstrumentName>,
+    pub instrument: InstrumentName,
     /// Number of units to trade. Positive = buy (long), negative = sell (short).
-    pub units: Option<DecimalNumber>,
+    pub units: DecimalNumber,
     /// How long the order remains active (`FOK` or `IOC` for market orders).
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// The worst fill price acceptable. If the order cannot be filled within
     /// this bound, it is cancelled.
     #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How the order interacts with an existing position on the instrument.
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     /// Take-profit order to attach to any trade opened by this order.
     #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
@@ -152,6 +152,73 @@ pub struct MarketOrder {
     pub delayed_trade_close: Option<MarketOrderDelayedTradeClose>,
 }
 
+/// A fixed-price order as returned by the OANDA API.
+///
+/// An internal order type created by OANDA to fill a trade at a specific fixed
+/// price, for example during account corrections or transfers. Cannot be created
+/// by clients directly.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FixedPriceOrder {
+    /// The order's unique identifier.
+    pub id: OrderID,
+    /// Timestamp at which the order was created.
+    #[serde(rename = "createTime")]
+    pub create_time: DateTime<Utc>,
+    /// Current lifecycle state of the order.
+    pub state: OrderState,
+    /// Optional client-supplied metadata attached to the order.
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    /// The instrument to be traded.
+    pub instrument: InstrumentName,
+    /// Number of units to trade. Positive = buy (long), negative = sell (short).
+    pub units: DecimalNumber,
+    /// The fixed price at which the order will be filled.
+    pub price: PriceValue,
+    /// How the order interacts with an existing position on the instrument.
+    #[serde(rename = "positionFill")]
+    pub position_fill: OrderPositionFill,
+    /// The state of the trade the order is intended to result in.
+    #[serde(rename = "tradeState")]
+    pub trade_state: String,
+    /// Take-profit order to attach to any trade opened by this order.
+    #[serde(rename = "takeProfitOnFill")]
+    pub take_profit_on_fill: Option<TakeProfitDetails>,
+    /// Stop-loss order to attach to any trade opened by this order.
+    #[serde(rename = "stopLossOnFill")]
+    pub stop_loss_on_fill: Option<StopLossDetails>,
+    /// Trailing stop-loss to attach to any trade opened by this order.
+    #[serde(rename = "trailingStopLossOnFill")]
+    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
+    /// Guaranteed stop-loss to attach to any trade opened by this order.
+    #[serde(rename = "guaranteedStopLossOnFill")]
+    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
+    /// Client extensions to apply to the trade opened by this order.
+    #[serde(rename = "tradeClientExtensions")]
+    pub trade_client_extensions: Option<ClientExtensions>,
+    /// ID of the transaction that filled this order, if filled.
+    #[serde(rename = "fillingTransactionID")]
+    pub filling_transaction_id: Option<TransactionID>,
+    /// Timestamp at which the order was filled.
+    #[serde(rename = "filledTime")]
+    pub filled_time: Option<DateTime<Utc>>,
+    /// ID of any trade opened as a result of this order being filled.
+    #[serde(rename = "tradeOpenedID")]
+    pub trade_opened_id: Option<TradeID>,
+    /// ID of any trade reduced by this order.
+    #[serde(rename = "tradeReducedID")]
+    pub trade_reduced_id: Option<TradeID>,
+    /// IDs of trades fully closed by this order.
+    #[serde(rename = "tradeClosedIDs")]
+    pub trade_closed_ids: Option<Vec<TradeID>>,
+    /// ID of the transaction that cancelled this order, if cancelled.
+    #[serde(rename = "cancellingTransactionID")]
+    pub cancelling_transaction_id: Option<TransactionID>,
+    /// Timestamp at which the order was cancelled.
+    #[serde(rename = "cancelledTime")]
+    pub cancelled_time: Option<DateTime<Utc>>,
+}
+
 /// A limit order as returned by the OANDA API.
 ///
 /// Executes at `price` or better once the market reaches that level.
@@ -169,23 +236,23 @@ pub struct LimitOrder {
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
-    pub instrument: Option<InstrumentName>,
+    pub instrument: InstrumentName,
     /// Number of units to trade. Positive = buy (long), negative = sell (short).
-    pub units: Option<DecimalNumber>,
+    pub units: DecimalNumber,
     /// The limit price at which the order will execute.
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// Take-profit order to attach to any trade opened by this order.
     #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
@@ -247,26 +314,26 @@ pub struct StopOrder {
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
-    pub instrument: Option<InstrumentName>,
+    pub instrument: InstrumentName,
     /// Number of units to trade. Positive = buy (long), negative = sell (short).
-    pub units: Option<DecimalNumber>,
+    pub units: DecimalNumber,
     /// The stop trigger price.
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     /// The worst fill price acceptable after the stop triggers.
     #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// Take-profit order to attach to any trade opened by this order.
     #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
@@ -328,30 +395,30 @@ pub struct MarketIfTouchedOrder {
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
-    pub instrument: Option<InstrumentName>,
+    pub instrument: InstrumentName,
     /// Number of units to trade. Positive = buy (long), negative = sell (short).
-    pub units: Option<DecimalNumber>,
+    pub units: DecimalNumber,
     /// The trigger price. When the market touches this level the order converts
     /// to a market order.
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     /// Worst acceptable fill price after the order triggers.
     #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
     #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
+    pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// The market price at the time the order was created.
     #[serde(rename = "initialMarketPrice")]
-    pub initial_market_price: Option<PriceValue>,
+    pub initial_market_price: PriceValue,
     /// Take-profit order to attach to any trade opened by this order.
     #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
@@ -422,13 +489,13 @@ pub struct TakeProfitOrder {
     pub price: PriceValue,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
@@ -482,24 +549,19 @@ pub struct StopLossOrder {
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
     /// Absolute stop price. Mutually exclusive with `distance`.
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     /// Distance from current price at which the stop is placed.
     /// Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
-    /// Whether this stop-loss is guaranteed to execute at exactly the stop price.
-    pub guaranteed: Option<bool>,
-    /// The premium paid (in home currency units per unit traded) for guaranteed execution.
-    #[serde(rename = "guaranteedExecutionPremium")]
-    pub guaranteed_execution_premium: Option<DecimalNumber>,
+    pub trigger_condition: OrderTriggerCondition,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
@@ -558,16 +620,16 @@ pub struct GuaranteedStopLossOrder {
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// The premium paid for guaranteed execution.
     #[serde(rename = "guaranteedExecutionPremium")]
-    pub guaranteed_execution_premium: Option<DecimalNumber>,
+    pub guaranteed_execution_premium: DecimalNumber,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
@@ -624,17 +686,17 @@ pub struct TrailingStopLossOrder {
     pub distance: DecimalNumber,
     /// How long the order remains active.
     #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
+    pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
     #[serde(rename = "triggerCondition")]
-    pub trigger_condition: Option<OrderTriggerCondition>,
+    pub trigger_condition: OrderTriggerCondition,
     /// The current calculated absolute stop price, derived from `distance`
     /// and the current market price.
     #[serde(rename = "trailingStopValue")]
-    pub trailing_stop_value: Option<PriceValue>,
+    pub trailing_stop_value: PriceValue,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
@@ -662,73 +724,6 @@ pub struct TrailingStopLossOrder {
     /// The ID of the order that replaced this order, if applicable.
     #[serde(rename = "replacedByOrderID")]
     pub replaced_by_order_id: Option<OrderID>,
-}
-
-/// A fixed-price order as returned by the OANDA API.
-///
-/// An internal order type created by OANDA to fill a trade at a specific fixed
-/// price, for example during account corrections or transfers. Cannot be created
-/// by clients directly.
-#[derive(Debug, Deserialize, Serialize)]
-pub struct FixedPriceOrder {
-    /// The order's unique identifier.
-    pub id: OrderID,
-    /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
-    pub create_time: DateTime<Utc>,
-    /// Current lifecycle state of the order.
-    pub state: OrderState,
-    /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-    /// The instrument to be traded.
-    pub instrument: Option<InstrumentName>,
-    /// Number of units to trade. Positive = buy (long), negative = sell (short).
-    pub units: Option<DecimalNumber>,
-    /// The fixed price at which the order will be filled.
-    pub price: Option<PriceValue>,
-    /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
-    pub position_fill: Option<OrderPositionFill>,
-    /// The state of the trade the order is intended to result in.
-    #[serde(rename = "tradeState")]
-    pub trade_state: Option<String>,
-    /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
-    pub take_profit_on_fill: Option<TakeProfitDetails>,
-    /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
-    pub stop_loss_on_fill: Option<StopLossDetails>,
-    /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
-    pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
-    pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
-    pub trade_client_extensions: Option<ClientExtensions>,
-    /// ID of the transaction that filled this order, if filled.
-    #[serde(rename = "fillingTransactionID")]
-    pub filling_transaction_id: Option<TransactionID>,
-    /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
-    pub filled_time: Option<DateTime<Utc>>,
-    /// ID of any trade opened as a result of this order being filled.
-    #[serde(rename = "tradeOpenedID")]
-    pub trade_opened_id: Option<TradeID>,
-    /// ID of any trade reduced by this order.
-    #[serde(rename = "tradeReducedID")]
-    pub trade_reduced_id: Option<TradeID>,
-    /// IDs of trades fully closed by this order.
-    #[serde(rename = "tradeClosedIDs")]
-    pub trade_closed_ids: Option<Vec<TradeID>>,
-    /// ID of the transaction that cancelled this order, if cancelled.
-    #[serde(rename = "cancellingTransactionID")]
-    pub cancelling_transaction_id: Option<TransactionID>,
-    /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
-    pub cancelled_time: Option<DateTime<Utc>>,
 }
 
 // ---------------------------------------------------------------------------
@@ -1505,10 +1500,10 @@ pub struct CreateOrderResponse {
     pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    pub related_transaction_ids: Vec<TransactionID>,
     /// ID of the most recent transaction on the account after this request.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: Option<TransactionID>,
+    pub last_transaction_id: TransactionID,
 }
 
 /// Response body for a successful `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}`
@@ -1518,25 +1513,39 @@ pub struct CreateOrderResponse {
 pub struct ReplaceOrderResponse {
     /// The transaction that cancelled the replaced order.
     #[serde(rename = "orderCancelTransaction")]
-    pub order_cancel_transaction: Option<serde_json::Value>,
+    pub order_cancel_transaction: Option<OrderCancelTransaction>,
     /// The transaction that created the replacement order.
     #[serde(rename = "orderCreateTransaction")]
-    pub order_create_transaction: Option<serde_json::Value>,
+    pub order_create_transaction: Option<OrderCreateTransaction>,
     /// The transaction that filled the replacement order, if immediately filled.
     #[serde(rename = "orderFillTransaction")]
-    pub order_fill_transaction: Option<serde_json::Value>,
+    pub order_fill_transaction: Option<OrderFillTransaction>,
     /// The transaction that re-issued the order, if applicable.
     #[serde(rename = "orderReissueTransaction")]
-    pub order_reissue_transaction: Option<serde_json::Value>,
+    pub order_reissue_transaction: Option<OrderCreateTransaction>,
     /// The transaction that rejected the re-issue, if applicable.
     #[serde(rename = "orderReissueRejectTransaction")]
-    pub order_reissue_reject_transaction: Option<serde_json::Value>,
+    pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,
     /// ID of the most recent transaction on the account after this request.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ReplaceOrderErrorResponse {
+    #[serde(rename = "orderCancelRejectTransaction")]
+    pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    #[serde(rename = "errorCode")]
+    pub error_code: String,
+    #[serde(rename = "errorMessage")]
+    pub error_message: String,
 }
 
 /// Response body for a successful
@@ -2003,7 +2012,10 @@ impl<'a> OrderService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn get_details(&self, specifier: OrderSpecifier) -> Result<GetOrderDetailsResponse, APIError> {
+    pub async fn get_details(
+        &self,
+        specifier: OrderSpecifier,
+    ) -> Result<GetOrderDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -2041,7 +2053,7 @@ impl<'a> OrderService<'a> {
     pub async fn replace(
         &self,
         specifier: OrderSpecifier,
-        order: OrderRequest,
+        req: OrderRequest,
     ) -> Result<ReplaceOrderResponse, APIError> {
         let url = self
             .client
@@ -2055,7 +2067,7 @@ impl<'a> OrderService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let body = CreateOrderBody { order };
+        let body = CreateOrderBody { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         match http_resp.status() {
             StatusCode::CREATED => {
@@ -2146,21 +2158,6 @@ mod tests {
     use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest};
 
     #[tokio::test]
-    async fn test_list_orders() {
-        let client = setup_test_client();
-        let req = ListOrdersRequest::new().instrument(String::from("USD_JPY"));
-        let resp = client.order().list(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    async fn test_list_pending() {
-        let client = setup_test_client();
-        let resp = client.order().list_pending().await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
     async fn test_limit_order() {
         let client = setup_test_client();
         // Create limit order
@@ -2177,6 +2174,26 @@ mod tests {
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
+        let req = ListOrdersRequest::new().instrument("USD_JPY".to_string());
+        let resp = client.order().list(req).await.unwrap();
+        println!("{:#?}", resp);
+
+        let req = LimitOrderRequest::new(
+            "USD_JPY".to_string(),
+            "10000".to_string(),
+            "101.00".to_string(),
+        );
+        let resp = client
+            .order()
+            .replace(order_id, OrderRequest::Limit(req))
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+        let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
+
+        let resp = client.order().list_pending().await.unwrap();
+        println!("{:#?}", resp);
+
         // Get details
         let resp = client.order().get_details(order_id.clone()).await.unwrap();
         println!("{:#?}", resp);
@@ -2190,7 +2207,11 @@ mod tests {
 #[cfg(test)]
 pub(crate) async fn create_market_order(client: &Client) -> TransactionID {
     let req = MarketOrderRequest::new("USD_JPY".to_string(), "10000".to_string());
-    let resp = client.order().create(OrderRequest::Market(req)).await.unwrap();
+    let resp = client
+        .order()
+        .create(OrderRequest::Market(req))
+        .await
+        .unwrap();
     println!("{:#?}", resp);
     resp.order_create_transaction.unwrap().get_id()
 }
