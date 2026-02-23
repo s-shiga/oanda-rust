@@ -1958,7 +1958,7 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<CreateOrderResponse>().await?;
                 Ok(resp)
             }
-            StatusCode::BAD_REQUEST => {
+            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
                 let resp = http_resp.json::<OrderCreateRejectResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
                     resp,
@@ -2110,6 +2110,18 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<ReplaceOrderResponse>().await?;
                 Ok(resp)
             }
+            StatusCode::BAD_REQUEST => {
+                let resp = http_resp.json::<OrderCreateRejectResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
+                    resp,
+                )))
+            }
+            StatusCode::NOT_FOUND => {
+                let resp = http_resp.json::<OrderCancelRejectResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
+                    resp,
+                )))
+            }
             _ => {
                 let resp = http_resp.json::<CommonErrorResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
@@ -2142,6 +2154,12 @@ impl<'a> OrderService<'a> {
             StatusCode::OK => {
                 let resp = http_resp.json::<CancelOrderResponse>().await?;
                 Ok(resp)
+            }
+            StatusCode::NOT_FOUND => {
+                let resp = http_resp.json::<OrderCancelRejectResponse>().await?;
+                Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
+                    resp,
+                )))
             }
             _ => {
                 let resp = http_resp.json::<CommonErrorResponse>().await?;
@@ -2180,7 +2198,7 @@ impl<'a> OrderService<'a> {
                 let resp = http_resp.json::<UpdateClientExtensionsResponse>().await?;
                 Ok(resp)
             }
-            StatusCode::BAD_REQUEST => {
+            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
                 let resp = http_resp
                     .json::<UpdateClientExtensionsErrorResponse>()
                     .await?;
