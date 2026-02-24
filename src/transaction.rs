@@ -1571,7 +1571,7 @@ pub enum TransactionRejectReason {
     UnitsInvalid,
     UnitsPrecisionExceeded,
     UnitsLimitExceeded,
-    UnitsMimimumNotMet,
+    UnitsMinimumNotMet,
     PriceMissing,
     PriceInvalid,
     PricePrecisionExceeded,
