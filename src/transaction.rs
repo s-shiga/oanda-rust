@@ -192,8 +192,6 @@ pub struct CreateTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "divisionID")]
     pub division_id: Option<i64>,
     #[serde(rename = "siteID")]
@@ -218,8 +216,6 @@ pub struct CloseTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -234,8 +230,6 @@ pub struct ReopenTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -250,8 +244,6 @@ pub struct ClientConfigureTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub alias: Option<String>,
     #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
@@ -269,8 +261,6 @@ pub struct ClientConfigureRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub alias: Option<String>,
     #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
@@ -290,8 +280,6 @@ pub struct TransferFundsTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub amount: Option<AccountUnits>,
     #[serde(rename = "fundingReason")]
     pub funding_reason: Option<FundingReason>,
@@ -312,8 +300,6 @@ pub struct TransferFundsRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub amount: Option<AccountUnits>,
     #[serde(rename = "fundingReason")]
     pub funding_reason: Option<FundingReason>,
@@ -334,8 +320,6 @@ pub struct MarketOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     #[serde(rename = "timeInForce")]
@@ -381,8 +365,6 @@ pub struct MarketOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     #[serde(rename = "timeInForce")]
@@ -430,8 +412,6 @@ pub struct FixedPriceOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -466,8 +446,6 @@ pub struct LimitOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -510,8 +488,6 @@ pub struct LimitOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -558,8 +534,6 @@ pub struct StopOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -604,8 +578,6 @@ pub struct StopOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -654,8 +626,6 @@ pub struct MarketIfTouchedOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -700,8 +670,6 @@ pub struct MarketIfTouchedOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     pub units: Option<DecimalNumber>,
     pub price: Option<PriceValue>,
@@ -750,8 +718,6 @@ pub struct TakeProfitOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -786,8 +752,6 @@ pub struct TakeProfitOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -826,8 +790,6 @@ pub struct StopLossOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -866,8 +828,6 @@ pub struct StopLossOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -908,8 +868,6 @@ pub struct GuaranteedStopLossOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -945,8 +903,6 @@ pub struct GuaranteedStopLossOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -986,8 +942,6 @@ pub struct TrailingStopLossOrderTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -1022,8 +976,6 @@ pub struct TrailingStopLossOrderRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -1062,8 +1014,6 @@ pub struct OrderFillTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: RequestID,
-    #[serde(rename = "type")]
-    pub transaction_type: TransactionType,
     #[serde(rename = "orderID")]
     pub order_id: OrderID,
     #[serde(rename = "clientOrderID")]
@@ -1072,7 +1022,6 @@ pub struct OrderFillTransaction {
     pub units: DecimalNumber,
     #[serde(rename = "homeConversionFactors")]
     pub home_conversion_factors: Option<HomeConversionFactors>,
-    pub price: PriceValue,
     #[serde(rename = "fullVWAP")]
     pub full_vwap: PriceValue,
     #[serde(rename = "fullPrice")]
@@ -1113,8 +1062,6 @@ pub struct OrderCancelTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "orderID")]
     pub order_id: Option<OrderID>,
     #[serde(rename = "clientOrderID")]
@@ -1136,8 +1083,6 @@ pub struct OrderCancelRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "orderID")]
     pub order_id: Option<OrderID>,
     #[serde(rename = "clientOrderID")]
@@ -1158,8 +1103,6 @@ pub struct OrderClientExtensionsModifyTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "orderID")]
     pub order_id: Option<OrderID>,
     #[serde(rename = "clientOrderID")]
@@ -1182,8 +1125,6 @@ pub struct OrderClientExtensionsModifyRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "orderID")]
     pub order_id: Option<OrderID>,
     #[serde(rename = "clientOrderID")]
@@ -1208,8 +1149,6 @@ pub struct TradeClientExtensionsModifyTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -1230,8 +1169,6 @@ pub struct TradeClientExtensionsModifyRejectTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "tradeID")]
     pub trade_id: Option<TradeID>,
     #[serde(rename = "clientTradeID")]
@@ -1254,8 +1191,6 @@ pub struct MarginCallEnterTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1270,8 +1205,6 @@ pub struct MarginCallExtendTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     #[serde(rename = "extensionNumber")]
     pub extension_number: Option<i64>,
 }
@@ -1288,8 +1221,6 @@ pub struct MarginCallExitTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -1304,8 +1235,6 @@ pub struct DelayedTradeClosureTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub reason: Option<MarketOrderReason>,
     #[serde(rename = "tradeIDs")]
     pub trade_ids: Option<Vec<TradeID>>,
@@ -1323,8 +1252,6 @@ pub struct DailyFinancingTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub financing: Option<AccountUnits>,
     #[serde(rename = "accountBalance")]
     pub account_balance: Option<AccountUnits>,
@@ -1346,8 +1273,6 @@ pub struct DividendAdjustmentTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
     pub instrument: Option<InstrumentName>,
     #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: Option<AccountUnits>,
@@ -1373,8 +1298,6 @@ pub struct ResetResettablePLTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
-    #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
 }
 
 // ---------------------------------------------------------------------------
@@ -2022,12 +1945,12 @@ impl ListTransactionsRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListTransactionsResponse {
-    pub count: Option<i64>,
-    pub from: Option<DateTime<Utc>>,
-    pub to: Option<DateTime<Utc>>,
+    pub count: i64,
+    pub from: DateTime<Utc>,
+    pub to: DateTime<Utc>,
     #[serde(rename = "pageSize")]
-    pub page_size: Option<i64>,
-    pub pages: Option<Vec<String>>,
+    pub page_size: i64,
+    pub pages: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -2270,7 +2193,7 @@ mod tests {
         let client = setup_test_client();
         let resp = client
             .transaction()
-            .get_details("530".to_string())
+            .get_details("501".to_string())
             .await
             .unwrap();
         println!("{:#?}", resp);
