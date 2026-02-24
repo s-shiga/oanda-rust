@@ -1613,7 +1613,7 @@ impl UpdateOrderClientExtensionsRequest {
 
 /// Response body for a successful client-extensions update (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateClientExtensionsResponse {
+pub struct UpdateOrderClientExtensionsResponse {
     /// The transaction recording the modification.
     #[serde(rename = "orderClientExtensionsModifyTransaction")]
     pub order_client_extensions_modify_transaction: OrderClientExtensionsModifyTransaction,
@@ -1627,7 +1627,7 @@ pub struct UpdateClientExtensionsResponse {
 
 #[derive(Debug, Serialize, Deserialize, Error)]
 #[error("Order client extensions update error {error_code}: {error_message}")]
-pub struct UpdateClientExtensionsErrorResponse {
+pub struct UpdateOrderClientExtensionsErrorResponse {
     #[serde(rename = "orderClientExtensionsModifyRejectTransaction")]
     pub order_client_extensions_modify_reject_transaction:
         OrderClientExtensionsModifyRejectTransaction,
@@ -1954,20 +1954,15 @@ impl<'a> OrderService<'a> {
         let body = CreateOrderBody { order };
         let http_resp = self.client.http_client.post(url).json(&body).send().await?;
         match http_resp.status() {
-            StatusCode::CREATED => {
-                let resp = http_resp.json::<CreateOrderResponse>().await?;
-                Ok(resp)
-            }
+            StatusCode::CREATED => Ok(http_resp.json::<CreateOrderResponse>().await?),
             StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                let resp = http_resp.json::<OrderCreateRejectResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
-                    resp,
+                    http_resp.json::<OrderCreateRejectResponse>().await?,
                 )))
             }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -1997,14 +1992,10 @@ impl<'a> OrderService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListOrdersResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<ListOrdersResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2030,14 +2021,10 @@ impl<'a> OrderService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListOrdersResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<ListOrdersResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2067,14 +2054,10 @@ impl<'a> OrderService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<GetOrderDetailsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<GetOrderDetailsResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2106,26 +2089,18 @@ impl<'a> OrderService<'a> {
         let body = CreateOrderBody { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         match http_resp.status() {
-            StatusCode::CREATED => {
-                let resp = http_resp.json::<ReplaceOrderResponse>().await?;
-                Ok(resp)
-            }
+            StatusCode::CREATED => Ok(http_resp.json::<ReplaceOrderResponse>().await?),
             StatusCode::BAD_REQUEST => {
-                let resp = http_resp.json::<OrderCreateRejectResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
-                    resp,
+                    http_resp.json::<OrderCreateRejectResponse>().await?,
                 )))
             }
-            StatusCode::NOT_FOUND => {
-                let resp = http_resp.json::<OrderCancelRejectResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
-                    resp,
-                )))
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::NOT_FOUND => Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
+                http_resp.json::<OrderCancelRejectResponse>().await?,
+            ))),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2151,20 +2126,13 @@ impl<'a> OrderService<'a> {
             .unwrap();
         let http_resp = self.client.http_client.put(url).send().await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<CancelOrderResponse>().await?;
-                Ok(resp)
-            }
-            StatusCode::NOT_FOUND => {
-                let resp = http_resp.json::<OrderCancelRejectResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
-                    resp,
-                )))
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<CancelOrderResponse>().await?),
+            StatusCode::NOT_FOUND => Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
+                http_resp.json::<OrderCancelRejectResponse>().await?,
+            ))),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2179,7 +2147,7 @@ impl<'a> OrderService<'a> {
         &self,
         specifier: OrderSpecifier,
         req: UpdateOrderClientExtensionsRequest,
-    ) -> Result<UpdateClientExtensionsResponse, APIError> {
+    ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -2194,22 +2162,19 @@ impl<'a> OrderService<'a> {
             .unwrap();
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<UpdateClientExtensionsResponse>().await?;
-                Ok(resp)
-            }
-            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                let resp = http_resp
-                    .json::<UpdateClientExtensionsErrorResponse>()
-                    .await?;
-                Err(APIError::ErrorResponse(
-                    ErrorResponse::UpdateClientExtensionsErrorResponse(resp),
-                ))
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp
+                .json::<UpdateOrderClientExtensionsResponse>()
+                .await?),
+            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => Err(APIError::ErrorResponse(
+                ErrorResponse::UpdateOrderClientExtensionsError(
+                    http_resp
+                        .json::<UpdateOrderClientExtensionsErrorResponse>()
+                        .await?,
+                ),
+            )),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 }

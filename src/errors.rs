@@ -1,8 +1,9 @@
 use crate::order::{
-    OrderCancelRejectResponse, OrderCreateRejectResponse, UpdateClientExtensionsErrorResponse,
+    OrderCancelRejectResponse, OrderCreateRejectResponse, UpdateOrderClientExtensionsErrorResponse,
 };
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use crate::trade::UpdateTradeClientExtensionsErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -33,5 +34,7 @@ pub enum ErrorResponse {
     #[error(transparent)]
     OrderCancelError(OrderCancelRejectResponse),
     #[error(transparent)]
-    UpdateClientExtensionsErrorResponse(#[from] UpdateClientExtensionsErrorResponse),
+    UpdateOrderClientExtensionsError(#[from] UpdateOrderClientExtensionsErrorResponse),
+    #[error(transparent)]
+    UpdateTradeClientExtensionsError(#[from] UpdateTradeClientExtensionsErrorResponse),
 }

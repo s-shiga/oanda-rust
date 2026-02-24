@@ -1,4 +1,5 @@
 use crate::client::Client;
+use crate::errors::ErrorResponse::UpdateTradeClientExtensionsError;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::order::{
@@ -7,10 +8,14 @@ use crate::order::{
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::request_option_setter;
-use crate::transaction::{AccountUnits, ClientExtensions, TradeID, TransactionID};
+use crate::transaction::{
+    AccountUnits, ClientExtensions, TradeClientExtensionsModifyRejectTransaction,
+    TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
+};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// A string that uniquely identifies a trade within an account.
 ///
@@ -310,6 +315,32 @@ pub struct UpdateClientExtensionsRequest {
     pub client_extensions: ClientExtensions,
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UpdateTradeClientExtensionsResponse {
+    #[serde(rename = "tradeClientExtensionsModifyTransaction")]
+    pub trade_client_extensions_modify_transaction: TradeClientExtensionsModifyTransaction,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Trade client extensions update error {error_code}: {error_message}")]
+pub struct UpdateTradeClientExtensionsErrorResponse {
+    #[serde(rename = "TradeClientExtensionsModifyRejectTransaction")]
+    pub trade_client_extensions_modify_reject_transaction:
+        TradeClientExtensionsModifyRejectTransaction,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "errorCode")]
+    pub error_code: String,
+    #[serde(rename = "errorMessage")]
+    pub error_message: String,
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -350,10 +381,9 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -380,10 +410,9 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -414,10 +443,9 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<GetTradeDetailsResponse>().await?),
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -450,10 +478,45 @@ impl<'a> TradeService<'a> {
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<CloseTradeResponse>().await?),
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
+        }
+    }
+
+    pub async fn update_client_extensions(
+        &self,
+        specifier: TradeSpecifier,
+        client_extensions: ClientExtensions,
+    ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/trades/{}/clientExtensions",
+                    self.client.account_id.as_ref().expect("Missing account_id"),
+                    specifier
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let req = UpdateClientExtensionsRequest { client_extensions };
+        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        match http_resp.status() {
+            StatusCode::OK => Ok(http_resp
+                .json::<UpdateTradeClientExtensionsResponse>()
+                .await?),
+            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                Err(APIError::ErrorResponse(UpdateTradeClientExtensionsError(
+                    http_resp
+                        .json::<UpdateTradeClientExtensionsErrorResponse>()
+                        .await?,
+                )))
             }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 }
@@ -463,6 +526,7 @@ mod tests {
     use crate::client::setup_test_client;
     use crate::order::create_market_order;
     use crate::trade::CloseTradeRequest;
+    use crate::transaction::ClientExtensions;
 
     #[tokio::test]
     async fn test_list_trades() {
@@ -478,17 +542,35 @@ mod tests {
         // Create a trade
         let id = create_market_order(&client).await;
 
+        // Update client extensions
+        let client_id = "test_trade".to_string();
+        let client_extensions = ClientExtensions::new().id(client_id.clone());
+        let resp = client
+            .trade()
+            .update_client_extensions(id, client_extensions)
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+
         // List trades
         let resp = client.trade().list_open().await.unwrap();
         println!("{:#?}", resp);
 
         // Get trade details
-        let resp = client.trade().get_details(id.clone()).await.unwrap();
+        let resp = client
+            .trade()
+            .get_details(format!("@{}", client_id))
+            .await
+            .unwrap();
         println!("{:#?}", resp);
 
         // Close the trade
         let req = CloseTradeRequest::new();
-        let resp = client.trade().close(id, req).await.unwrap();
+        let resp = client
+            .trade()
+            .close(format!("@{}", client_id), req)
+            .await
+            .unwrap();
         println!("{:#?}", resp);
     }
 
@@ -497,7 +579,7 @@ mod tests {
         let client = setup_test_client();
         let resp = client
             .trade()
-            .close("751".to_string(), CloseTradeRequest::new())
+            .close("767".to_string(), CloseTradeRequest::new())
             .await;
         println!("{:#?}", resp);
     }
