@@ -2157,14 +2157,10 @@ impl<'a> TransactionService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListTransactionsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<ListTransactionsResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2190,14 +2186,10 @@ impl<'a> TransactionService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<GetTransactionDetailsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<GetTransactionDetailsResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2223,14 +2215,10 @@ impl<'a> TransactionService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<GetTransactionsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<GetTransactionsResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 
@@ -2256,14 +2244,10 @@ impl<'a> TransactionService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<GetTransactionsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            StatusCode::OK => Ok(http_resp.json::<GetTransactionsResponse>().await?),
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 }

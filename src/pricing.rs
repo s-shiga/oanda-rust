@@ -288,10 +288,9 @@ impl<'a> PricingService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<PricesResponse>().await?),
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
+            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                http_resp.json::<CommonErrorResponse>().await?,
+            ))),
         }
     }
 }
