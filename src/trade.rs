@@ -6,6 +6,7 @@ use crate::order::{
 };
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
+use crate::request_option_setter;
 use crate::transaction::{AccountUnits, ClientExtensions, TradeID, TransactionID};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -238,13 +239,32 @@ pub struct CalculatedTradeState {
 }
 
 // ---------------------------------------------------------------------------
+// Request types
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CloseTradeRequest {
+    /// Indication of how much of the Trade to close. If None, all the Trade will be closed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub units: Option<String>,
+}
+
+impl CloseTradeRequest {
+    pub fn new() -> CloseTradeRequest {
+        CloseTradeRequest { units: None }
+    }
+
+    request_option_setter!(units, String);
+}
+
+// ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
 
 /// Response body for `GET /v3/accounts/{accountID}/trades` and
 /// `GET /v3/accounts/{accountID}/openTrades`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TradesResponse {
+pub struct ListTradesResponse {
     /// The list of trades matching the request.
     pub trades: Vec<Trade>,
     /// ID of the most recent transaction on the account.
@@ -254,7 +274,7 @@ pub struct TradesResponse {
 
 /// Response body for `GET /v3/accounts/{accountID}/trades/{tradeSpecifier}`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct TradeResponse {
+pub struct GetTradeDetailsResponse {
     /// The requested trade.
     pub trade: Trade,
     /// ID of the most recent transaction on the account.
@@ -314,7 +334,7 @@ impl<'a> TradeService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list(&self) -> Result<TradesResponse, APIError> {
+    pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -329,7 +349,7 @@ impl<'a> TradeService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<TradesResponse>().await?),
+            StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
             _ => {
                 let resp = http_resp.json::<CommonErrorResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
@@ -344,7 +364,7 @@ impl<'a> TradeService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list_open(&self) -> Result<TradesResponse, APIError> {
+    pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -359,7 +379,7 @@ impl<'a> TradeService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<TradesResponse>().await?),
+            StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
             _ => {
                 let resp = http_resp.json::<CommonErrorResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
@@ -374,7 +394,10 @@ impl<'a> TradeService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn get_details(&self, specifier: TradeSpecifier) -> Result<TradeResponse, APIError> {
+    pub async fn get_details(
+        &self,
+        specifier: TradeSpecifier,
+    ) -> Result<GetTradeDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -390,7 +413,7 @@ impl<'a> TradeService<'a> {
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<TradeResponse>().await?),
+            StatusCode::OK => Ok(http_resp.json::<GetTradeDetailsResponse>().await?),
             _ => {
                 let resp = http_resp.json::<CommonErrorResponse>().await?;
                 Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
@@ -407,7 +430,11 @@ impl<'a> TradeService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn close(&self, specifier: TradeSpecifier) -> Result<CloseTradeResponse, APIError> {
+    pub async fn close(
+        &self,
+        specifier: TradeSpecifier,
+        req: CloseTradeRequest,
+    ) -> Result<CloseTradeResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -420,7 +447,7 @@ impl<'a> TradeService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let http_resp = self.client.http_client.put(url).send().await?;
+        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<CloseTradeResponse>().await?),
             _ => {
@@ -435,6 +462,7 @@ impl<'a> TradeService<'a> {
 mod tests {
     use crate::client::setup_test_client;
     use crate::order::create_market_order;
+    use crate::trade::CloseTradeRequest;
 
     #[tokio::test]
     async fn test_list_trades() {
@@ -459,7 +487,18 @@ mod tests {
         println!("{:#?}", resp);
 
         // Close the trade
-        let resp = client.trade().close(id).await.unwrap();
+        let req = CloseTradeRequest::new();
+        let resp = client.trade().close(id, req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_close_trade() {
+        let client = setup_test_client();
+        let resp = client
+            .trade()
+            .close("751".to_string(), CloseTradeRequest::new())
+            .await;
         println!("{:#?}", resp);
     }
 }

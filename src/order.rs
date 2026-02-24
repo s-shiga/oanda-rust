@@ -2278,5 +2278,5 @@ pub(crate) async fn create_market_order(client: &Client) -> TransactionID {
         .await
         .unwrap();
     println!("{:#?}", resp);
-    resp.order_create_transaction.unwrap().get_id()
+    resp.order_fill_transaction.unwrap().id
 }

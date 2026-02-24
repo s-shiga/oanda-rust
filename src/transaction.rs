@@ -22,625 +22,110 @@ pub type TradeID = String;
 pub type OrderID = String;
 
 // ---------------------------------------------------------------------------
-// Client Extensions
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ClientExtensions {
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub id: Option<ClientID>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub tag: Option<ClientTag>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub comment: Option<ClientComment>,
-}
-
-impl ClientExtensions {
-    pub fn new() -> Self {
-        ClientExtensions {
-            id: None,
-            tag: None,
-            comment: None,
-        }
-    }
-
-    request_option_setter!(id, ClientID);
-    request_option_setter!(tag, ClientTag);
-    request_option_setter!(comment, ClientComment);
-}
-
-// ---------------------------------------------------------------------------
-// Helper Structs
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MarketOrderTradeClose {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    pub units: Option<DecimalNumber>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MarketOrderPositionCloseout {
-    pub instrument: InstrumentName,
-    pub units: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MarketOrderMarginCloseout {
-    pub reason: MarketOrderMarginCloseoutReason,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct MarketOrderDelayedTradeClose {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    #[serde(rename = "sourceTransactionID")]
-    pub source_transaction_id: TransactionID,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TakeProfitDetails {
-    pub price: PriceValue,
-    #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
-    #[serde(rename = "gtdTime")]
-    pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct StopLossDetails {
-    pub price: Option<PriceValue>,
-    pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
-    #[serde(rename = "gtdTime")]
-    pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TrailingStopLossDetails {
-    pub distance: DecimalNumber,
-    #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
-    #[serde(rename = "gtdTime")]
-    pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GuaranteedStopLossDetails {
-    pub price: Option<PriceValue>,
-    pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
-    pub time_in_force: Option<TimeInForce>,
-    #[serde(rename = "gtdTime")]
-    pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TradeOpen {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    pub units: DecimalNumber,
-    #[serde(rename = "price")]
-    pub price: Option<PriceValue>,
-    #[serde(rename = "guaranteedExecutionFee")]
-    pub guaranteed_execution_fee: Option<AccountUnits>,
-    #[serde(rename = "clientExtensions")]
-    pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "halfSpreadCost")]
-    pub half_spread_cost: Option<AccountUnits>,
-    #[serde(rename = "initialMarginRequired")]
-    pub initial_margin_required: Option<AccountUnits>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TradeReduce {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    pub units: DecimalNumber,
-    #[serde(rename = "price")]
-    pub price: Option<PriceValue>,
-    #[serde(rename = "realizedPL")]
-    pub realized_pl: AccountUnits,
-    pub financing: AccountUnits,
-    #[serde(rename = "guaranteedExecutionFee")]
-    pub guaranteed_execution_fee: Option<AccountUnits>,
-    #[serde(rename = "halfSpreadCost")]
-    pub half_spread_cost: Option<AccountUnits>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OpenTradeFinancing {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    pub financing: AccountUnits,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct PositionFinancing {
-    pub instrument: InstrumentName,
-    pub financing: AccountUnits,
-    #[serde(rename = "openTradeFinancings")]
-    pub open_trade_financings: Option<Vec<OpenTradeFinancing>>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct OpenTradeDividendAdjustment {
-    #[serde(rename = "tradeID")]
-    pub trade_id: TradeID,
-    #[serde(rename = "dividendAdjustment")]
-    pub dividend_adjustment: AccountUnits,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct TransactionHeartbeat {
-    pub time: DateTime<Utc>,
-    #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-}
-
-// ---------------------------------------------------------------------------
-// Enums
-// ---------------------------------------------------------------------------
-
-#[derive(Debug, Serialize, Deserialize, Display)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TransactionType {
-    Create,
-    Close,
-    Reopen,
-    ClientConfigure,
-    ClientConfigureReject,
-    TransferFunds,
-    TransferFundsReject,
-    MarketOrder,
-    MarketOrderReject,
-    FixedPriceOrder,
-    LimitOrder,
-    LimitOrderReject,
-    StopOrder,
-    StopOrderReject,
-    MarketIfTouchedOrder,
-    MarketIfTouchedOrderReject,
-    TakeProfitOrder,
-    TakeProfitOrderReject,
-    StopLossOrder,
-    StopLossOrderReject,
-    GuaranteedStopLossOrder,
-    GuaranteedStopLossOrderReject,
-    TrailingStopLossOrder,
-    TrailingStopLossOrderReject,
-    OrderFill,
-    OrderCancel,
-    OrderCancelReject,
-    OrderClientExtensionsModify,
-    OrderClientExtensionsModifyReject,
-    TradeClientExtensionsModify,
-    TradeClientExtensionsModifyReject,
-    MarginCallEnter,
-    MarginCallExtend,
-    MarginCallExit,
-    DelayedTradeClosure,
-    DailyFinancing,
-    DividendAdjustment,
-    ResetResettablePL,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum FundingReason {
-    ClientFunding,
-    AccountTransfer,
-    DivisionMigration,
-    SiteMigration,
-    Adjustment,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum MarketOrderReason {
-    ClientOrder,
-    TradeClose,
-    PositionCloseout,
-    MarginCloseout,
-    DelayedTradeClose,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum FixedPriceOrderReason {
-    PlatformAccountMigration,
-    TradeCloseDivisionAccountMigration,
-    TradeCloseAdministrativeAction,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum LimitOrderReason {
-    ClientOrder,
-    Replacement,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum StopOrderReason {
-    ClientOrder,
-    Replacement,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum MarketIfTouchedOrderReason {
-    ClientOrder,
-    Replacement,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TakeProfitOrderReason {
-    ClientOrder,
-    Replacement,
-    OnFill,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum StopLossOrderReason {
-    ClientOrder,
-    Replacement,
-    OnFill,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum GuaranteedStopLossOrderReason {
-    ClientOrder,
-    Replacement,
-    OnFill,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TrailingStopLossOrderReason {
-    ClientOrder,
-    Replacement,
-    OnFill,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderFillReason {
-    LimitOrder,
-    StopOrder,
-    MarketIfTouchedOrder,
-    TakeProfitOrder,
-    StopLossOrder,
-    GuaranteedStopLossOrder,
-    TrailingStopLossOrder,
-    MarketOrder,
-    MarketOrderTradeClose,
-    MarketOrderPositionCloseout,
-    MarketOrderMarginCloseout,
-    MarketOrderDelayedTradeClose,
-    FixedPriceOrder,
-    FixedPriceOrderPlatformAccountMigration,
-    FixedPriceOrderDivisionAccountMigration,
-    FixedPriceOrderAdministrativeAction,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum OrderCancelReason {
-    InternalServerError,
-    AccountLocked,
-    AccountNewPositionsLocked,
-    AccountOrderCreationLocked,
-    AccountOrderFillLocked,
-    ClientRequest,
-    Migration,
-    MarketHalted,
-    LinkedTradeClosed,
-    TimeInForceExpired,
-    InsufficientMargin,
-    FifoViolation,
-    BoundsViolation,
-    ClientRequestReplaced,
-    InsufficientLiquidity,
-    TakeProfitOnFillGtdTimestampInPast,
-    TakeProfitOnFillLoss,
-    LosingTakeProfit,
-    StopLossOnFillGtdTimestampInPast,
-    StopLossOnFillLoss,
-    StopLossOnFillPriceDistanceMaximumExceeded,
-    StopLossOnFillRequired,
-    StopLossOnFillGuaranteedRequired,
-    StopLossOnFillGuaranteedNotAllowed,
-    StopLossOnFillGuaranteedMinimumDistanceNotMet,
-    StopLossOnFillGuaranteedLevelRestrictionExceeded,
-    StopLossOnFillGuaranteedHedgingNotAllowed,
-    StopLossOnFillTimeInForceInvalid,
-    StopLossOnFillTriggerConditionInvalid,
-    TakeProfitOnFillPriceDistanceMaximumExceeded,
-    TrailingStopLossOnFillGtdTimestampInPast,
-    ClientTradeIdAlreadyExists,
-    PositionCloseoutFailed,
-    OpenTradesAllowedExceeded,
-    PendingOrdersAllowedExceeded,
-    TakeProfitOnFillClientOrderIdAlreadyExists,
-    StopLossOnFillClientOrderIdAlreadyExists,
-    TrailingStopLossOnFillClientOrderIdAlreadyExists,
-    PositionSizeExceeded,
-    HedgingGsloViolation,
-    AccountPositionValueLimitExceeded,
-    InstrumentBidReduceOnly,
-    InstrumentAskReduceOnly,
-    InstrumentBidHalted,
-    InstrumentAskHalted,
-    StopLossOnFillGuaranteedBidHalted,
-    StopLossOnFillGuaranteedAskHalted,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum MarketOrderMarginCloseoutReason {
-    MarginCheckViolation,
-    RegulatoryMarginCallViolation,
-    RegulatoryMarginCheckViolation,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum AccountFinancingMode {
-    NoFinancing,
-    SecondBySecond,
-    Daily,
-}
-
-#[derive(Debug, Serialize, Deserialize, Display)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TransactionFilter {
-    Order,
-    Funding,
-    Admin,
-    Create,
-    Close,
-    Reopen,
-    ClientConfigure,
-    ClientConfigureReject,
-    TransferFunds,
-    TransferFundsReject,
-    MarketOrder,
-    MarketOrderReject,
-    LimitOrder,
-    LimitOrderReject,
-    StopOrder,
-    StopOrderReject,
-    MarketIfTouchedOrder,
-    MarketIfTouchedOrderReject,
-    TakeProfitOrder,
-    TakeProfitOrderReject,
-    StopLossOrder,
-    StopLossOrderReject,
-    TrailingStopLossOrder,
-    TrailingStopLossOrderReject,
-    OneCancelsAllOrder,
-    OneCancelsAllOrderReject,
-    OneCancelsAllOrderTriggered,
-    OrderFill,
-    OrderCancel,
-    OrderCancelReject,
-    OrderClientExtensionsModify,
-    OrderClientExtensionsModifyReject,
-    TradeClientExtensionsModify,
-    TradeClientExtensionsModifyReject,
-    MarginCallEnter,
-    MarginCallExtend,
-    MarginCallExit,
-    DelayedTradeClosure,
-    DailyFinancing,
-    ResetResettablePL,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-pub enum TransactionRejectReason {
-    InternalServerError,
-    InstrumentPriceUnknown,
-    AccountNotActive,
-    AccountLocked,
-    AccountOrderCreationLocked,
-    AccountConfigurationLocked,
-    AccountDepositLocked,
-    AccountWithdrawalLocked,
-    AccountOrderCancelLocked,
-    InstrumentNotTradeable,
-    PendingOrdersAllowedExceeded,
-    OrderIdUnspecified,
-    OrderDoesntExist,
-    OrderIdentifierInconsistency,
-    TradeIdUnspecified,
-    TradeDoesntExist,
-    TradeIdentifierInconsistency,
-    InsufficientMargin,
-    InstrumentMissing,
-    InstrumentUnknown,
-    UnitsMissing,
-    UnitsInvalid,
-    UnitsPrecisionExceeded,
-    UnitsLimitExceeded,
-    UnitsMimimumNotMet,
-    PriceMissing,
-    PriceInvalid,
-    PricePrecisionExceeded,
-    PriceDistanceMissing,
-    PriceDistanceInvalid,
-    PriceDistancePrecisionExceeded,
-    PriceDistanceMaximumExceeded,
-    PriceDistanceMinimumNotMet,
-    TimeInForceMissing,
-    TimeInForceInvalid,
-    TimeInForceGtdTimestampMissing,
-    TimeInForceGtdTimestampInPast,
-    PriceBoundInvalid,
-    PriceBoundPrecisionExceeded,
-    OrdersOnFillDuplicateClientOrderIds,
-    TradeOnFillClientExtensionsNotSupported,
-    ClientOrderIdInvalid,
-    ClientOrderIdAlreadyExists,
-    ClientOrderTagInvalid,
-    ClientOrderCommentInvalid,
-    ClientTradeIdInvalid,
-    ClientTradeIdAlreadyExists,
-    ClientTradeTagInvalid,
-    ClientTradeCommentInvalid,
-    OrderFillPositionActionMissing,
-    OrderFillPositionActionInvalid,
-    TriggerConditionMissing,
-    TriggerConditionInvalid,
-    OrderPartialFillOptionMissing,
-    OrderPartialFillOptionInvalid,
-    InvalidReissueImmediatePartialFill,
-    TakeProfitOrderAlreadyExists,
-    TakeProfitOnFillPriceMissing,
-    TakeProfitOnFillPriceInvalid,
-    TakeProfitOnFillPricePrecisionExceeded,
-    TakeProfitOnFillTimeInForceMissing,
-    TakeProfitOnFillTimeInForceInvalid,
-    TakeProfitOnFillGtdTimestampMissing,
-    TakeProfitOnFillGtdTimestampInPast,
-    TakeProfitOnFillClientOrderIdInvalid,
-    TakeProfitOnFillClientOrderTagInvalid,
-    TakeProfitOnFillClientOrderCommentInvalid,
-    TakeProfitOnFillTriggerConditionMissing,
-    TakeProfitOnFillTriggerConditionInvalid,
-    StopLossOrderAlreadyExists,
-    StopLossOrderGuaranteedRequired,
-    StopLossOrderGuaranteedPriceWithinSpread,
-    StopLossOrderGuaranteedNotAllowed,
-    StopLossOrderGuaranteedHaltedCreateViolation,
-    StopLossOrderGuaranteedHaltedTightenViolation,
-    StopLossOrderGuaranteedHedgingNotAllowed,
-    StopLossOrderGuaranteedMinimumDistanceNotMet,
-    StopLossOrderNotCancelable,
-    StopLossOrderNotReplaceable,
-    StopLossOrderGuaranteedLevelRestrictionExceeded,
-    StopLossOrderPriceAndDistanceBothSpecified,
-    StopLossOrderPriceAndDistanceBothMissing,
-    StopLossOnFillRequiredForPendingOrder,
-    StopLossOnFillGuaranteedNotAllowed,
-    StopLossOnFillGuaranteedRequired,
-    StopLossOnFillPriceMissing,
-    StopLossOnFillPriceInvalid,
-    StopLossOnFillPricePrecisionExceeded,
-    StopLossOnFillGuaranteedMinimumDistanceNotMet,
-    StopLossOnFillGuaranteedLevelRestrictionExceeded,
-    StopLossOnFillDistanceInvalid,
-    StopLossOnFillPriceDistanceMaximumExceeded,
-    StopLossOnFillDistancePrecisionExceeded,
-    StopLossOnFillPriceAndDistanceBothSpecified,
-    StopLossOnFillPriceAndDistanceBothMissing,
-    StopLossOnFillTimeInForceMissing,
-    StopLossOnFillTimeInForceInvalid,
-    StopLossOnFillGtdTimestampMissing,
-    StopLossOnFillGtdTimestampInPast,
-    StopLossOnFillClientOrderIdInvalid,
-    StopLossOnFillClientOrderTagInvalid,
-    StopLossOnFillClientOrderCommentInvalid,
-    StopLossOnFillTriggerConditionMissing,
-    StopLossOnFillTriggerConditionInvalid,
-    TrailingStopLossOrderAlreadyExists,
-    TrailingStopLossOnFillPriceDistanceMissing,
-    TrailingStopLossOnFillPriceDistanceInvalid,
-    TrailingStopLossOnFillPriceDistancePrecisionExceeded,
-    TrailingStopLossOnFillPriceDistanceMaximumExceeded,
-    TrailingStopLossOnFillPriceDistanceMinimumNotMet,
-    TrailingStopLossOnFillTimeInForceMissing,
-    TrailingStopLossOnFillTimeInForceInvalid,
-    TrailingStopLossOnFillGtdTimestampMissing,
-    TrailingStopLossOnFillGtdTimestampInPast,
-    TrailingStopLossOnFillClientOrderIdInvalid,
-    TrailingStopLossOnFillClientOrderTagInvalid,
-    TrailingStopLossOnFillClientOrderCommentInvalid,
-    TrailingStopLossOrdersNotSupported,
-    TrailingStopLossOnFillTriggerConditionMissing,
-    TrailingStopLossOnFillTriggerConditionInvalid,
-    CloseTradeTypeMissing,
-    CloseTradePartialUnitsMissing,
-    CloseTradeUnitsExceedTradeSize,
-    CloseoutPositionDoesntExist,
-    CloseoutPositionIncompleteSpecification,
-    CloseoutPositionUnitsExceedPositionSize,
-    CloseoutPositionReject,
-    CloseoutPositionPartialUnitsMissing,
-    MarkupGroupIdInvalid,
-    PositionAggregationModeInvalid,
-    AdminConfigureDataMissing,
-    MarginRateInvalid,
-    MarginRateWouldTriggerCloseout,
-    AliasInvalid,
-    ClientConfigureDataMissing,
-    MarginRateWouldTriggerMarginCall,
-    AmountInvalid,
-    InsufficientFunds,
-    AmountMissing,
-    FundingReasonMissing,
-    ClientExtensionsDataMissing,
-    ReplacingOrderInvalid,
-    ReplacingTradeIdInvalid,
-}
-
-// ---------------------------------------------------------------------------
 // Transaction enum (tagged union)
 // ---------------------------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum Transaction {
+    #[serde(rename = "ORDER_FILL")]
     OrderFillTransaction(OrderFillTransaction),
+    #[serde(rename = "ORDER_CANCEL")]
     OrderCancelTransaction(OrderCancelTransaction),
+    #[serde(rename = "ORDER_CANCEL_REJECT")]
     OrderCancelRejectTransaction(OrderCancelRejectTransaction),
+    #[serde(rename = "ORDER_CLIENT_EXTENSIONS_MODIFY")]
     OrderClientExtensionsModifyTransaction(OrderClientExtensionsModifyTransaction),
+    #[serde(rename = "ORDER_CLIENT_EXTENSIONS_MODIFY_REJECT")]
     OrderClientExtensionsModifyRejectTransaction(OrderClientExtensionsModifyRejectTransaction),
+    #[serde(rename = "CREATE")]
     CreateTransaction(CreateTransaction),
+    #[serde(rename = "CLOSE")]
     CloseTransaction(CloseTransaction),
+    #[serde(rename = "REOPEN")]
     ReopenTransaction(ReopenTransaction),
+    #[serde(rename = "CLIENT_CONFIGURE")]
     ClientConfigureTransaction(ClientConfigureTransaction),
+    #[serde(rename = "CLIENT_CONFIGURE_REJECT")]
     ClientConfigureRejectTransaction(ClientConfigureRejectTransaction),
+    #[serde(rename = "TRANSFER_FUNDS")]
     TransferFundsTransaction(TransferFundsTransaction),
+    #[serde(rename = "TRANSFER_FUNDS_REJECT")]
     TransferFundsRejectTransaction(TransferFundsRejectTransaction),
-    OrderCreateTransaction(OrderCreateTransaction),
-    OrderCreateRejectTransaction(OrderCreateRejectTransaction),
+    #[serde(rename = "MARKET_ORDER")]
+    MarketOrderTransaction(MarketOrderTransaction),
+    #[serde(rename = "MARKET_ORDER_REJECT")]
+    MarketOrderRejectTransaction(MarketOrderRejectTransaction),
+    #[serde(rename = "FIXED_PRICE_ORDER")]
+    FixedPriceOrderTransaction(FixedPriceOrderTransaction),
+    #[serde(rename = "LIMIT_ORDER")]
+    LimitOrderTransaction(LimitOrderTransaction),
+    #[serde(rename = "LIMIT_ORDER_REJECT")]
+    LimitOrderRejectTransaction(LimitOrderRejectTransaction),
+    #[serde(rename = "STOP_ORDER")]
+    StopOrderTransaction(StopOrderTransaction),
+    #[serde(rename = "STOP_ORDER_REJECT")]
+    StopOrderRejectTransaction(StopOrderRejectTransaction),
+    #[serde(rename = "MARKET_IF_TOUCHED_ORDER")]
+    MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
+    #[serde(rename = "MARKET_IF_TOUCHED_ORDER_REJECT")]
+    MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
+    #[serde(rename = "TAKE_PROFIT_ORDER")]
+    TakeProfitOrderTransaction(TakeProfitOrderTransaction),
+    #[serde(rename = "TAKE_PROFIT_ORDER_REJECT")]
+    TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
+    #[serde(rename = "STOP_LOSS_ORDER")]
+    StopLossOrderTransaction(StopLossOrderTransaction),
+    #[serde(rename = "STOP_LOSS_ORDER_REJECT")]
+    StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
+    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER")]
+    GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
+    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER_REJECT")]
+    GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
+    #[serde(rename = "TRAILING_STOP_LOSS_ORDER")]
+    TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
+    #[serde(rename = "TRAILING_STOP_LOSS_ORDER_REJECT")]
+    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderRejectTransaction),
+    #[serde(rename = "TRADE_CLIENT_EXTENSIONS_MODIFY")]
     TradeClientExtensionsModifyTransaction(TradeClientExtensionsModifyTransaction),
+    #[serde(rename = "TRADE_CLIENT_EXTENSIONS_MODIFY_REJECT")]
     TradeClientExtensionsModifyRejectTransaction(TradeClientExtensionsModifyRejectTransaction),
+    #[serde(rename = "MARGIN_CALL_ENTER")]
     MarginCallEnterTransaction(MarginCallEnterTransaction),
+    #[serde(rename = "MARGIN_CALL_EXTEND")]
     MarginCallExtendTransaction(MarginCallExtendTransaction),
+    #[serde(rename = "MARGIN_CALL_EXIT")]
     MarginCallExitTransaction(MarginCallExitTransaction),
+    #[serde(rename = "DELAYED_TRADE_CLOSURE")]
     DelayedTradeClosureTransaction(DelayedTradeClosureTransaction),
+    #[serde(rename = "DAILY_FINANCING")]
     DailyFinancingTransaction(DailyFinancingTransaction),
+    #[serde(rename = "DIVIDEND_ADJUSTMENT")]
     DividendAdjustmentTransaction(DividendAdjustmentTransaction),
+    #[serde(rename = "RESET_RESETTABLE_PL")]
     ResetResettablePLTransaction(ResetResettablePLTransaction),
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum OrderCreateTransaction {
+    #[serde(rename = "MARKET_ORDER")]
     MarketOrderTransaction(MarketOrderTransaction),
+    #[serde(rename = "FIXED_PRICE_ORDER")]
     FixedPriceOrderTransaction(FixedPriceOrderTransaction),
+    #[serde(rename = "LIMIT_ORDER")]
     LimitOrderTransaction(LimitOrderTransaction),
+    #[serde(rename = "STOP_ORDER")]
     StopOrderTransaction(StopOrderTransaction),
+    #[serde(rename = "MARKET_IF_TOUCHED_ORDER")]
     MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
+    #[serde(rename = "TAKE_PROFIT_ORDER")]
     TakeProfitOrderTransaction(TakeProfitOrderTransaction),
+    #[serde(rename = "STOP_LOSS_ORDER")]
     StopLossOrderTransaction(StopLossOrderTransaction),
+    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER")]
     GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
+    #[serde(rename = "TRAILING_STOP_LOSS_ORDER")]
     TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
 }
 
@@ -671,15 +156,23 @@ impl OrderCreateTransaction {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-#[serde(untagged)]
+#[serde(tag = "type")]
 pub enum OrderCreateRejectTransaction {
+    #[serde(rename = "MARKET_ORDER_REJECT")]
     MarketOrderRejectTransaction(MarketOrderRejectTransaction),
+    #[serde(rename = "LIMIT_ORDER_REJECT")]
     LimitOrderRejectTransaction(LimitOrderRejectTransaction),
+    #[serde(rename = "STOP_ORDER_REJECT")]
     StopOrderRejectTransaction(StopOrderRejectTransaction),
+    #[serde(rename = "MARKET_IF_TOUCHED_ORDER_REJECT")]
     MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
+    #[serde(rename = "TAKE_PROFIT_ORDER_REJECT")]
     TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
+    #[serde(rename = "STOP_LOSS_ORDER_REJECT")]
     StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
+    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER_REJECT")]
     GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
+    #[serde(rename = "TRAILING_STOP_LOSS_ORDER_REJECT")]
     TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderRejectTransaction),
 }
 
@@ -1568,32 +1061,34 @@ pub struct OrderFillTransaction {
     #[serde(rename = "batchID")]
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
-    pub request_id: Option<RequestID>,
+    pub request_id: RequestID,
     #[serde(rename = "type")]
-    pub transaction_type: Option<TransactionType>,
+    pub transaction_type: TransactionType,
     #[serde(rename = "orderID")]
-    pub order_id: Option<OrderID>,
+    pub order_id: OrderID,
     #[serde(rename = "clientOrderID")]
     pub client_order_id: Option<ClientID>,
-    pub instrument: Option<InstrumentName>,
-    pub units: Option<DecimalNumber>,
-    #[serde(rename = "gainQuoteHomeConversionFactor")]
-    pub gain_quote_home_conversion_factor: Option<DecimalNumber>,
-    #[serde(rename = "lossQuoteHomeConversionFactor")]
-    pub loss_quote_home_conversion_factor: Option<DecimalNumber>,
+    pub instrument: InstrumentName,
+    pub units: DecimalNumber,
     #[serde(rename = "homeConversionFactors")]
     pub home_conversion_factors: Option<HomeConversionFactors>,
-    pub price: Option<PriceValue>,
+    pub price: PriceValue,
     #[serde(rename = "fullVWAP")]
-    pub full_vwap: Option<PriceValue>,
+    pub full_vwap: PriceValue,
     #[serde(rename = "fullPrice")]
-    pub full_price: Option<ClientPrice>,
-    pub reason: Option<OrderFillReason>,
-    pub pl: Option<AccountUnits>,
-    pub financing: Option<AccountUnits>,
-    pub commission: Option<AccountUnits>,
+    pub full_price: ClientPrice,
+    pub reason: OrderFillReason,
+    pub pl: AccountUnits,
+    pub financing: AccountUnits,
+    #[serde(rename = "baseFinancing")]
+    pub base_financing: Option<AccountUnits>,
+    #[serde(rename = "quoteFinancing")]
+    pub quote_financing: Option<AccountUnits>,
+    pub commission: AccountUnits,
     #[serde(rename = "guaranteedExecutionFee")]
-    pub guaranteed_execution_fee: Option<AccountUnits>,
+    pub guaranteed_execution_fee: AccountUnits,
+    #[serde(rename = "quoteGuaranteedExecutionFee")]
+    pub quote_guaranteed_execution_fee: AccountUnits,
     #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: Option<AccountUnits>,
     #[serde(rename = "accountBalance")]
@@ -1880,6 +1375,583 @@ pub struct ResetResettablePLTransaction {
     pub request_id: Option<RequestID>,
     #[serde(rename = "type")]
     pub transaction_type: Option<TransactionType>,
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize, Display)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionType {
+    Create,
+    Close,
+    Reopen,
+    ClientConfigure,
+    ClientConfigureReject,
+    TransferFunds,
+    TransferFundsReject,
+    MarketOrder,
+    MarketOrderReject,
+    FixedPriceOrder,
+    LimitOrder,
+    LimitOrderReject,
+    StopOrder,
+    StopOrderReject,
+    MarketIfTouchedOrder,
+    MarketIfTouchedOrderReject,
+    TakeProfitOrder,
+    TakeProfitOrderReject,
+    StopLossOrder,
+    StopLossOrderReject,
+    GuaranteedStopLossOrder,
+    GuaranteedStopLossOrderReject,
+    TrailingStopLossOrder,
+    TrailingStopLossOrderReject,
+    OrderFill,
+    OrderCancel,
+    OrderCancelReject,
+    OrderClientExtensionsModify,
+    OrderClientExtensionsModifyReject,
+    TradeClientExtensionsModify,
+    TradeClientExtensionsModifyReject,
+    MarginCallEnter,
+    MarginCallExtend,
+    MarginCallExit,
+    DelayedTradeClosure,
+    DailyFinancing,
+    DividendAdjustment,
+    ResetResettablePL,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FundingReason {
+    ClientFunding,
+    AccountTransfer,
+    DivisionMigration,
+    SiteMigration,
+    Adjustment,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MarketOrderReason {
+    ClientOrder,
+    TradeClose,
+    PositionCloseout,
+    MarginCloseout,
+    DelayedTradeClose,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum FixedPriceOrderReason {
+    PlatformAccountMigration,
+    TradeCloseDivisionAccountMigration,
+    TradeCloseAdministrativeAction,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum LimitOrderReason {
+    ClientOrder,
+    Replacement,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StopOrderReason {
+    ClientOrder,
+    Replacement,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MarketIfTouchedOrderReason {
+    ClientOrder,
+    Replacement,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TakeProfitOrderReason {
+    ClientOrder,
+    Replacement,
+    OnFill,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum StopLossOrderReason {
+    ClientOrder,
+    Replacement,
+    OnFill,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum GuaranteedStopLossOrderReason {
+    ClientOrder,
+    Replacement,
+    OnFill,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TrailingStopLossOrderReason {
+    ClientOrder,
+    Replacement,
+    OnFill,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderFillReason {
+    LimitOrder,
+    StopOrder,
+    MarketIfTouchedOrder,
+    TakeProfitOrder,
+    StopLossOrder,
+    GuaranteedStopLossOrder,
+    TrailingStopLossOrder,
+    MarketOrder,
+    MarketOrderTradeClose,
+    MarketOrderPositionCloseout,
+    MarketOrderMarginCloseout,
+    MarketOrderDelayedTradeClose,
+    FixedPriceOrder,
+    FixedPriceOrderPlatformAccountMigration,
+    FixedPriceOrderDivisionAccountMigration,
+    FixedPriceOrderAdministrativeAction,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum OrderCancelReason {
+    InternalServerError,
+    AccountLocked,
+    AccountNewPositionsLocked,
+    AccountOrderCreationLocked,
+    AccountOrderFillLocked,
+    ClientRequest,
+    Migration,
+    MarketHalted,
+    LinkedTradeClosed,
+    TimeInForceExpired,
+    InsufficientMargin,
+    FifoViolation,
+    BoundsViolation,
+    ClientRequestReplaced,
+    InsufficientLiquidity,
+    TakeProfitOnFillGtdTimestampInPast,
+    TakeProfitOnFillLoss,
+    LosingTakeProfit,
+    StopLossOnFillGtdTimestampInPast,
+    StopLossOnFillLoss,
+    StopLossOnFillPriceDistanceMaximumExceeded,
+    StopLossOnFillRequired,
+    StopLossOnFillGuaranteedRequired,
+    StopLossOnFillGuaranteedNotAllowed,
+    StopLossOnFillGuaranteedMinimumDistanceNotMet,
+    StopLossOnFillGuaranteedLevelRestrictionExceeded,
+    StopLossOnFillGuaranteedHedgingNotAllowed,
+    StopLossOnFillTimeInForceInvalid,
+    StopLossOnFillTriggerConditionInvalid,
+    TakeProfitOnFillPriceDistanceMaximumExceeded,
+    TrailingStopLossOnFillGtdTimestampInPast,
+    ClientTradeIdAlreadyExists,
+    PositionCloseoutFailed,
+    OpenTradesAllowedExceeded,
+    PendingOrdersAllowedExceeded,
+    TakeProfitOnFillClientOrderIdAlreadyExists,
+    StopLossOnFillClientOrderIdAlreadyExists,
+    TrailingStopLossOnFillClientOrderIdAlreadyExists,
+    PositionSizeExceeded,
+    HedgingGsloViolation,
+    AccountPositionValueLimitExceeded,
+    InstrumentBidReduceOnly,
+    InstrumentAskReduceOnly,
+    InstrumentBidHalted,
+    InstrumentAskHalted,
+    StopLossOnFillGuaranteedBidHalted,
+    StopLossOnFillGuaranteedAskHalted,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum MarketOrderMarginCloseoutReason {
+    MarginCheckViolation,
+    RegulatoryMarginCallViolation,
+    RegulatoryMarginCheckViolation,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum AccountFinancingMode {
+    NoFinancing,
+    SecondBySecond,
+    Daily,
+}
+
+#[derive(Debug, Serialize, Deserialize, Display)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionFilter {
+    Order,
+    Funding,
+    Admin,
+    Create,
+    Close,
+    Reopen,
+    ClientConfigure,
+    ClientConfigureReject,
+    TransferFunds,
+    TransferFundsReject,
+    MarketOrder,
+    MarketOrderReject,
+    LimitOrder,
+    LimitOrderReject,
+    StopOrder,
+    StopOrderReject,
+    MarketIfTouchedOrder,
+    MarketIfTouchedOrderReject,
+    TakeProfitOrder,
+    TakeProfitOrderReject,
+    StopLossOrder,
+    StopLossOrderReject,
+    TrailingStopLossOrder,
+    TrailingStopLossOrderReject,
+    OneCancelsAllOrder,
+    OneCancelsAllOrderReject,
+    OneCancelsAllOrderTriggered,
+    OrderFill,
+    OrderCancel,
+    OrderCancelReject,
+    OrderClientExtensionsModify,
+    OrderClientExtensionsModifyReject,
+    TradeClientExtensionsModify,
+    TradeClientExtensionsModifyReject,
+    MarginCallEnter,
+    MarginCallExtend,
+    MarginCallExit,
+    DelayedTradeClosure,
+    DailyFinancing,
+    ResetResettablePL,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+pub enum TransactionRejectReason {
+    InternalServerError,
+    InstrumentPriceUnknown,
+    AccountNotActive,
+    AccountLocked,
+    AccountOrderCreationLocked,
+    AccountConfigurationLocked,
+    AccountDepositLocked,
+    AccountWithdrawalLocked,
+    AccountOrderCancelLocked,
+    InstrumentNotTradeable,
+    PendingOrdersAllowedExceeded,
+    OrderIdUnspecified,
+    OrderDoesntExist,
+    OrderIdentifierInconsistency,
+    TradeIdUnspecified,
+    TradeDoesntExist,
+    TradeIdentifierInconsistency,
+    InsufficientMargin,
+    InstrumentMissing,
+    InstrumentUnknown,
+    UnitsMissing,
+    UnitsInvalid,
+    UnitsPrecisionExceeded,
+    UnitsLimitExceeded,
+    UnitsMimimumNotMet,
+    PriceMissing,
+    PriceInvalid,
+    PricePrecisionExceeded,
+    PriceDistanceMissing,
+    PriceDistanceInvalid,
+    PriceDistancePrecisionExceeded,
+    PriceDistanceMaximumExceeded,
+    PriceDistanceMinimumNotMet,
+    TimeInForceMissing,
+    TimeInForceInvalid,
+    TimeInForceGtdTimestampMissing,
+    TimeInForceGtdTimestampInPast,
+    PriceBoundInvalid,
+    PriceBoundPrecisionExceeded,
+    OrdersOnFillDuplicateClientOrderIds,
+    TradeOnFillClientExtensionsNotSupported,
+    ClientOrderIdInvalid,
+    ClientOrderIdAlreadyExists,
+    ClientOrderTagInvalid,
+    ClientOrderCommentInvalid,
+    ClientTradeIdInvalid,
+    ClientTradeIdAlreadyExists,
+    ClientTradeTagInvalid,
+    ClientTradeCommentInvalid,
+    OrderFillPositionActionMissing,
+    OrderFillPositionActionInvalid,
+    TriggerConditionMissing,
+    TriggerConditionInvalid,
+    OrderPartialFillOptionMissing,
+    OrderPartialFillOptionInvalid,
+    InvalidReissueImmediatePartialFill,
+    TakeProfitOrderAlreadyExists,
+    TakeProfitOnFillPriceMissing,
+    TakeProfitOnFillPriceInvalid,
+    TakeProfitOnFillPricePrecisionExceeded,
+    TakeProfitOnFillTimeInForceMissing,
+    TakeProfitOnFillTimeInForceInvalid,
+    TakeProfitOnFillGtdTimestampMissing,
+    TakeProfitOnFillGtdTimestampInPast,
+    TakeProfitOnFillClientOrderIdInvalid,
+    TakeProfitOnFillClientOrderTagInvalid,
+    TakeProfitOnFillClientOrderCommentInvalid,
+    TakeProfitOnFillTriggerConditionMissing,
+    TakeProfitOnFillTriggerConditionInvalid,
+    StopLossOrderAlreadyExists,
+    StopLossOrderGuaranteedRequired,
+    StopLossOrderGuaranteedPriceWithinSpread,
+    StopLossOrderGuaranteedNotAllowed,
+    StopLossOrderGuaranteedHaltedCreateViolation,
+    StopLossOrderGuaranteedHaltedTightenViolation,
+    StopLossOrderGuaranteedHedgingNotAllowed,
+    StopLossOrderGuaranteedMinimumDistanceNotMet,
+    StopLossOrderNotCancelable,
+    StopLossOrderNotReplaceable,
+    StopLossOrderGuaranteedLevelRestrictionExceeded,
+    StopLossOrderPriceAndDistanceBothSpecified,
+    StopLossOrderPriceAndDistanceBothMissing,
+    StopLossOnFillRequiredForPendingOrder,
+    StopLossOnFillGuaranteedNotAllowed,
+    StopLossOnFillGuaranteedRequired,
+    StopLossOnFillPriceMissing,
+    StopLossOnFillPriceInvalid,
+    StopLossOnFillPricePrecisionExceeded,
+    StopLossOnFillGuaranteedMinimumDistanceNotMet,
+    StopLossOnFillGuaranteedLevelRestrictionExceeded,
+    StopLossOnFillDistanceInvalid,
+    StopLossOnFillPriceDistanceMaximumExceeded,
+    StopLossOnFillDistancePrecisionExceeded,
+    StopLossOnFillPriceAndDistanceBothSpecified,
+    StopLossOnFillPriceAndDistanceBothMissing,
+    StopLossOnFillTimeInForceMissing,
+    StopLossOnFillTimeInForceInvalid,
+    StopLossOnFillGtdTimestampMissing,
+    StopLossOnFillGtdTimestampInPast,
+    StopLossOnFillClientOrderIdInvalid,
+    StopLossOnFillClientOrderTagInvalid,
+    StopLossOnFillClientOrderCommentInvalid,
+    StopLossOnFillTriggerConditionMissing,
+    StopLossOnFillTriggerConditionInvalid,
+    TrailingStopLossOrderAlreadyExists,
+    TrailingStopLossOnFillPriceDistanceMissing,
+    TrailingStopLossOnFillPriceDistanceInvalid,
+    TrailingStopLossOnFillPriceDistancePrecisionExceeded,
+    TrailingStopLossOnFillPriceDistanceMaximumExceeded,
+    TrailingStopLossOnFillPriceDistanceMinimumNotMet,
+    TrailingStopLossOnFillTimeInForceMissing,
+    TrailingStopLossOnFillTimeInForceInvalid,
+    TrailingStopLossOnFillGtdTimestampMissing,
+    TrailingStopLossOnFillGtdTimestampInPast,
+    TrailingStopLossOnFillClientOrderIdInvalid,
+    TrailingStopLossOnFillClientOrderTagInvalid,
+    TrailingStopLossOnFillClientOrderCommentInvalid,
+    TrailingStopLossOrdersNotSupported,
+    TrailingStopLossOnFillTriggerConditionMissing,
+    TrailingStopLossOnFillTriggerConditionInvalid,
+    CloseTradeTypeMissing,
+    CloseTradePartialUnitsMissing,
+    CloseTradeUnitsExceedTradeSize,
+    CloseoutPositionDoesntExist,
+    CloseoutPositionIncompleteSpecification,
+    CloseoutPositionUnitsExceedPositionSize,
+    CloseoutPositionReject,
+    CloseoutPositionPartialUnitsMissing,
+    MarkupGroupIdInvalid,
+    PositionAggregationModeInvalid,
+    AdminConfigureDataMissing,
+    MarginRateInvalid,
+    MarginRateWouldTriggerCloseout,
+    AliasInvalid,
+    ClientConfigureDataMissing,
+    MarginRateWouldTriggerMarginCall,
+    AmountInvalid,
+    InsufficientFunds,
+    AmountMissing,
+    FundingReasonMissing,
+    ClientExtensionsDataMissing,
+    ReplacingOrderInvalid,
+    ReplacingTradeIdInvalid,
+}
+
+// ---------------------------------------------------------------------------
+// Helper Structs
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketOrderTradeClose {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    pub units: Option<DecimalNumber>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketOrderPositionCloseout {
+    pub instrument: InstrumentName,
+    pub units: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketOrderMarginCloseout {
+    pub reason: MarketOrderMarginCloseoutReason,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MarketOrderDelayedTradeClose {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "sourceTransactionID")]
+    pub source_transaction_id: TransactionID,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TakeProfitDetails {
+    pub price: PriceValue,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct StopLossDetails {
+    pub price: Option<PriceValue>,
+    pub distance: Option<DecimalNumber>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TrailingStopLossDetails {
+    pub distance: DecimalNumber,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GuaranteedStopLossDetails {
+    pub price: Option<PriceValue>,
+    pub distance: Option<DecimalNumber>,
+    #[serde(rename = "timeInForce")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(rename = "gtdTime")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TradeOpen {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    pub units: DecimalNumber,
+    #[serde(rename = "price")]
+    pub price: Option<PriceValue>,
+    #[serde(rename = "guaranteedExecutionFee")]
+    pub guaranteed_execution_fee: Option<AccountUnits>,
+    #[serde(rename = "clientExtensions")]
+    pub client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "halfSpreadCost")]
+    pub half_spread_cost: Option<AccountUnits>,
+    #[serde(rename = "initialMarginRequired")]
+    pub initial_margin_required: Option<AccountUnits>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TradeReduce {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    pub units: DecimalNumber,
+    #[serde(rename = "price")]
+    pub price: Option<PriceValue>,
+    #[serde(rename = "realizedPL")]
+    pub realized_pl: AccountUnits,
+    pub financing: AccountUnits,
+    #[serde(rename = "guaranteedExecutionFee")]
+    pub guaranteed_execution_fee: Option<AccountUnits>,
+    #[serde(rename = "halfSpreadCost")]
+    pub half_spread_cost: Option<AccountUnits>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OpenTradeFinancing {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    pub financing: AccountUnits,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PositionFinancing {
+    pub instrument: InstrumentName,
+    pub financing: AccountUnits,
+    #[serde(rename = "openTradeFinancings")]
+    pub open_trade_financings: Option<Vec<OpenTradeFinancing>>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct OpenTradeDividendAdjustment {
+    #[serde(rename = "tradeID")]
+    pub trade_id: TradeID,
+    #[serde(rename = "dividendAdjustment")]
+    pub dividend_adjustment: AccountUnits,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct TransactionHeartbeat {
+    pub time: DateTime<Utc>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+// ---------------------------------------------------------------------------
+// Client Extensions
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClientExtensions {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<ClientID>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tag: Option<ClientTag>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub comment: Option<ClientComment>,
+}
+
+impl ClientExtensions {
+    pub fn new() -> Self {
+        ClientExtensions {
+            id: None,
+            tag: None,
+            comment: None,
+        }
+    }
+
+    request_option_setter!(id, ClientID);
+    request_option_setter!(tag, ClientTag);
+    request_option_setter!(comment, ClientComment);
 }
 
 // ---------------------------------------------------------------------------
