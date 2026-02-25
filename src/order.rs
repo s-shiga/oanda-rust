@@ -29,7 +29,7 @@ pub type OrderID = String;
 
 /// A polymorphic representation of any order type returned by the OANDA API.
 ///
-/// Deserialised from JSON using the `"type"` field as a tag, so each variant
+/// Deserialize from JSON using the `"type"` field as a tag, so each variant
 /// maps to its corresponding order struct.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
@@ -84,7 +84,7 @@ pub struct MarketOrder {
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
