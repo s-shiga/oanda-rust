@@ -2091,13 +2091,27 @@ impl<'a> OrderService<'a> {
         match http_resp.status() {
             StatusCode::CREATED => Ok(http_resp.json::<ReplaceOrderResponse>().await?),
             StatusCode::BAD_REQUEST => {
-                Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
-                    http_resp.json::<OrderCreateRejectResponse>().await?,
-                )))
+                let text = http_resp.text().await?;
+                match serde_json::from_str::<OrderCreateRejectResponse>(&text) {
+                    Ok(err) => Err(APIError::ErrorResponse(ErrorResponse::OrderCreateError(
+                        err,
+                    ))),
+                    Err(_) => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                        serde_json::from_str::<CommonErrorResponse>(&text)?,
+                    ))),
+                }
             }
-            StatusCode::NOT_FOUND => Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
-                http_resp.json::<OrderCancelRejectResponse>().await?,
-            ))),
+            StatusCode::NOT_FOUND => {
+                let text = http_resp.text().await?;
+                match serde_json::from_str::<OrderCancelRejectResponse>(&text) {
+                    Ok(err) => Err(APIError::ErrorResponse(ErrorResponse::OrderCancelError(
+                        err,
+                    ))),
+                    Err(_) => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+                        serde_json::from_str::<CommonErrorResponse>(&text)?,
+                    ))),
+                }
+            }
             _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
                 http_resp.json::<CommonErrorResponse>().await?,
             ))),
@@ -2182,7 +2196,10 @@ impl<'a> OrderService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest};
+    use crate::order::{
+        LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest,
+    };
+    use crate::transaction::ClientExtensions;
 
     #[tokio::test]
     async fn test_limit_order() {
@@ -2201,6 +2218,17 @@ mod tests {
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
+        // Update client extensions
+        let client_order_id = "test_limit_order";
+        let req = UpdateOrderClientExtensionsRequest::new()
+            .client_extensions(ClientExtensions::new().id(client_order_id.to_string()));
+        let resp = client
+            .order()
+            .update_client_extensions(order_id, req)
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+
         // List orders
         let req = ListOrdersRequest::new().instrument("USD_JPY".to_string());
         let resp = client.order().list(req).await.unwrap();
@@ -2214,22 +2242,78 @@ mod tests {
         );
         let resp = client
             .order()
-            .replace(order_id, OrderRequest::Limit(req))
+            .replace(format!("@{}", client_order_id), OrderRequest::Limit(req))
             .await
             .unwrap();
         println!("{:#?}", resp);
-        let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
         // List pending orders
         let resp = client.order().list_pending().await.unwrap();
         println!("{:#?}", resp);
 
         // Get order details
-        let resp = client.order().get_details(order_id.clone()).await.unwrap();
+        let resp = client
+            .order()
+            .get_details(format!("@{}", client_order_id))
+            .await
+            .unwrap();
         println!("{:#?}", resp);
 
         // Cancel the order
-        let resp = client.order().cancel(order_id).await.unwrap();
+        let resp = client
+            .order()
+            .cancel(format!("@{}", client_order_id))
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    #[ignore = "manual order test"]
+    async fn test_list_orders() {
+        let client = setup_test_client();
+        let req = ListOrdersRequest::new();
+        let resp = client.order().list(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    #[ignore = "manual order test"]
+    async fn test_get_order_details() {
+        let client = setup_test_client();
+        let resp = client
+            .order()
+            .get_details(format!("@{}", "test_limit_order"))
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    #[ignore = "manual order test"]
+    async fn test_order_replace() {
+        let client = setup_test_client();
+        let req = LimitOrderRequest::new(
+            "USD_JPY".to_string(),
+            "10000".to_string(),
+            "110.00".to_string(),
+        );
+        let resp = client
+            .order()
+            .replace("test_limit_order".to_string(), OrderRequest::Limit(req))
+            .await;
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    #[ignore = "manual order test"]
+    async fn test_cancel_order() {
+        let client = setup_test_client();
+        let resp = client
+            .order()
+            .cancel(format!("@{}", "test_limit_order"))
+            .await
+            .unwrap();
         println!("{:#?}", resp);
     }
 }
