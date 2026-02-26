@@ -1,5 +1,4 @@
 use crate::client::Client;
-use crate::errors::ErrorResponse::UpdateTradeClientExtensionsError;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::order::{
@@ -7,11 +6,11 @@ use crate::order::{
 };
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
-use crate::request_option_setter;
 use crate::transaction::{
     AccountUnits, ClientExtensions, TradeClientExtensionsModifyRejectTransaction,
     TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
 };
+use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -379,12 +378,11 @@ impl<'a> TradeService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ListTradesResponse,
+            errors: [ ]
+        )
     }
 
     /// Lists all currently open trades on the account.
@@ -408,12 +406,11 @@ impl<'a> TradeService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<ListTradesResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ListTradesResponse,
+            errors: [ ]
+        )
     }
 
     /// Returns the details of the trade identified by `specifier`.
@@ -441,12 +438,11 @@ impl<'a> TradeService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<GetTradeDetailsResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetTradeDetailsResponse,
+            errors: [ ]
+        )
     }
 
     /// Fully closes the trade identified by `specifier`.
@@ -476,12 +472,11 @@ impl<'a> TradeService<'a> {
             )
             .unwrap();
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<CloseTradeResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => CloseTradeResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn update_client_extensions(
@@ -503,21 +498,14 @@ impl<'a> TradeService<'a> {
             .unwrap();
         let req = UpdateClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp
-                .json::<UpdateTradeClientExtensionsResponse>()
-                .await?),
-            StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                Err(APIError::ErrorResponse(UpdateTradeClientExtensionsError(
-                    http_resp
-                        .json::<UpdateTradeClientExtensionsErrorResponse>()
-                        .await?,
-                )))
-            }
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => UpdateTradeClientExtensionsResponse,
+            errors: [
+                StatusCode::BAD_REQUEST => (UpdateTradeClientExtensionsErrorResponse, UpdateTradeClientExtensionsError),
+                StatusCode::NOT_FOUND => (UpdateTradeClientExtensionsErrorResponse, UpdateTradeClientExtensionsError),
+            ]
+        )
     }
 }
 

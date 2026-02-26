@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use std::ops::Not;
 use strum_macros::{Display, EnumString};
 use url::Url;
+use crate::handle_response;
 
 /// An instrument identifier string in `"BASE_QUOTE"` format (e.g. `"EUR_USD"`).
 pub type InstrumentName = String;
@@ -533,16 +534,11 @@ impl<'a> InstrumentService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListInstrumentsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ListInstrumentsResponse,
+            errors: [ ]
+        )
     }
 
     /// Fetches historical candlestick (OHLCV) data for an instrument.
@@ -561,16 +557,11 @@ impl<'a> InstrumentService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<FetchCandlesticksResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => FetchCandlesticksResponse,
+            errors: [ ]
+        )
     }
 }
 

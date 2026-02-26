@@ -8,6 +8,7 @@ use crate::transaction::{AccountUnits, TransactionID};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
+use crate::handle_response;
 
 /// A unique identifier for an OANDA account (e.g. `"101-001-1234567-001"`).
 pub type AccountID = String;
@@ -554,16 +555,11 @@ impl<'a> AccountService<'a> {
         let url = self.client.base_url.join("/v3/accounts").unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<ListAccountsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ListAccountsResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn get_details(
@@ -577,16 +573,11 @@ impl<'a> AccountService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetAccountDetailsResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn get_summary(
@@ -600,16 +591,11 @@ impl<'a> AccountService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetAccountSummaryResponse,
+            errors: [ ]
+        )
     }
 }
 

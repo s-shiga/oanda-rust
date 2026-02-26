@@ -5,6 +5,7 @@ use crate::primitives::DecimalNumber;
 use crate::transaction::{AccountUnits, TradeID, TransactionID};
 use reqwest::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
+use crate::handle_response;
 
 /// The net exposure an account holds on a single instrument, aggregating all
 /// open trades on both the long and short side.
@@ -169,16 +170,11 @@ impl<'a> PositionService<'a> {
             .unwrap();
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<PositionListResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => PositionListResponse,
+            errors: [ ]
+        )
     }
 
     /// Lists all currently open positions on the account.
@@ -202,16 +198,11 @@ impl<'a> PositionService<'a> {
             .unwrap();
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<PositionListResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => PositionListResponse,
+            errors: [ ]
+        )
     }
 
     /// Returns the details of the position for the given `instrument`.
@@ -239,16 +230,11 @@ impl<'a> PositionService<'a> {
             .unwrap();
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => {
-                let resp = http_resp.json::<PositionDetailsResponse>().await?;
-                Ok(resp)
-            }
-            _ => {
-                let resp = http_resp.json::<CommonErrorResponse>().await?;
-                Err(APIError::ErrorResponse(ErrorResponse::CommonError(resp)))
-            }
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => PositionDetailsResponse,
+            errors: [ ]
+        )
     }
 }
 

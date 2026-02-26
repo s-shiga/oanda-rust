@@ -5,6 +5,7 @@ use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Deserializer, Serialize};
+use crate::handle_response;
 
 /// A price expressed as a decimal string (e.g. `"1.08523"`).
 ///
@@ -286,12 +287,11 @@ impl<'a> PricingService<'a> {
             .append_pair("instruments", instruments.join(",").as_str());
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<PricesResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => PricesResponse,
+            errors: [ ]
+        )
     }
 }
 

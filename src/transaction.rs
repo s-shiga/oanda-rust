@@ -5,7 +5,7 @@ use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
 use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
-use crate::request_option_setter;
+use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -2065,12 +2065,11 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<ListTransactionsResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ListTransactionsResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn get_details(
@@ -2094,12 +2093,11 @@ impl<'a> TransactionService<'a> {
             .unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<GetTransactionDetailsResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetTransactionDetailsResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn get_by_id_range(
@@ -2123,12 +2121,11 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<GetTransactionsResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetTransactionsResponse,
+            errors: [ ]
+        )
     }
 
     pub async fn get_by_since_id(
@@ -2152,12 +2149,11 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<GetTransactionsResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetTransactionsResponse,
+            errors: [ ]
+        )
     }
 }
 
@@ -2188,7 +2184,7 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_by_id_range() {
         let client = setup_test_client();
-        let req = GetTransactionsByIDRangeRequest::new("151".to_string(), "200".to_string());
+        let req = GetTransactionsByIDRangeRequest::new("251".to_string(), "300".to_string());
         let resp = client.transaction().get_by_id_range(req).await.unwrap();
         println!("{:#?}", resp);
     }
