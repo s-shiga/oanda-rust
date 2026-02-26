@@ -287,21 +287,21 @@ pub struct ListInstrumentsResponse {
 
 /// Builder for a `GET /v3/instruments/{instrument}/candles` request.
 ///
-/// Construct via [`FetchCandlesticksRequest::new`], configure with the
-/// builder methods, then pass to [`InstrumentService::fetch_candlesticks`].
+/// Construct via [`CandlesticksRequest::new`], configure with the
+/// builder methods, then pass to [`InstrumentService::candlesticks`].
 ///
 /// # Example
 ///
 /// ```no_run
-/// use oanda_rust::instrument::{CandlestickGranularity, FetchCandlesticksRequest};
+/// use oanda_rust::instrument::{CandlestickGranularity, CandlesticksRequest};
 ///
-/// let req = FetchCandlesticksRequest::new("EUR_USD".to_string())
+/// let req = CandlesticksRequest::new("EUR_USD".to_string())
 ///     .mid()
 ///     .granularity(CandlestickGranularity::H1)
 ///     .count(100)
 ///     .unwrap();
 /// ```
-pub struct FetchCandlesticksRequest {
+pub struct CandlesticksRequest {
     /// The instrument to fetch candles for.
     pub instrument: InstrumentName,
     /// Which price components to include (`"B"`, `"A"`, `"M"`, or any combination).
@@ -326,14 +326,14 @@ pub struct FetchCandlesticksRequest {
     weekly_alignment: Option<WeeklyAlignment>,
 }
 
-impl<'a> FetchCandlesticksRequest {
+impl<'a> CandlesticksRequest {
     /// Creates a new request for the given instrument with no parameters set.
     ///
     /// Call the builder methods (`bid`, `ask`, `mid`, `granularity`, etc.) to
     /// configure the request before passing it to
-    /// [`InstrumentService::fetch_candlesticks`].
+    /// [`InstrumentService::candlesticks`].
     pub fn new(instrument: InstrumentName) -> Self {
-        FetchCandlesticksRequest {
+        CandlesticksRequest {
             instrument,
             price: "".into(),
             granularity: None,
@@ -434,7 +434,7 @@ impl<'a> FetchCandlesticksRequest {
 
     /// Appends all configured query parameters to `url`.
     ///
-    /// Called internally by [`InstrumentService::fetch_candlesticks`] before
+    /// Called internally by [`InstrumentService::candlesticks`] before
     /// dispatching the HTTP request.
     pub fn set_params(&self, url: &mut Url) {
         self.price.is_empty().not().then(|| {
@@ -488,7 +488,7 @@ impl<'a> FetchCandlesticksRequest {
 
 /// Response body for `GET /v3/instruments/{instrument}/candles`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct FetchCandlesticksResponse {
+pub struct CandlesticksResponse {
     /// The instrument the candles belong to.
     pub instrument: InstrumentName,
     /// The granularity of the returned candles.
@@ -544,11 +544,11 @@ impl<'a> InstrumentService<'a> {
     /// Fetches historical candlestick (OHLCV) data for an instrument.
     ///
     /// Calls `GET /v3/instruments/{instrument}/candles` with the parameters
-    /// encoded in `req`. Build the request with [`FetchCandlesticksRequest`].
-    pub async fn fetch_candlesticks(
+    /// encoded in `req`. Build the request with [`CandlesticksRequest`].
+    pub async fn candlesticks(
         &self,
-        req: FetchCandlesticksRequest,
-    ) -> Result<FetchCandlesticksResponse, APIError> {
+        req: CandlesticksRequest,
+    ) -> Result<CandlesticksResponse, APIError> {
         let mut url = self
             .client
             .base_url
@@ -559,7 +559,7 @@ impl<'a> InstrumentService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
             http_resp,
-            success: StatusCode::OK => FetchCandlesticksResponse,
+            success: StatusCode::OK => CandlesticksResponse,
             errors: [ ]
         )
     }
@@ -568,7 +568,7 @@ impl<'a> InstrumentService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::instrument::{CandlestickGranularity, FetchCandlesticksRequest};
+    use crate::instrument::{CandlestickGranularity, CandlesticksRequest};
 
     #[tokio::test]
     async fn test_list_instruments() {
@@ -580,11 +580,11 @@ mod tests {
     #[tokio::test]
     async fn test_fetch_candlestick_data() {
         let client = setup_test_client();
-        let req = FetchCandlesticksRequest::new("USD_JPY".to_string())
+        let req = CandlesticksRequest::new("USD_JPY".to_string())
             .granularity(CandlestickGranularity::M1)
             .count(50)
             .unwrap();
-        let resp = client.instrument().fetch_candlesticks(req).await.unwrap();
+        let resp = client.instrument().candlesticks(req).await.unwrap();
         println!("{:#?}", resp);
     }
 }
