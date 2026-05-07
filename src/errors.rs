@@ -1,9 +1,10 @@
+use crate::account::ConfigureAccountErrorResponse;
 use crate::order::{
     OrderCancelRejectResponse, OrderCreateRejectResponse, UpdateOrderClientExtensionsErrorResponse,
 };
+use crate::trade::UpdateTradeClientExtensionsErrorResponse;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use crate::trade::UpdateTradeClientExtensionsErrorResponse;
 
 #[derive(Error, Debug)]
 pub enum APIError {
@@ -37,4 +38,6 @@ pub enum ErrorResponse {
     UpdateOrderClientExtensionsError(#[from] UpdateOrderClientExtensionsErrorResponse),
     #[error(transparent)]
     UpdateTradeClientExtensionsError(#[from] UpdateTradeClientExtensionsErrorResponse),
+    #[error(transparent)]
+    ConfigureAccountError(#[from] ConfigureAccountErrorResponse),
 }

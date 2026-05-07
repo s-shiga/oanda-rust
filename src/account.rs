@@ -1,14 +1,18 @@
 use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::instrument::Instrument;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
 use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
 use crate::trade::{CalculatedTradeState, TradeSummary};
-use crate::transaction::{AccountUnits, TransactionID};
+use crate::transaction::{
+    AccountUnits, ClientConfigureRejectTransaction, ClientConfigureTransaction, TransactionID,
+};
+use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
-use crate::handle_response;
+use thiserror::Error;
 
 /// A unique identifier for an OANDA account (e.g. `"101-001-1234567-001"`).
 pub type AccountID = String;
@@ -500,6 +504,28 @@ pub struct UserAttributes {
 }
 
 // ---------------------------------------------------------------------------
+// Request types
+// ---------------------------------------------------------------------------
+
+/// Request body for `PATCH /v3/accounts/{accountID}/configuration`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConfigureAccountRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub alias: Option<String>,
+    #[serde(rename = "marginRate", skip_serializing_if = "Option::is_none")]
+    pub margin_rate: Option<DecimalNumber>,
+}
+
+impl ConfigureAccountRequest {
+    pub fn new() -> Self {
+        ConfigureAccountRequest { alias: None, margin_rate: None }
+    }
+
+    request_option_setter!(alias, String);
+    request_option_setter!(margin_rate, DecimalNumber);
+}
+
+// ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
 
@@ -526,6 +552,58 @@ pub struct GetAccountSummaryResponse {
     /// A condensed snapshot of the account's state (no trade/position/order lists).
     pub account: AccountSummary,
     /// The ID of the most recent transaction on the account.
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+/// Response body for `GET /v3/accounts/{accountID}/instruments`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetInstrumentsResponse {
+    /// The list of tradeable instruments for the account.
+    pub instruments: Vec<Instrument>,
+    /// ID of the most recent transaction on the account.
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+/// Response body for `PATCH /v3/accounts/{accountID}/configuration` (HTTP 200).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ConfigureAccountResponse {
+    /// The transaction that recorded the configuration change.
+    #[serde(rename = "clientConfigureTransaction")]
+    pub client_configure_transaction: ClientConfigureTransaction,
+    /// ID of the most recent transaction on the account.
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+/// Error response body for `PATCH /v3/accounts/{accountID}/configuration`
+/// (HTTP 400 or 403).
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Configure account error: {error_message}")]
+pub struct ConfigureAccountErrorResponse {
+    /// The reject transaction that recorded the failed configuration attempt.
+    #[serde(rename = "clientConfigureRejectTransaction")]
+    pub client_configure_reject_transaction: ClientConfigureRejectTransaction,
+    /// ID of the most recent transaction on the account.
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    /// A machine-readable error code, if provided.
+    #[serde(rename = "errorCode")]
+    pub error_code: Option<String>,
+    /// A human-readable description of why the request was rejected.
+    #[serde(rename = "errorMessage")]
+    pub error_message: String,
+}
+
+/// Response body for `GET /v3/accounts/{accountID}/changes` (HTTP 200).
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GetAccountChangesResponse {
+    /// All changes to the account since the requested transaction.
+    pub changes: AccountChanges,
+    /// Current dynamic state of the account (prices, margins, P&L).
+    pub state: AccountChangesState,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
@@ -597,6 +675,84 @@ impl<'a> AccountService<'a> {
             errors: [ ]
         )
     }
+
+    /// Returns the list of tradeable instruments for the given account.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/instruments`.
+    /// Pass `instruments` to filter by a specific set of instrument names;
+    /// `None` returns all available instruments.
+    pub async fn get_instruments(
+        &self,
+        account_id: &AccountID,
+        instruments: Option<Vec<String>>,
+    ) -> Result<GetInstrumentsResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(format!("/v3/accounts/{}/instruments", account_id).as_str())
+            .unwrap();
+        if let Some(names) = instruments {
+            url.query_pairs_mut().append_pair("instruments", &names.join(","));
+        }
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetInstrumentsResponse,
+            errors: [ ]
+        )
+    }
+
+    /// Updates the account's alias and/or margin rate.
+    ///
+    /// Calls `PATCH /v3/accounts/{accountID}/configuration`.
+    /// Returns a [`ConfigureAccountErrorResponse`] wrapped in [`APIError`]
+    /// on HTTP 400 or 403.
+    pub async fn configure(
+        &self,
+        account_id: &AccountID,
+        req: ConfigureAccountRequest,
+    ) -> Result<ConfigureAccountResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(format!("/v3/accounts/{}/configuration", account_id).as_str())
+            .unwrap();
+        let http_resp = self.client.http_client.patch(url).json(&req).send().await?;
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ConfigureAccountResponse,
+            errors: [
+                StatusCode::BAD_REQUEST => (ConfigureAccountErrorResponse, ConfigureAccountError),
+                StatusCode::FORBIDDEN => (ConfigureAccountErrorResponse, ConfigureAccountError),
+            ]
+        )
+    }
+
+    /// Returns all changes to the account since the given transaction ID,
+    /// along with the current dynamic account state.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/changes?sinceTransactionID={id}`.
+    pub async fn get_changes(
+        &self,
+        account_id: &AccountID,
+        since_transaction_id: TransactionID,
+    ) -> Result<GetAccountChangesResponse, APIError> {
+        let mut url = self
+            .client
+            .base_url
+            .join(format!("/v3/accounts/{}/changes", account_id).as_str())
+            .unwrap();
+        url.query_pairs_mut()
+            .append_pair("sinceTransactionID", &since_transaction_id);
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self.client.http_client.execute(http_req).await?;
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => GetAccountChangesResponse,
+            errors: [ ]
+        )
+    }
 }
 
 #[cfg(test)]
@@ -615,7 +771,7 @@ mod tests {
         let client = setup_test_client();
         let account_details = client
             .account()
-            .get_details(&client.account_id.as_ref().unwrap())
+            .get_details(client.account_id.as_ref().unwrap())
             .await
             .unwrap();
         println!("{:#?}", account_details);
@@ -626,9 +782,72 @@ mod tests {
         let client = setup_test_client();
         let account_summary = client
             .account()
-            .get_summary(&client.account_id.as_ref().unwrap())
+            .get_summary(client.account_id.as_ref().unwrap())
             .await
             .unwrap();
         println!("{:#?}", account_summary);
+    }
+
+    #[tokio::test]
+    async fn test_get_instruments() {
+        let client = setup_test_client();
+        let resp = client
+            .account()
+            .get_instruments(client.account_id.as_ref().unwrap(), None)
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_instruments_filtered() {
+        let client = setup_test_client();
+        let resp = client
+            .account()
+            .get_instruments(
+                client.account_id.as_ref().unwrap(),
+                Some(vec!["USD_JPY".to_string(), "EUR_USD".to_string()]),
+            )
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[tokio::test]
+    async fn test_get_changes() {
+        let client = setup_test_client();
+        let summary = client
+            .account()
+            .get_summary(client.account_id.as_ref().unwrap())
+            .await
+            .unwrap();
+        let since_id = summary.account.last_transaction_id.unwrap();
+        let resp = client
+            .account()
+            .get_changes(client.account_id.as_ref().unwrap(), since_id)
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+    }
+}
+
+#[cfg(feature = "write-tests")]
+#[cfg(test)]
+mod write_tests {
+    use crate::client::setup_test_client;
+    use crate::account::ConfigureAccountRequest;
+
+    #[tokio::test]
+    async fn test_configure() {
+        let client = setup_test_client();
+        let resp = client
+            .account()
+            .configure(
+                client.account_id.as_ref().unwrap(),
+                ConfigureAccountRequest::new().alias("test alias".to_string()),
+            )
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
     }
 }
