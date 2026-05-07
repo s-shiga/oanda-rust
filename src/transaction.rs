@@ -246,7 +246,7 @@ pub struct ClientConfigureTransaction {
     pub request_id: Option<RequestID>,
     pub alias: Option<String>,
     #[serde(rename = "marginRate")]
-    pub margin_rate: DecimalNumber,
+    pub margin_rate: Option<DecimalNumber>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -263,7 +263,7 @@ pub struct ClientConfigureRejectTransaction {
     pub request_id: Option<RequestID>,
     pub alias: Option<String>,
     #[serde(rename = "marginRate")]
-    pub margin_rate: DecimalNumber,
+    pub margin_rate: Option<DecimalNumber>,
     #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
@@ -1937,6 +1937,8 @@ pub struct ListTransactionsResponse {
     #[serde(rename = "pageSize")]
     pub page_size: i64,
     pub pages: Vec<String>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -2173,9 +2175,10 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_details() {
         let client = setup_test_client();
+        let list = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
         let resp = client
             .transaction()
-            .get_details("67".to_string())
+            .get_details(list.last_transaction_id)
             .await
             .unwrap();
         println!("{:#?}", resp);
@@ -2184,7 +2187,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_by_id_range() {
         let client = setup_test_client();
-        let req = GetTransactionsByIDRangeRequest::new("251".to_string(), "300".to_string());
+        let resp = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
+        let req = GetTransactionsByIDRangeRequest::new(resp.last_transaction_id.clone(), resp.last_transaction_id.clone());
         let resp = client.transaction().get_by_id_range(req).await.unwrap();
         println!("{:#?}", resp);
     }
@@ -2192,7 +2196,8 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_by_since_id() {
         let client = setup_test_client();
-        let req = GetTransactionsBySinceIDRequest::new("520".to_string());
+        let resp = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
+        let req = GetTransactionsBySinceIDRequest::new(resp.last_transaction_id.to_string());
         let resp = client.transaction().get_by_since_id(req).await.unwrap();
         println!("{:#?}", resp);
     }
