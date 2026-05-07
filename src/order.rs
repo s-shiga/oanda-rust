@@ -2161,15 +2161,22 @@ impl<'a> OrderService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::order::{
-        LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest,
-    };
+    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
     use crate::transaction::ClientExtensions;
 
     #[tokio::test]
+    async fn test_list_orders() {
+        let client = setup_test_client();
+        let req = ListOrdersRequest::new();
+        let resp = client.order().list(req).await.unwrap();
+        println!("{:#?}", resp);
+    }
+
+    #[cfg(feature = "write-tests")]
+    #[tokio::test]
     async fn test_limit_order() {
         let client = setup_test_client();
-        // Create limit order
+
         let req = LimitOrderRequest::new(
             "USD_JPY".to_string(),
             "10000".to_string(),
@@ -2183,7 +2190,6 @@ mod tests {
         println!("{:#?}", resp);
         let order_id = resp.order_create_transaction.as_ref().unwrap().get_id();
 
-        // Update client extensions
         let client_order_id = "test_limit_order";
         let req = UpdateOrderClientExtensionsRequest::new()
             .client_extensions(ClientExtensions::new().id(client_order_id.to_string()));
@@ -2194,12 +2200,10 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
 
-        // List orders
         let req = ListOrdersRequest::new().instrument("USD_JPY".to_string());
         let resp = client.order().list(req).await.unwrap();
         println!("{:#?}", resp);
 
-        // Replace the limit order
         let req = LimitOrderRequest::new(
             "USD_JPY".to_string(),
             "10000".to_string(),
@@ -2212,11 +2216,9 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
 
-        // List pending orders
         let resp = client.order().list_pending().await.unwrap();
         println!("{:#?}", resp);
 
-        // Get order details
         let resp = client
             .order()
             .get_details(format!("@{}", client_order_id))
@@ -2224,7 +2226,6 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
 
-        // Cancel the order
         let resp = client
             .order()
             .cancel(format!("@{}", client_order_id))
@@ -2232,65 +2233,4 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
     }
-
-    #[tokio::test]
-    #[ignore = "manual order test"]
-    async fn test_list_orders() {
-        let client = setup_test_client();
-        let req = ListOrdersRequest::new();
-        let resp = client.order().list(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "manual order test"]
-    async fn test_get_order_details() {
-        let client = setup_test_client();
-        let resp = client
-            .order()
-            .get_details(format!("@{}", "test_limit_order"))
-            .await
-            .unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "manual order test"]
-    async fn test_order_replace() {
-        let client = setup_test_client();
-        let req = LimitOrderRequest::new(
-            "USD_JPY".to_string(),
-            "10000".to_string(),
-            "110.00".to_string(),
-        );
-        let resp = client
-            .order()
-            .replace("test_limit_order".to_string(), OrderRequest::Limit(req))
-            .await;
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "manual order test"]
-    async fn test_cancel_order() {
-        let client = setup_test_client();
-        let resp = client
-            .order()
-            .cancel(format!("@{}", "test_limit_order"))
-            .await
-            .unwrap();
-        println!("{:#?}", resp);
-    }
-}
-
-#[cfg(test)]
-pub(crate) async fn create_market_order(client: &Client) -> TransactionID {
-    let req = MarketOrderRequest::new("USD_JPY".to_string(), "10000".to_string());
-    let resp = client
-        .order()
-        .create(OrderRequest::Market(req))
-        .await
-        .unwrap();
-    println!("{:#?}", resp);
-    resp.order_fill_transaction.unwrap().id
 }

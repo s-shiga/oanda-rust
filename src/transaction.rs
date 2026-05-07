@@ -2175,7 +2175,11 @@ mod tests {
     #[tokio::test]
     async fn test_get_transaction_details() {
         let client = setup_test_client();
-        let list = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
+        let list = client
+            .transaction()
+            .list(ListTransactionsRequest::new())
+            .await
+            .unwrap();
         let resp = client
             .transaction()
             .get_details(list.last_transaction_id)
@@ -2187,8 +2191,15 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_by_id_range() {
         let client = setup_test_client();
-        let resp = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
-        let req = GetTransactionsByIDRangeRequest::new(resp.last_transaction_id.clone(), resp.last_transaction_id.clone());
+        let resp = client
+            .transaction()
+            .list(ListTransactionsRequest::new())
+            .await
+            .unwrap();
+        let req = GetTransactionsByIDRangeRequest::new(
+            resp.last_transaction_id.clone(),
+            resp.last_transaction_id.clone(),
+        );
         let resp = client.transaction().get_by_id_range(req).await.unwrap();
         println!("{:#?}", resp);
     }
@@ -2196,7 +2207,11 @@ mod tests {
     #[tokio::test]
     async fn test_get_transactions_by_since_id() {
         let client = setup_test_client();
-        let resp = client.transaction().list(ListTransactionsRequest::new()).await.unwrap();
+        let resp = client
+            .transaction()
+            .list(ListTransactionsRequest::new())
+            .await
+            .unwrap();
         let req = GetTransactionsBySinceIDRequest::new(resp.last_transaction_id.to_string());
         let resp = client.transaction().get_by_since_id(req).await.unwrap();
         println!("{:#?}", resp);

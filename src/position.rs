@@ -361,8 +361,8 @@ mod tests {
         println!("{:#?}", details);
     }
 
+    #[cfg(feature = "write-tests")]
     #[tokio::test]
-    #[ignore = "creates transactions"]
     async fn test_position_close() {
         use crate::order::{MarketOrderRequest, OrderRequest};
         let client = setup_test_client();

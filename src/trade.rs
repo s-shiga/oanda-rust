@@ -512,9 +512,6 @@ impl<'a> TradeService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::order::create_market_order;
-    use crate::trade::CloseTradeRequest;
-    use crate::transaction::ClientExtensions;
 
     #[tokio::test]
     async fn test_list_trades() {
@@ -523,14 +520,28 @@ mod tests {
         println!("{:#?}", resp);
     }
 
+    #[cfg(feature = "write-tests")]
+    async fn create_market_order(client: &crate::client::Client) -> crate::transaction::TransactionID {
+        use crate::order::{MarketOrderRequest, OrderRequest};
+        let req = MarketOrderRequest::new("USD_JPY".to_string(), "10000".to_string());
+        let resp = client
+            .order()
+            .create(OrderRequest::Market(req))
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
+        resp.order_fill_transaction.unwrap().id
+    }
+
+    #[cfg(feature = "write-tests")]
     #[tokio::test]
     async fn test_trades() {
+        use crate::transaction::ClientExtensions;
+        use crate::trade::CloseTradeRequest;
         let client = setup_test_client();
 
-        // Create a trade
         let id = create_market_order(&client).await;
 
-        // Update client extensions
         let client_id = "test_trade".to_string();
         let client_extensions = ClientExtensions::new().id(client_id.clone());
         let resp = client
@@ -540,11 +551,9 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
 
-        // List trades
         let resp = client.trade().list_open().await.unwrap();
         println!("{:#?}", resp);
 
-        // Get trade details
         let resp = client
             .trade()
             .get_details(format!("@{}", client_id))
@@ -552,23 +561,11 @@ mod tests {
             .unwrap();
         println!("{:#?}", resp);
 
-        // Close the trade
-        let req = CloseTradeRequest::new();
         let resp = client
             .trade()
-            .close(format!("@{}", client_id), req)
+            .close(format!("@{}", client_id), CloseTradeRequest::new())
             .await
             .unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    async fn test_close_trade() {
-        let client = setup_test_client();
-        let resp = client
-            .trade()
-            .close("767".to_string(), CloseTradeRequest::new())
-            .await;
         println!("{:#?}", resp);
     }
 }
