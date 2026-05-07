@@ -144,11 +144,17 @@ pub struct PositionDetailsResponse {
 pub struct ClosePositionRequest {
     #[serde(rename = "longUnits", skip_serializing_if = "Option::is_none")]
     pub long_units: Option<String>,
-    #[serde(rename = "longClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "longClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub long_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "shortUnits", skip_serializing_if = "Option::is_none")]
     pub short_units: Option<String>,
-    #[serde(rename = "shortClientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "shortClientExtensions",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub short_client_extensions: Option<ClientExtensions>,
 }
 
@@ -334,7 +340,6 @@ impl<'a> PositionService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use super::ClosePositionRequest;
 
     #[tokio::test]
     async fn test_position_list() {
@@ -360,8 +365,14 @@ mod tests {
             .unwrap();
         println!("{:#?}", details);
     }
+}
 
-    #[cfg(feature = "write-tests")]
+#[cfg(feature = "write-tests")]
+#[cfg(test)]
+mod write_tests {
+    use crate::client::setup_test_client;
+    use crate::position::ClosePositionRequest;
+
     #[tokio::test]
     async fn test_position_close() {
         use crate::order::{MarketOrderRequest, OrderRequest};
