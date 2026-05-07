@@ -2,10 +2,10 @@ use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{AccountUnits, TradeID, TransactionID};
+use crate::transaction::{AccountUnits, ClientExtensions, TradeID, TransactionID};
+use crate::{handle_response, request_option_setter};
 use reqwest::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
-use crate::handle_response;
 
 /// The net exposure an account holds on a single instrument, aggregating all
 /// open trades on both the long and short side.
@@ -135,6 +135,64 @@ pub struct PositionDetailsResponse {
     pub last_transaction_id: TransactionID,
 }
 
+/// Request body for `PUT /v3/accounts/{accountID}/positions/{instrument}/close`.
+///
+/// Specify `"ALL"` to close all units on a side, `"NONE"` to leave it open,
+/// or a decimal string (e.g. `"5000"`) to partially close. When both fields
+/// are omitted the API defaults to closing all units on both sides.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClosePositionRequest {
+    #[serde(rename = "longUnits", skip_serializing_if = "Option::is_none")]
+    pub long_units: Option<String>,
+    #[serde(rename = "longClientExtensions", skip_serializing_if = "Option::is_none")]
+    pub long_client_extensions: Option<ClientExtensions>,
+    #[serde(rename = "shortUnits", skip_serializing_if = "Option::is_none")]
+    pub short_units: Option<String>,
+    #[serde(rename = "shortClientExtensions", skip_serializing_if = "Option::is_none")]
+    pub short_client_extensions: Option<ClientExtensions>,
+}
+
+impl ClosePositionRequest {
+    pub fn new() -> Self {
+        ClosePositionRequest {
+            long_units: None,
+            long_client_extensions: None,
+            short_units: None,
+            short_client_extensions: None,
+        }
+    }
+
+    request_option_setter!(long_units, String);
+    request_option_setter!(long_client_extensions, ClientExtensions);
+    request_option_setter!(short_units, String);
+    request_option_setter!(short_client_extensions, ClientExtensions);
+}
+
+/// Response body for `PUT /v3/accounts/{accountID}/positions/{instrument}/close`
+/// (HTTP 200).
+///
+/// Transaction fields are raw JSON values because the OANDA API returns a
+/// polymorphic union of transaction sub-types.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClosePositionResponse {
+    #[serde(rename = "longOrderCreateTransaction")]
+    pub long_order_create_transaction: Option<serde_json::Value>,
+    #[serde(rename = "longOrderFillTransaction")]
+    pub long_order_fill_transaction: Option<serde_json::Value>,
+    #[serde(rename = "longOrderCancelTransaction")]
+    pub long_order_cancel_transaction: Option<serde_json::Value>,
+    #[serde(rename = "shortOrderCreateTransaction")]
+    pub short_order_create_transaction: Option<serde_json::Value>,
+    #[serde(rename = "shortOrderFillTransaction")]
+    pub short_order_fill_transaction: Option<serde_json::Value>,
+    #[serde(rename = "shortOrderCancelTransaction")]
+    pub short_order_cancel_transaction: Option<serde_json::Value>,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
 /// Provides access to the OANDA Position endpoints
 /// (`/v3/accounts/{id}/positions/...`).
 ///
@@ -236,11 +294,47 @@ impl<'a> PositionService<'a> {
             errors: [ ]
         )
     }
+
+    /// Closes all or part of an open position for the given `instrument`.
+    ///
+    /// Calls `PUT /v3/accounts/{accountID}/positions/{instrument}/close`.
+    ///
+    /// Use [`ClosePositionRequest`] to control how many long/short units to
+    /// close. Omitting both sides defaults to closing all open units.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
+    pub async fn close(
+        &self,
+        instrument: InstrumentName,
+        req: ClosePositionRequest,
+    ) -> Result<ClosePositionResponse, APIError> {
+        let url = self
+            .client
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/positions/{}/close",
+                    self.client.account_id.as_ref().expect("Missing account_id"),
+                    instrument
+                )
+                .as_str(),
+            )
+            .unwrap();
+        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        handle_response!(
+            http_resp,
+            success: StatusCode::OK => ClosePositionResponse,
+            errors: [ ]
+        )
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
+    use super::ClosePositionRequest;
 
     #[tokio::test]
     async fn test_position_list() {
@@ -265,5 +359,29 @@ mod tests {
             .await
             .unwrap();
         println!("{:#?}", details);
+    }
+
+    #[tokio::test]
+    #[ignore = "creates transactions"]
+    async fn test_position_close() {
+        use crate::order::{MarketOrderRequest, OrderRequest};
+        let client = setup_test_client();
+        client
+            .order()
+            .create(OrderRequest::Market(MarketOrderRequest::new(
+                "USD_JPY".to_string(),
+                "10000".to_string(),
+            )))
+            .await
+            .unwrap();
+        let resp = client
+            .position()
+            .close(
+                "USD_JPY".to_string(),
+                ClosePositionRequest::new().long_units("ALL".to_string()),
+            )
+            .await
+            .unwrap();
+        println!("{:#?}", resp);
     }
 }
