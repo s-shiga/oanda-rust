@@ -519,10 +519,17 @@ mod tests {
         let resp = client.trade().list().await.unwrap();
         println!("{:#?}", resp);
     }
+}
 
-    #[cfg(feature = "write-tests")]
-    async fn create_market_order(client: &crate::client::Client) -> crate::transaction::TransactionID {
-        use crate::order::{MarketOrderRequest, OrderRequest};
+#[cfg(feature = "write-tests")]
+#[cfg(test)]
+mod write_tests {
+    use crate::client::setup_test_client;
+    use crate::order::{MarketOrderRequest, OrderRequest};
+    use crate::trade::CloseTradeRequest;
+    use crate::transaction::{ClientExtensions, TransactionID};
+
+    async fn create_market_order(client: &crate::client::Client) -> TransactionID {
         let req = MarketOrderRequest::new("USD_JPY".to_string(), "10000".to_string());
         let resp = client
             .order()
@@ -533,11 +540,8 @@ mod tests {
         resp.order_fill_transaction.unwrap().id
     }
 
-    #[cfg(feature = "write-tests")]
     #[tokio::test]
     async fn test_trades() {
-        use crate::transaction::ClientExtensions;
-        use crate::trade::CloseTradeRequest;
         let client = setup_test_client();
 
         let id = create_market_order(&client).await;

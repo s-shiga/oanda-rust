@@ -2161,8 +2161,7 @@ impl<'a> OrderService<'a> {
 #[cfg(test)]
 mod tests {
     use crate::client::setup_test_client;
-    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
-    use crate::transaction::ClientExtensions;
+    use crate::order::ListOrdersRequest;
 
     #[tokio::test]
     async fn test_list_orders() {
@@ -2171,8 +2170,15 @@ mod tests {
         let resp = client.order().list(req).await.unwrap();
         println!("{:#?}", resp);
     }
+}
 
-    #[cfg(feature = "write-tests")]
+#[cfg(feature = "write-tests")]
+#[cfg(test)]
+mod write_tests {
+    use crate::client::setup_test_client;
+    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
+    use crate::transaction::ClientExtensions;
+
     #[tokio::test]
     async fn test_limit_order() {
         let client = setup_test_client();
