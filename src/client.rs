@@ -33,7 +33,6 @@ const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 /// ```
 pub struct Client {
     pub(crate) base_url: Url,
-    #[allow(unused)]
     pub(crate) http_client: reqwest::Client,
     pub(crate) account_id: Option<AccountID>,
 }
@@ -47,7 +46,6 @@ impl<'a> Client {
     /// # Arguments
     ///
     /// * `api_key` – Your OANDA personal access token.
-    #[allow(unused)]
     pub fn new(api_key: &str) -> Client {
         Client {
             base_url: Url::parse(FX_TRADE_URL).unwrap(),
@@ -61,7 +59,6 @@ impl<'a> Client {
     /// # Arguments
     ///
     /// * `api_key` – Your OANDA practice personal access token.
-    #[allow(unused)]
     pub fn new_practice(api_key: &str) -> Client {
         Client {
             base_url: Url::parse(FX_TRADE_PRACTICE_URL).unwrap(),
@@ -127,6 +124,24 @@ impl<'a> Client {
     /// Returns a [`PricingService`] for real-time pricing API operations.
     pub fn pricing(&'a self) -> PricingService<'a> {
         PricingService::new(self)
+    }
+
+    /// Builds a URL rooted at `/v3/accounts/{accountID}/{suffix}`.
+    ///
+    /// `suffix` is the path segment(s) after the account ID (e.g. `"positions"`,
+    /// `"orders/123/cancel"`). Pass an empty string to target the account root.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
+    pub(crate) fn account_url(&self, suffix: &str) -> Url {
+        let id = self.account_id.as_ref().expect("Missing account_id");
+        let path = if suffix.is_empty() {
+            format!("/v3/accounts/{}", id)
+        } else {
+            format!("/v3/accounts/{}/{}", id, suffix)
+        };
+        self.base_url.join(&path).unwrap()
     }
 }
 

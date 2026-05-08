@@ -2124,7 +2124,7 @@ pub struct TransactionHeartbeat {
 ///     .id("my-trade-001".to_string())
 ///     .tag("strategy-A".to_string());
 /// ```
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ClientExtensions {
     /// Client-assigned identifier for the order or trade.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -2140,11 +2140,7 @@ pub struct ClientExtensions {
 impl ClientExtensions {
     /// Creates an empty `ClientExtensions` with all fields set to `None`.
     pub fn new() -> Self {
-        ClientExtensions {
-            id: None,
-            tag: None,
-            comment: None,
-        }
+        Self::default()
     }
 
     request_option_setter!(id, ClientID);
@@ -2160,6 +2156,7 @@ impl ClientExtensions {
 ///
 /// All fields are optional. Call builder methods to set filters before passing
 /// to [`TransactionService::list`].
+#[derive(Default)]
 pub struct ListTransactionsRequest {
     /// Return only transactions at or after this timestamp.
     pub from: Option<DateTime<Utc>>,
@@ -2174,15 +2171,11 @@ pub struct ListTransactionsRequest {
 impl ListTransactionsRequest {
     /// Creates a new request with no filters applied.
     pub fn new() -> Self {
-        ListTransactionsRequest {
-            from: None,
-            to: None,
-            page_size: None,
-            transaction_type: Vec::new(),
-        }
+        Self::default()
     }
 
-    pub fn from(mut self, from: DateTime<Utc>) -> Self {
+    /// Sets the earliest timestamp for transactions to include.
+    pub fn from_time(mut self, from: DateTime<Utc>) -> Self {
         self.from = Some(from);
         self
     }
@@ -2397,20 +2390,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: ListTransactionsRequest,
     ) -> Result<ListTransactionsResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/transactions",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url = self.client.account_url("transactions");
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -2432,21 +2412,7 @@ impl<'a> TransactionService<'a> {
         &self,
         id: TransactionID,
     ) -> Result<GetTransactionDetailsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/transactions/{}",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client"),
-                    id
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("transactions/{}", id));
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -2467,20 +2433,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsByIDRangeRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/transactions/idrange",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url = self.client.account_url("transactions/idrange");
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -2502,20 +2455,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsBySinceIDRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/transactions/sinceid",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url = self.client.account_url("transactions/sinceid");
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;

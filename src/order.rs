@@ -8,8 +8,8 @@ use crate::transaction::{
     MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose,
     OrderCancelTransaction, OrderClientExtensionsModifyRejectTransaction,
     OrderClientExtensionsModifyTransaction, OrderCreateRejectTransaction, OrderCreateTransaction,
-    OrderFillTransaction, StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails,
-    TransactionID,
+    OrderFillTransaction, OrderID, StopLossDetails, TakeProfitDetails, TradeID,
+    TrailingStopLossDetails, TransactionID,
 };
 use crate::{handle_response, request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
@@ -19,9 +19,6 @@ use std::ops::Not;
 use strum_macros::Display;
 use thiserror::Error;
 use url::Url;
-
-/// A unique identifier for an order (e.g. `"12345"`).
-pub type OrderID = String;
 
 // ---------------------------------------------------------------------------
 // Order enum (tagged union)
@@ -1602,7 +1599,7 @@ pub struct CancelOrderResponse {
 /// `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}/clientExtensions`.
 ///
 /// At least one of `client_extensions` or `trade_client_extensions` must be set.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct UpdateOrderClientExtensionsRequest {
     /// New client extensions for the order itself. Omitted if `None`.
     #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
@@ -1623,10 +1620,7 @@ impl UpdateOrderClientExtensionsRequest {
     /// [`trade_client_extensions`](Self::trade_client_extensions) before passing
     /// this to [`OrderService::update_client_extensions`].
     pub fn new() -> Self {
-        UpdateOrderClientExtensionsRequest {
-            client_extensions: None,
-            trade_client_extensions: None,
-        }
+        Self::default()
     }
 
     request_option_setter!(client_extensions, ClientExtensions);
@@ -1837,6 +1831,7 @@ pub enum OrderTriggerCondition {
 ///
 /// Construct via [`ListOrdersRequest::new`], configure with the builder
 /// methods, then pass to [`OrderService::list`].
+#[derive(Default)]
 pub struct ListOrdersRequest {
     /// Filter by specific order IDs.
     ids: Vec<OrderID>,
@@ -1853,13 +1848,7 @@ pub struct ListOrdersRequest {
 impl ListOrdersRequest {
     /// Creates a new, unconfigured request (returns all orders by default).
     pub fn new() -> Self {
-        ListOrdersRequest {
-            ids: Vec::new(),
-            state: None,
-            instrument: None,
-            count: None,
-            before_id: None,
-        }
+        Self::default()
     }
 
     /// Adds a single order ID to the `ids` filter. Call multiple times to
@@ -1958,7 +1947,7 @@ pub struct OrderService<'a> {
 
 impl<'a> OrderService<'a> {
     /// Creates a new `OrderService` bound to the given client.
-    pub fn new(client: &'a Client) -> Self {
+    pub(crate) fn new(client: &'a Client) -> Self {
         OrderService { client }
     }
 
@@ -1971,17 +1960,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("orders");
         let body = CreateOrderRequest { order };
         let http_resp = self.client.http_client.post(url).json(&body).send().await?;
         handle_response!(
@@ -2001,20 +1980,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url = self.client.account_url("orders");
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -2034,17 +2000,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/pendingOrders",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("pendingOrders");
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -2065,18 +2021,7 @@ impl<'a> OrderService<'a> {
         &self,
         specifier: OrderSpecifier,
     ) -> Result<GetOrderDetailsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders/{}",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("orders/{}", specifier));
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -2099,18 +2044,7 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
         req: OrderRequest,
     ) -> Result<ReplaceOrderResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders/{}",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("orders/{}", specifier));
         let body = CreateOrderRequest { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         handle_response!(
@@ -2131,18 +2065,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders/{}/cancel",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("orders/{}/cancel", specifier));
         let http_resp = self.client.http_client.put(url).send().await?;
         handle_response!(
             http_resp,
@@ -2165,18 +2088,7 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
         req: UpdateOrderClientExtensionsRequest,
     ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/orders/{}/clientExtensions",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("orders/{}/clientExtensions", specifier));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

@@ -140,7 +140,7 @@ pub struct GetPositionDetailsResponse {
 /// Specify `"ALL"` to close all units on a side, `"NONE"` to leave it open,
 /// or a decimal string (e.g. `"5000"`) to partially close. When both fields
 /// are omitted the API defaults to closing all units on both sides.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct ClosePositionRequest {
     /// Units of the long side to close. `"ALL"` closes all long units,
     /// `"NONE"` leaves the long side open, or a decimal string (e.g. `"5000"`)
@@ -175,12 +175,7 @@ impl ClosePositionRequest {
     /// all units on each side. Use the builder methods to close only specific
     /// sides or a partial number of units.
     pub fn new() -> Self {
-        ClosePositionRequest {
-            long_units: None,
-            long_client_extensions: None,
-            short_units: None,
-            short_client_extensions: None,
-        }
+        Self::default()
     }
 
     request_option_setter!(long_units, String);
@@ -244,17 +239,7 @@ impl<'a> PositionService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/positions",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("positions");
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -272,17 +257,7 @@ impl<'a> PositionService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/openPositions",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("openPositions");
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -303,18 +278,7 @@ impl<'a> PositionService<'a> {
         &self,
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/positions/{}",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    instrument
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("positions/{}", instrument));
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -339,18 +303,7 @@ impl<'a> PositionService<'a> {
         instrument: InstrumentName,
         req: ClosePositionRequest,
     ) -> Result<ClosePositionResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/positions/{}/close",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    instrument
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("positions/{}/close", instrument));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

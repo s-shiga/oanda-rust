@@ -259,7 +259,7 @@ pub struct PricingService<'a> {
 
 impl<'a> PricingService<'a> {
     /// Creates a new `PricingService` bound to the given client.
-    pub fn new(client: &'a Client) -> Self {
+    pub(crate) fn new(client: &'a Client) -> Self {
         Self { client }
     }
 
@@ -272,17 +272,7 @@ impl<'a> PricingService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/pricing",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url = self.client.account_url("pricing");
         url.query_pairs_mut()
             .append_pair("instruments", instruments.join(",").as_str());
         let http_req = Request::new(reqwest::Method::GET, url);

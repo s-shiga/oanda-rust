@@ -2,12 +2,12 @@ use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::order::{
-    GuaranteedStopLossOrder, OrderID, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
+    GuaranteedStopLossOrder, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
 };
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{
-    AccountUnits, ClientExtensions, TradeClientExtensionsModifyRejectTransaction,
+    AccountUnits, ClientExtensions, OrderID, TradeClientExtensionsModifyRejectTransaction,
     TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
 };
 use crate::{handle_response, request_option_setter};
@@ -250,7 +250,7 @@ pub struct CalculatedTradeState {
 ///
 /// Omitting `units` closes the entire trade. Supply a decimal string to
 /// partially close only that many units.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct CloseTradeRequest {
     /// Number of units to close. `None` closes all open units. A decimal
     /// string (e.g. `"5000"`) partially closes the trade. Omitted when `None`.
@@ -261,7 +261,7 @@ pub struct CloseTradeRequest {
 impl CloseTradeRequest {
     /// Creates a new request that will close all open units of the trade.
     pub fn new() -> CloseTradeRequest {
-        CloseTradeRequest { units: None }
+        Self::default()
     }
 
     request_option_setter!(units, String);
@@ -382,7 +382,7 @@ pub struct TradeService<'a> {
 
 impl<'a> TradeService<'a> {
     /// Creates a new `TradeService` bound to the given client.
-    pub fn new(client: &'a Client) -> Self {
+    pub(crate) fn new(client: &'a Client) -> Self {
         Self { client }
     }
 
@@ -394,17 +394,7 @@ impl<'a> TradeService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/trades",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("trades");
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -422,17 +412,7 @@ impl<'a> TradeService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/openTrades",
-                    self.client.account_id.as_ref().expect("Missing account_id")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("openTrades");
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -453,18 +433,7 @@ impl<'a> TradeService<'a> {
         &self,
         specifier: TradeSpecifier,
     ) -> Result<GetTradeDetailsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/trades/{}",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("trades/{}", specifier));
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -488,18 +457,7 @@ impl<'a> TradeService<'a> {
         specifier: TradeSpecifier,
         req: CloseTradeRequest,
     ) -> Result<CloseTradeResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/trades/{}/close",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("trades/{}/close", specifier));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,
@@ -530,18 +488,7 @@ impl<'a> TradeService<'a> {
         specifier: TradeSpecifier,
         client_extensions: ClientExtensions,
     ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/trades/{}/clientExtensions",
-                    self.client.account_id.as_ref().expect("Missing account_id"),
-                    specifier
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url(&format!("trades/{}/clientExtensions", specifier));
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(

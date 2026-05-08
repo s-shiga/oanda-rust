@@ -627,7 +627,7 @@ pub struct AccountService<'a> {
 
 impl<'a> AccountService<'a> {
     /// Creates a new `AccountService` bound to the given client.
-    pub fn new(client: &'a Client) -> Self {
+    pub(crate) fn new(client: &'a Client) -> Self {
         Self { client }
     }
 

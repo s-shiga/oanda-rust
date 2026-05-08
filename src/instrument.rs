@@ -506,7 +506,7 @@ pub struct InstrumentService<'a> {
 
 impl<'a> InstrumentService<'a> {
     /// Creates a new `InstrumentService` bound to the given client.
-    pub fn new(client: &'a Client) -> Self {
+    pub(crate) fn new(client: &'a Client) -> Self {
         InstrumentService { client }
     }
 
@@ -518,20 +518,7 @@ impl<'a> InstrumentService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
-        let url = self
-            .client
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/instruments",
-                    self.client
-                        .account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = self.client.account_url("instruments");
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(

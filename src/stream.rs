@@ -42,7 +42,6 @@ impl<'a> StreamClient {
     ///
     /// The `api_key` is sent as a `Bearer` token on every request.
     /// Call [`with_account_id`](Self::with_account_id) before streaming.
-    #[allow(unused)]
     pub fn new(api_key: &str) -> Self {
         StreamClient {
             base_url: Url::parse(FX_TRADE_STREAMING_URL).unwrap(),
@@ -55,7 +54,6 @@ impl<'a> StreamClient {
     ///
     /// The `api_key` is sent as a `Bearer` token on every request.
     /// Call [`with_account_id`](Self::with_account_id) before streaming.
-    #[allow(unused)]
     pub fn new_practice(api_key: &str) -> Self {
         StreamClient {
             base_url: Url::parse(FX_TRADE_PRACTICE_STREAMING_URL).unwrap(),
