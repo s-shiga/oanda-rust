@@ -12,19 +12,32 @@ use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use url::Url;
 
+/// A unique identifier for a transaction, assigned by OANDA (e.g. `"1234"`).
 pub type TransactionID = String;
+/// A client-assigned identifier for an order or trade (e.g. `"my-order-001"`).
 pub type ClientID = String;
+/// A client-assigned tag for grouping orders or trades.
 pub type ClientTag = String;
+/// A free-text comment attached to an order or trade by the client.
 pub type ClientComment = String;
+/// An identifier for the HTTP request that created a transaction, echoed back by OANDA.
 pub type RequestID = String;
+/// A monetary amount expressed in the account's home currency, serialised as a decimal string.
 pub type AccountUnits = String;
+/// A unique identifier for a trade, assigned by OANDA (e.g. `"42"`).
 pub type TradeID = String;
+/// A unique identifier for an order, assigned by OANDA (e.g. `"7"`).
 pub type OrderID = String;
 
 // ---------------------------------------------------------------------------
 // Transaction enum (tagged union)
 // ---------------------------------------------------------------------------
 
+/// A tagged union of every transaction type that the OANDA API can return.
+///
+/// Deserialized from the `"type"` field in the JSON payload. Use this when
+/// handling generic transaction streams or history endpoints where the exact
+/// sub-type is not known in advance.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum Transaction {
@@ -106,6 +119,10 @@ pub enum Transaction {
     ResetResettablePLTransaction(ResetResettablePLTransaction),
 }
 
+/// A tagged union covering only the transaction types that create a new order.
+///
+/// Used in order-creation responses where OANDA always returns one of these
+/// sub-types (never a cancel, fill, etc.).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum OrderCreateTransaction {
@@ -130,6 +147,8 @@ pub enum OrderCreateTransaction {
 }
 
 impl OrderCreateTransaction {
+    /// Returns the [`TransactionID`] of the underlying order-creation transaction,
+    /// regardless of which order type it is.
     pub fn get_id(&self) -> TransactionID {
         match self {
             OrderCreateTransaction::MarketOrderTransaction(transaction) => transaction.id.clone(),
@@ -155,6 +174,11 @@ impl OrderCreateTransaction {
     }
 }
 
+/// A tagged union of all transaction types that record a rejected order-creation attempt.
+///
+/// Returned in the error body when an order request is refused by OANDA
+/// (e.g. insufficient margin, invalid parameters). Each variant carries a
+/// `reject_reason` explaining why the order was not accepted.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum OrderCreateRejectTransaction {
@@ -180,30 +204,46 @@ pub enum OrderCreateRejectTransaction {
 // Transaction Structs
 // ---------------------------------------------------------------------------
 
+/// Transaction recorded when a new OANDA account is created.
+///
+/// Contains the initial settings for the account such as the home currency,
+/// division, and site identifiers assigned at creation time.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CreateTransaction {
+    /// Unique transaction ID assigned by OANDA.
     pub id: TransactionID,
+    /// Timestamp at which the transaction was created.
     pub time: DateTime<Utc>,
+    /// OANDA internal user ID that initiated the transaction.
     #[serde(rename = "userID")]
     pub user_id: i64,
+    /// The account this transaction belongs to.
     #[serde(rename = "accountID")]
     pub account_id: AccountID,
+    /// ID of the batch this transaction is part of (same as `id` for single-transaction requests).
     #[serde(rename = "batchID")]
     pub batch_id: TransactionID,
+    /// ID of the originating HTTP request, if provided by the client.
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
+    /// OANDA division that owns the account.
     #[serde(rename = "divisionID")]
     pub division_id: i64,
+    /// OANDA site that the account was created on.
     #[serde(rename = "siteID")]
     pub site_id: i64,
+    /// OANDA user ID of the account owner.
     #[serde(rename = "accountUserID")]
     pub account_user_id: i64,
+    /// OANDA account number (numeric form of the account ID).
     #[serde(rename = "accountNumber")]
     pub account_number: i64,
+    /// Home currency of the account (e.g. `"USD"`).
     #[serde(rename = "homeCurrency")]
     pub home_currency: Currency,
 }
 
+/// Transaction recorded when an OANDA account is closed.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloseTransaction {
     pub id: TransactionID,
@@ -218,6 +258,7 @@ pub struct CloseTransaction {
     pub request_id: Option<RequestID>,
 }
 
+/// Transaction recorded when a previously closed account is reopened.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ReopenTransaction {
     pub id: TransactionID,
@@ -232,6 +273,8 @@ pub struct ReopenTransaction {
     pub request_id: Option<RequestID>,
 }
 
+/// Transaction recorded when an account's configuration is changed by the client
+/// (e.g. updating the alias or margin rate).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientConfigureTransaction {
     pub id: TransactionID,
@@ -244,11 +287,15 @@ pub struct ClientConfigureTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
+    /// New display name set for the account, if changed.
     pub alias: Option<String>,
+    /// New margin rate applied to the account, if changed.
     #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
 }
 
+/// Transaction recorded when an account configuration change is rejected.
+/// Transaction recorded when an account configuration change is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientConfigureRejectTransaction {
     pub id: TransactionID,
@@ -264,10 +311,12 @@ pub struct ClientConfigureRejectTransaction {
     pub alias: Option<String>,
     #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
+    /// Reason why the configuration change was rejected.
     #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when funds are deposited into or withdrawn from an account.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransferFundsTransaction {
     pub id: TransactionID,
@@ -280,14 +329,20 @@ pub struct TransferFundsTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
+    /// Amount transferred, in home currency units. Positive = deposit, negative = withdrawal.
     pub amount: AccountUnits,
+    /// Why the transfer occurred.
     #[serde(rename = "fundingReason")]
     pub funding_reason: FundingReason,
+    /// Optional free-text comment attached to the transfer.
     pub comment: Option<String>,
+    /// Account balance after the transfer, in home currency units.
     #[serde(rename = "accountBalance")]
     pub account_balance: AccountUnits,
 }
 
+/// Transaction recorded when a funds transfer request is rejected.
+/// Transaction recorded when a funds transfer request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransferFundsRejectTransaction {
     pub id: TransactionID,
@@ -304,10 +359,15 @@ pub struct TransferFundsRejectTransaction {
     #[serde(rename = "fundingReason")]
     pub funding_reason: FundingReason,
     pub comment: Option<String>,
+    /// Reason why the transfer was rejected.
     #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a market order is accepted and submitted to the market.
+///
+/// A market order fills immediately at the current market price. This transaction
+/// is created before the corresponding [`OrderFillTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderTransaction {
     pub id: TransactionID,
@@ -353,6 +413,7 @@ pub struct MarketOrderTransaction {
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
+/// Transaction recorded when a market order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderRejectTransaction {
     pub id: TransactionID,
@@ -400,6 +461,10 @@ pub struct MarketOrderRejectTransaction {
     pub reject_reason: Option<TransactionRejectReason>,
 }
 
+/// Transaction recorded when a fixed-price order is created.
+///
+/// Fixed-price orders are created by OANDA internally (e.g. during account
+/// migrations) and are not directly placeable by clients.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FixedPriceOrderTransaction {
     pub id: TransactionID,
@@ -434,6 +499,7 @@ pub struct FixedPriceOrderTransaction {
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
+/// Transaction recorded when a limit order is created or replaces an existing order.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LimitOrderTransaction {
     pub id: TransactionID,
@@ -476,6 +542,7 @@ pub struct LimitOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a limit order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LimitOrderRejectTransaction {
     pub id: TransactionID,
@@ -522,6 +589,7 @@ pub struct LimitOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a stop order is created or replaces an existing order.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopOrderTransaction {
     pub id: TransactionID,
@@ -566,6 +634,7 @@ pub struct StopOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a stop order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopOrderRejectTransaction {
     pub id: TransactionID,
@@ -614,6 +683,9 @@ pub struct StopOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a market-if-touched (MIT) order is created or replaces an existing order.
+///
+/// A MIT order becomes a market order once the instrument price crosses the specified trigger price.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketIfTouchedOrderTransaction {
     pub id: TransactionID,
@@ -658,6 +730,7 @@ pub struct MarketIfTouchedOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a market-if-touched order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketIfTouchedOrderRejectTransaction {
     pub id: TransactionID,
@@ -706,6 +779,7 @@ pub struct MarketIfTouchedOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a take-profit order is attached to or created for a trade.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TakeProfitOrderTransaction {
     pub id: TransactionID,
@@ -740,6 +814,7 @@ pub struct TakeProfitOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a take-profit order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TakeProfitOrderRejectTransaction {
     pub id: TransactionID,
@@ -778,6 +853,7 @@ pub struct TakeProfitOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a stop-loss order is attached to or created for a trade.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopLossOrderTransaction {
     pub id: TransactionID,
@@ -813,6 +889,7 @@ pub struct StopLossOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopLossOrderRejectTransaction {
     pub id: TransactionID,
@@ -852,6 +929,10 @@ pub struct StopLossOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a guaranteed stop-loss order (GSLO) is attached to or created for a trade.
+///
+/// Unlike a regular stop-loss, a GSLO guarantees the fill price at the specified level,
+/// regardless of market gaps, in exchange for a premium.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuaranteedStopLossOrderTransaction {
     pub id: TransactionID,
@@ -887,6 +968,7 @@ pub struct GuaranteedStopLossOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a guaranteed stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuaranteedStopLossOrderRejectTransaction {
     pub id: TransactionID,
@@ -926,6 +1008,10 @@ pub struct GuaranteedStopLossOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when a trailing stop-loss order is attached to or created for a trade.
+///
+/// The order trails the market price by the specified `distance`, locking in profit
+/// as the price moves in the trade's favour.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrailingStopLossOrderTransaction {
     pub id: TransactionID,
@@ -960,6 +1046,7 @@ pub struct TrailingStopLossOrderTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
 }
 
+/// Transaction recorded when a trailing stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrailingStopLossOrderRejectTransaction {
     pub id: TransactionID,
@@ -998,6 +1085,10 @@ pub struct TrailingStopLossOrderRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when an order is filled and a trade is opened, closed, or reduced.
+///
+/// This is the primary transaction for all trade activity. Fields such as `trade_opened`,
+/// `trades_closed`, and `trade_reduced` describe what changed as a result of the fill.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderFillTransaction {
     pub id: TransactionID,
@@ -1046,6 +1137,7 @@ pub struct OrderFillTransaction {
     pub trade_reduced: Option<TradeReduce>,
 }
 
+/// Transaction recorded when a pending order is cancelled.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderCancelTransaction {
     pub id: TransactionID,
@@ -1067,6 +1159,7 @@ pub struct OrderCancelTransaction {
     pub replaced_by_order_id: Option<OrderID>,
 }
 
+/// Transaction recorded when an order cancellation request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderCancelRejectTransaction {
     pub id: TransactionID,
@@ -1087,6 +1180,7 @@ pub struct OrderCancelRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when the client extensions on an order are successfully updated.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderClientExtensionsModifyTransaction {
     pub id: TransactionID,
@@ -1109,6 +1203,7 @@ pub struct OrderClientExtensionsModifyTransaction {
     pub trade_client_extensions_modify: Option<ClientExtensions>,
 }
 
+/// Transaction recorded when an order client-extensions modification request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OrderClientExtensionsModifyRejectTransaction {
     pub id: TransactionID,
@@ -1133,6 +1228,7 @@ pub struct OrderClientExtensionsModifyRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when the client extensions on a trade are successfully updated.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TradeClientExtensionsModifyTransaction {
     pub id: TransactionID,
@@ -1153,6 +1249,7 @@ pub struct TradeClientExtensionsModifyTransaction {
     pub trade_client_extensions_modify: Option<ClientExtensions>,
 }
 
+/// Transaction recorded when a trade client-extensions modification request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TradeClientExtensionsModifyRejectTransaction {
     pub id: TransactionID,
@@ -1175,6 +1272,9 @@ pub struct TradeClientExtensionsModifyRejectTransaction {
     pub reject_reason: TransactionRejectReason,
 }
 
+/// Transaction recorded when the account enters a margin call state.
+///
+/// OANDA will begin closing positions if the account margin level continues to fall.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarginCallEnterTransaction {
     pub id: TransactionID,
@@ -1189,6 +1289,9 @@ pub struct MarginCallEnterTransaction {
     pub request_id: Option<RequestID>,
 }
 
+/// Transaction recorded each time the margin call duration is extended.
+///
+/// OANDA allows a grace period before forced liquidation; each extension is recorded here.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarginCallExtendTransaction {
     pub id: TransactionID,
@@ -1201,10 +1304,13 @@ pub struct MarginCallExtendTransaction {
     pub batch_id: TransactionID,
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
+    /// The number of times this margin call has been extended.
     #[serde(rename = "extensionNumber")]
     pub extension_number: Option<i64>,
 }
 
+/// Transaction recorded when the account exits the margin call state
+/// (either by depositing funds or by reducing exposure).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarginCallExitTransaction {
     pub id: TransactionID,
@@ -1219,6 +1325,8 @@ pub struct MarginCallExitTransaction {
     pub request_id: Option<RequestID>,
 }
 
+/// Transaction recorded when one or more trades are queued for closure at the next
+/// tradeable price (e.g. after a market halt or margin closeout during non-trading hours).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DelayedTradeClosureTransaction {
     pub id: TransactionID,
@@ -1236,6 +1344,8 @@ pub struct DelayedTradeClosureTransaction {
     pub trade_ids: Vec<TradeID>,
 }
 
+/// Transaction recorded at the end of each trading day when financing (swap/rollover)
+/// charges or credits are applied to all open positions.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DailyFinancingTransaction {
     pub id: TransactionID,
@@ -1255,6 +1365,8 @@ pub struct DailyFinancingTransaction {
     pub position_financings: Vec<PositionFinancing>,
 }
 
+/// Transaction recorded when a dividend adjustment is applied to open CFD positions
+/// in an instrument that has paid a dividend.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct DividendAdjustmentTransaction {
     pub id: TransactionID,
@@ -1280,6 +1392,9 @@ pub struct DividendAdjustmentTransaction {
     pub open_trade_dividend_adjustments: Vec<OpenTradeDividendAdjustment>,
 }
 
+/// Transaction recorded when the account's resettable P&L is reset to zero.
+///
+/// Clients can request a P&L reset to restart P&L tracking from the current balance.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ResetResettablePLTransaction {
     pub id: TransactionID,
@@ -1294,6 +1409,9 @@ pub struct ResetResettablePLTransaction {
     pub request_id: Option<RequestID>,
 }
 
+/// All transaction types that can appear on an OANDA account.
+///
+/// Used as a filter value when listing transactions via [`ListTransactionsRequest`].
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionType {
@@ -1337,87 +1455,129 @@ pub enum TransactionType {
     ResetResettablePL,
 }
 
+/// Why a funds transfer occurred on an account.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum FundingReason {
+    /// The client explicitly deposited or withdrew funds.
     ClientFunding,
+    /// Funds were moved between accounts under the same owner.
     AccountTransfer,
+    /// Funds were transferred as part of a division migration.
     DivisionMigration,
+    /// Funds were transferred as part of a site migration.
     SiteMigration,
+    /// An administrative adjustment was applied to the account balance.
     Adjustment,
 }
 
+/// Why a market order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MarketOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created automatically to close a specific trade.
     TradeClose,
+    /// Created automatically to close out a position.
     PositionCloseout,
+    /// Created automatically by OANDA to reduce exposure during a margin call.
     MarginCloseout,
+    /// Created to close a trade that was deferred due to the market being closed.
     DelayedTradeClose,
 }
 
+/// Why a fixed-price order was created by OANDA internally.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum FixedPriceOrderReason {
+    /// Created to migrate open trades during a platform account migration.
     PlatformAccountMigration,
+    /// Created to close a trade during a division account migration.
     TradeCloseDivisionAccountMigration,
+    /// Created to close a trade as part of an administrative action.
     TradeCloseAdministrativeAction,
 }
 
+/// Why a limit order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum LimitOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace a previously cancelled order.
     Replacement,
 }
 
+/// Why a stop order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StopOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace a previously cancelled order.
     Replacement,
 }
 
+/// Why a market-if-touched order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MarketIfTouchedOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace a previously cancelled order.
     Replacement,
 }
 
+/// Why a take-profit order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TakeProfitOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace an existing take-profit on the same trade.
     Replacement,
+    /// Created automatically when a trade was opened with `take_profit_on_fill` set.
     OnFill,
 }
 
+/// Why a stop-loss order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum StopLossOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace an existing stop-loss on the same trade.
     Replacement,
+    /// Created automatically when a trade was opened with `stop_loss_on_fill` set.
     OnFill,
 }
 
+/// Why a guaranteed stop-loss order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum GuaranteedStopLossOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace an existing guaranteed stop-loss on the same trade.
     Replacement,
+    /// Created automatically when a trade was opened with `guaranteed_stop_loss_on_fill` set.
     OnFill,
 }
 
+/// Why a trailing stop-loss order was created.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TrailingStopLossOrderReason {
+    /// Submitted directly by the client.
     ClientOrder,
+    /// Created to replace an existing trailing stop-loss on the same trade.
     Replacement,
+    /// Created automatically when a trade was opened with `trailing_stop_loss_on_fill` set.
     OnFill,
 }
 
+/// Why an order was filled (what type of order triggered the fill).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderFillReason {
@@ -1439,6 +1599,7 @@ pub enum OrderFillReason {
     FixedPriceOrderAdministrativeAction,
 }
 
+/// Why a pending order was cancelled.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderCancelReason {
@@ -1491,14 +1652,23 @@ pub enum OrderCancelReason {
     StopLossOnFillGuaranteedAskHalted,
 }
 
+/// How financing (swap/rollover) is applied to open positions on an account.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum AccountFinancingMode {
+    /// No financing is applied (typically for spread-bet accounts).
     NoFinancing,
+    /// Financing accrues every second and is settled daily.
     SecondBySecond,
+    /// Financing is computed and applied once per day.
     Daily,
 }
 
+/// A coarser filter for querying transactions by category.
+///
+/// Used with [`GetTransactionsByIDRangeRequest`] and [`GetTransactionsBySinceIDRequest`]
+/// to narrow results to a subset of transaction types. Variants like [`Order`](Self::Order)
+/// and [`Funding`](Self::Funding) aggregate multiple [`TransactionType`] values.
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionFilter {
@@ -1544,6 +1714,11 @@ pub enum TransactionFilter {
     ResetResettablePL,
 }
 
+/// Machine-readable reason why a transaction was rejected by the OANDA API.
+///
+/// Returned in the `reject_reason` field of every `*RejectTransaction` struct.
+/// The variant names are self-describing; consult the OANDA v20 REST API docs for
+/// the precise conditions under which each variant is returned.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionRejectReason {
@@ -1692,145 +1867,242 @@ pub enum TransactionRejectReason {
     ReplacingTradeIdInvalid,
 }
 
+/// Details of the trade that a market order was intended to close.
+///
+/// Present in [`MarketOrderTransaction`] when the order was created with
+/// `reason = TradeClose`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderTradeClose {
+    /// The trade being closed.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// Number of units of the trade being closed (`"ALL"` for a full close).
     pub units: String,
 }
 
+/// Details of a margin closeout that triggered a market order.
+///
+/// Present in [`MarketOrderTransaction`] when the order was created with
+/// `reason = MarginCloseout`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderMarginCloseout {
+    /// The specific rule that triggered the margin closeout.
     pub reason: MarketOrderMarginCloseoutReason,
 }
 
+/// Why a margin closeout market order was generated.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum MarketOrderMarginCloseoutReason {
+    /// The account's margin level fell below the margin check threshold.
     MarginCheckViolation,
+    /// A regulatory margin call was triggered.
     RegulatoryMarginCallViolation,
+    /// A regulatory margin check violation occurred.
     RegulatoryMarginCheckViolation,
 }
 
+/// Details of a trade that is being closed on a delayed basis (e.g. after a market halt).
+///
+/// Present in [`MarketOrderTransaction`] when the order was created with
+/// `reason = DelayedTradeClose`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderDelayedTradeClose {
+    /// The trade scheduled for delayed closure.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// ID of the [`DelayedTradeClosureTransaction`] that originally queued this closure.
     #[serde(rename = "sourceTransactionID")]
     pub source_transaction_id: TransactionID,
 }
 
+/// Details of a position that a market order was intended to close out.
+///
+/// Present in [`MarketOrderTransaction`] when the order was created with
+/// `reason = PositionCloseout`.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct MarketOrderPositionCloseout {
+    /// The instrument whose position is being closed.
     pub instrument: InstrumentName,
+    /// Number of units being closed (`"ALL"` for a full closeout).
     pub units: String,
 }
 
+/// Parameters for a take-profit order to be created when a trade opens.
+///
+/// Embedded in order-creation request types via the `take_profit_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TakeProfitDetails {
+    /// Price at which the take-profit triggers.
     pub price: PriceValue,
+    /// How long the order remains active (`GTC`, `GTD`, or `GFD`).
     #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
+    /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
+    /// Optional client extensions to attach to the created take-profit order.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
+/// Parameters for a stop-loss order to be created when a trade opens.
+///
+/// Embedded in order-creation request types via the `stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StopLossDetails {
+    /// Absolute price level at which the stop-loss triggers. Mutually exclusive with `distance`.
     pub price: PriceValue,
+    /// Distance in price units from the trade price at which the stop-loss triggers.
+    /// Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
+    /// How long the order remains active.
     #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
+    /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
+    /// Optional client extensions to attach to the created stop-loss order.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
+/// Parameters for a trailing stop-loss order to be created when a trade opens.
+///
+/// Embedded in order-creation request types via the `trailing_stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TrailingStopLossDetails {
+    /// Distance in price units that the trailing stop follows behind the best price.
     pub distance: DecimalNumber,
+    /// How long the order remains active.
     #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
+    /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
+    /// Optional client extensions to attach to the created trailing stop-loss order.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
+/// Parameters for a guaranteed stop-loss order to be created when a trade opens.
+///
+/// Embedded in order-creation request types via the `guaranteed_stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GuaranteedStopLossDetails {
+    /// Absolute price level at which the guaranteed stop triggers. Mutually exclusive with `distance`.
     pub price: PriceValue,
+    /// Distance in price units from the trade price. Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
+    /// How long the order remains active.
     #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
+    /// Expiry timestamp when `time_in_force` is `GTD`.
     #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
+    /// Optional client extensions to attach to the created guaranteed stop-loss order.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
+/// Details of a trade that was opened as a result of an order fill.
+///
+/// Present in [`OrderFillTransaction::trade_opened`] when the fill created a new trade.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TradeOpen {
+    /// The newly opened trade's ID.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// Number of units opened. Positive = long, negative = short.
     pub units: DecimalNumber,
+    /// The price at which the trade was opened.
     #[serde(rename = "price")]
     pub price: PriceValue,
+    /// Fee charged for guaranteed execution, in home currency units.
     #[serde(rename = "guaranteedExecutionFee")]
     pub guaranteed_execution_fee: AccountUnits,
+    /// Optional client extensions attached to the trade at open time.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
+    /// Half of the bid-ask spread cost at the time of opening, in home currency units.
     #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: AccountUnits,
+    /// Margin required to hold the newly opened units, in home currency units.
     #[serde(rename = "initialMarginRequired")]
     pub initial_margin_required: AccountUnits,
 }
 
+/// Details of a trade that was fully or partially closed as a result of an order fill.
+///
+/// Present in [`OrderFillTransaction::trades_closed`] (full close) or
+/// [`OrderFillTransaction::trade_reduced`] (partial close).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TradeReduce {
+    /// The trade that was closed or reduced.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// Number of units closed. Always positive.
     pub units: DecimalNumber,
+    /// Price at which the units were closed. `None` for administrative closures.
     #[serde(rename = "price")]
     pub price: Option<PriceValue>,
+    /// Realised profit/loss from this closure, in home currency units.
     #[serde(rename = "realizedPL")]
     pub realized_pl: AccountUnits,
+    /// Financing applied to the closed units, in home currency units.
     pub financing: AccountUnits,
+    /// Guaranteed execution fee applicable to this closure, if any.
     #[serde(rename = "guaranteedExecutionFee")]
     pub guaranteed_execution_fee: Option<AccountUnits>,
+    /// Half spread cost for this closure, in home currency units.
     #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: Option<AccountUnits>,
 }
 
+/// Financing applied to a single open trade as part of a [`DailyFinancingTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OpenTradeFinancing {
+    /// The trade to which financing was applied.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// Financing amount applied, in home currency units. Negative = charge, positive = credit.
     pub financing: AccountUnits,
 }
 
+/// Financing applied to all open trades in a single instrument position,
+/// as part of a [`DailyFinancingTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PositionFinancing {
+    /// The instrument whose position received financing.
     pub instrument: InstrumentName,
+    /// Total financing for this instrument, in home currency units.
     pub financing: AccountUnits,
+    /// Per-trade breakdown of the financing applied.
     #[serde(rename = "openTradeFinancings")]
     pub open_trade_financings: Option<Vec<OpenTradeFinancing>>,
 }
 
+/// Dividend adjustment applied to a single open trade as part of a
+/// [`DividendAdjustmentTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct OpenTradeDividendAdjustment {
+    /// The trade to which the dividend adjustment was applied.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
+    /// Dividend adjustment amount, in home currency units.
     #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
 }
 
+/// A keepalive message emitted on the transaction stream when no transactions
+/// have occurred recently.
+///
+/// Consumed as part of [`TransactionStreamItem::HEARTBEAT`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionHeartbeat {
+    /// Timestamp of the heartbeat.
     pub time: DateTime<Utc>,
+    /// ID of the most recent transaction at the time this heartbeat was sent.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
@@ -1839,17 +2111,34 @@ pub struct TransactionHeartbeat {
 // Client Extensions
 // ---------------------------------------------------------------------------
 
+/// Optional client-supplied metadata that can be attached to orders and trades.
+///
+/// All three fields are optional and are omitted from serialization when `None`,
+/// so that a `PUT` with a partially populated `ClientExtensions` only updates the
+/// provided fields and clears any field explicitly set to `None` on the server.
+///
+/// # Example
+///
+/// ```rust,ignore
+/// let ext = ClientExtensions::new()
+///     .id("my-trade-001".to_string())
+///     .tag("strategy-A".to_string());
+/// ```
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClientExtensions {
+    /// Client-assigned identifier for the order or trade.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<ClientID>,
+    /// Client-assigned tag for grouping related orders or trades.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tag: Option<ClientTag>,
+    /// Free-text comment.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub comment: Option<ClientComment>,
 }
 
 impl ClientExtensions {
+    /// Creates an empty `ClientExtensions` with all fields set to `None`.
     pub fn new() -> Self {
         ClientExtensions {
             id: None,
@@ -1867,14 +2156,23 @@ impl ClientExtensions {
 // Request/Response types
 // ---------------------------------------------------------------------------
 
+/// Request parameters for `GET /v3/accounts/{accountID}/transactions`.
+///
+/// All fields are optional. Call builder methods to set filters before passing
+/// to [`TransactionService::list`].
 pub struct ListTransactionsRequest {
+    /// Return only transactions at or after this timestamp.
     pub from: Option<DateTime<Utc>>,
+    /// Return only transactions at or before this timestamp.
     pub to: Option<DateTime<Utc>>,
+    /// Maximum number of transactions per page (server default applies when `None`).
     pub page_size: Option<u16>,
+    /// Restrict results to these transaction types. Empty = all types.
     pub transaction_type: Vec<TransactionType>,
 }
 
 impl ListTransactionsRequest {
+    /// Creates a new request with no filters applied.
     pub fn new() -> Self {
         ListTransactionsRequest {
             from: None,
@@ -1929,25 +2227,42 @@ impl ListTransactionsRequest {
     }
 }
 
+/// Response body for `GET /v3/accounts/{accountID}/transactions` (HTTP 200).
+///
+/// The actual transactions are not embedded here; instead, `pages` contains
+/// URLs for fetching each page of transactions individually.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ListTransactionsResponse {
+    /// Total number of transactions matching the query.
     pub count: i64,
+    /// Start of the time range covered by this response.
     pub from: DateTime<Utc>,
+    /// End of the time range covered by this response.
     pub to: DateTime<Utc>,
+    /// Maximum number of transactions per page used for this response.
     #[serde(rename = "pageSize")]
     pub page_size: i64,
+    /// URLs for each page of results. Fetch each URL to retrieve the transactions.
     pub pages: Vec<String>,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
 
+/// Response body for `GET /v3/accounts/{accountID}/transactions/{transactionID}` (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetTransactionDetailsResponse {
+    /// The requested transaction.
     pub transaction: Transaction,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
 
+/// Request parameters for
+/// `GET /v3/accounts/{accountID}/transactions/idrange`.
+///
+/// Returns transactions with IDs in the inclusive range `[from, to]`.
 pub struct GetTransactionsByIDRangeRequest {
     from: TransactionID,
     to: TransactionID,
@@ -1955,6 +2270,7 @@ pub struct GetTransactionsByIDRangeRequest {
 }
 
 impl GetTransactionsByIDRangeRequest {
+    /// Creates a new request for the inclusive ID range `[from, to]`.
     pub fn new(from: TransactionID, to: TransactionID) -> Self {
         GetTransactionsByIDRangeRequest {
             from,
@@ -1963,6 +2279,8 @@ impl GetTransactionsByIDRangeRequest {
         }
     }
 
+    /// Restricts the results to transactions matching `filter`.
+    /// Call multiple times to include several filter categories.
     pub fn filter(mut self, filter: TransactionFilter) -> Self {
         self.filter.push(filter);
         self
@@ -1987,19 +2305,28 @@ impl GetTransactionsByIDRangeRequest {
     }
 }
 
+/// Response body for `GET /v3/accounts/{accountID}/transactions/idrange` and
+/// `GET /v3/accounts/{accountID}/transactions/sinceid` (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetTransactionsResponse {
+    /// The transactions matching the request.
     transactions: Vec<Transaction>,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
 
+/// Request parameters for
+/// `GET /v3/accounts/{accountID}/transactions/sinceid`.
+///
+/// Returns all transactions with IDs greater than `id`.
 pub struct GetTransactionsBySinceIDRequest {
     id: TransactionID,
     filter: Vec<TransactionFilter>,
 }
 
 impl GetTransactionsBySinceIDRequest {
+    /// Creates a new request that returns transactions since (exclusive of) `id`.
     pub fn new(id: TransactionID) -> Self {
         GetTransactionsBySinceIDRequest {
             id,
@@ -2007,6 +2334,8 @@ impl GetTransactionsBySinceIDRequest {
         }
     }
 
+    /// Restricts the results to transactions matching `filter`.
+    /// Call multiple times to include several filter categories.
     pub fn filter(mut self, filter: TransactionFilter) -> Self {
         self.filter.push(filter);
         self
@@ -2029,6 +2358,10 @@ impl GetTransactionsBySinceIDRequest {
     }
 }
 
+/// An item from the OANDA transaction stream.
+///
+/// The stream emits either a [`TransactionHeartbeat`] (when idle) or a full
+/// [`Transaction`] (for every account event). Deserialised via the `"type"` tag.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TransactionStreamItem {
@@ -2037,6 +2370,10 @@ pub enum TransactionStreamItem {
     Transaction(Transaction),
 }
 
+/// Provides access to the OANDA Transaction endpoints
+/// (`/v3/accounts/{id}/transactions/...`).
+///
+/// Obtain an instance via [`Client::transaction`](crate::client::Client::transaction).
 pub struct TransactionService<'a> {
     client: &'a Client,
 }
@@ -2046,6 +2383,16 @@ impl<'a> TransactionService<'a> {
         TransactionService { client }
     }
 
+    /// Lists transactions on the account, optionally filtered by time range or type.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/transactions`.
+    ///
+    /// Returns page URLs rather than inline transactions; follow each URL in
+    /// [`ListTransactionsResponse::pages`] to retrieve the actual transaction data.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn list(
         &self,
         req: ListTransactionsRequest,
@@ -2074,6 +2421,13 @@ impl<'a> TransactionService<'a> {
         )
     }
 
+    /// Returns the details of the transaction identified by `id`.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/transactions/{transactionID}`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn get_details(
         &self,
         id: TransactionID,
@@ -2102,6 +2456,13 @@ impl<'a> TransactionService<'a> {
         )
     }
 
+    /// Returns all transactions with IDs in the inclusive range specified by `req`.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/transactions/idrange`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn get_by_id_range(
         &self,
         req: GetTransactionsByIDRangeRequest,
@@ -2130,6 +2491,13 @@ impl<'a> TransactionService<'a> {
         )
     }
 
+    /// Returns all transactions with IDs greater than the one specified in `req`.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/transactions/sinceid`.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn get_by_since_id(
         &self,
         req: GetTransactionsBySinceIDRequest,
