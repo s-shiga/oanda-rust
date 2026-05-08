@@ -508,15 +508,21 @@ pub struct UserAttributes {
 // ---------------------------------------------------------------------------
 
 /// Request body for `PATCH /v3/accounts/{accountID}/configuration`.
+///
+/// At least one field must be set; fields left as `None` are not sent and
+/// therefore not changed on the server.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ConfigureAccountRequest {
+    /// New display name for the account.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
+    /// New margin rate expressed as a decimal (e.g. `"0.05"` for 5 % margin / 20:1 leverage).
     #[serde(rename = "marginRate", skip_serializing_if = "Option::is_none")]
     pub margin_rate: Option<DecimalNumber>,
 }
 
 impl ConfigureAccountRequest {
+    /// Creates a new request with no fields set.
     pub fn new() -> Self {
         ConfigureAccountRequest { alias: None, margin_rate: None }
     }
@@ -640,6 +646,10 @@ impl<'a> AccountService<'a> {
         )
     }
 
+    /// Returns the full details of the specified account, including all open
+    /// trades, positions, and pending orders.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}`.
     pub async fn get_details(
         &self,
         account_id: &AccountID,
@@ -658,6 +668,10 @@ impl<'a> AccountService<'a> {
         )
     }
 
+    /// Returns a condensed snapshot of the specified account's state.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/summary`. Unlike [`get_details`](Self::get_details),
+    /// the response does not include the full lists of open trades, positions, or orders.
     pub async fn get_summary(
         &self,
         account_id: &AccountID,
