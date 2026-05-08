@@ -6,6 +6,28 @@ use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::Request;
 use url::Url;
 
+/// HTTP client for OANDA's long-lived streaming endpoints.
+///
+/// Unlike [`Client`](crate::client::Client), which targets the REST API,
+/// `StreamClient` connects to the separate OANDA streaming host and keeps the
+/// connection open, delivering newline-delimited JSON messages as they arrive.
+///
+/// # Example
+///
+/// ```no_run
+/// use oanda_rust::stream::StreamClient;
+///
+/// # #[tokio::main]
+/// # async fn main() {
+/// let client = StreamClient::new_practice("my-api-key")
+///     .with_account_id("001-001-1234567-001".to_string());
+///
+/// client.stream_transactions(|item| {
+///     println!("{:?}", item);
+///     Ok(())
+/// }).await.unwrap();
+/// # }
+/// ```
 pub struct StreamClient {
     pub(crate) base_url: Url,
     pub(crate) http_client: reqwest::Client,
@@ -16,6 +38,10 @@ const FX_TRADE_PRACTICE_STREAMING_URL: &str = "https://stream-fxpractice.oanda.c
 const FX_TRADE_STREAMING_URL: &str = "https://stream-fxtrade.oanda.com";
 
 impl<'a> StreamClient {
+    /// Creates a `StreamClient` targeting the live trading streaming API.
+    ///
+    /// The `api_key` is sent as a `Bearer` token on every request.
+    /// Call [`with_account_id`](Self::with_account_id) before streaming.
     #[allow(unused)]
     pub fn new(api_key: &str) -> Self {
         StreamClient {
@@ -25,6 +51,10 @@ impl<'a> StreamClient {
         }
     }
 
+    /// Creates a `StreamClient` targeting the practice (demo) streaming API.
+    ///
+    /// The `api_key` is sent as a `Bearer` token on every request.
+    /// Call [`with_account_id`](Self::with_account_id) before streaming.
     #[allow(unused)]
     pub fn new_practice(api_key: &str) -> Self {
         StreamClient {
@@ -47,11 +77,29 @@ impl<'a> StreamClient {
             .unwrap()
     }
 
+    /// Sets the account ID used for streaming endpoints and returns `self`.
     pub fn with_account_id(mut self, account_id: AccountID) -> Self {
         self.account_id = Some(account_id);
         self
     }
 
+    /// Opens a persistent connection to the transaction stream and invokes
+    /// `handler` for each message received.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/transactions/stream`. The connection
+    /// stays open until the server closes it, `handler` returns an `Err`, or a
+    /// network error occurs. Messages are newline-delimited JSON and may be
+    /// heartbeats or transaction events — see [`TransactionStreamItem`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`APIError`] if the initial HTTP request fails, the server
+    /// returns a non-2xx status, a chunk cannot be read, a message cannot be
+    /// deserialised, or `handler` itself returns an error.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn stream_transactions(
         &self,
         handler: fn(TransactionStreamItem) -> Result<(), APIError>,

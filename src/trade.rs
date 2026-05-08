@@ -246,14 +246,20 @@ pub struct CalculatedTradeState {
 // Request types
 // ---------------------------------------------------------------------------
 
+/// Request body for `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close`.
+///
+/// Omitting `units` closes the entire trade. Supply a decimal string to
+/// partially close only that many units.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CloseTradeRequest {
-    /// Indication of how much of the Trade to close. If None, all the Trade will be closed.
+    /// Number of units to close. `None` closes all open units. A decimal
+    /// string (e.g. `"5000"`) partially closes the trade. Omitted when `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub units: Option<String>,
 }
 
 impl CloseTradeRequest {
+    /// Creates a new request that will close all open units of the trade.
     pub fn new() -> CloseTradeRequest {
         CloseTradeRequest { units: None }
     }
@@ -315,6 +321,7 @@ pub struct CloseTradeResponse {
 /// expects (`{"clientExtensions": {...}}`).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateClientExtensionsRequest {
+    /// The new client extensions to apply to the trade.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: ClientExtensions,
 }

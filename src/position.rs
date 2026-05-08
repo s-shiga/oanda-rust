@@ -142,15 +142,25 @@ pub struct PositionDetailsResponse {
 /// are omitted the API defaults to closing all units on both sides.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClosePositionRequest {
+    /// Units of the long side to close. `"ALL"` closes all long units,
+    /// `"NONE"` leaves the long side open, or a decimal string (e.g. `"5000"`)
+    /// partially closes. Omitted when `None`.
     #[serde(rename = "longUnits", skip_serializing_if = "Option::is_none")]
     pub long_units: Option<String>,
+    /// Optional client extensions to attach to the market order created to
+    /// close the long side. Omitted when `None`.
     #[serde(
         rename = "longClientExtensions",
         skip_serializing_if = "Option::is_none"
     )]
     pub long_client_extensions: Option<ClientExtensions>,
+    /// Units of the short side to close. `"ALL"` closes all short units,
+    /// `"NONE"` leaves the short side open, or a decimal string partially
+    /// closes. Omitted when `None`.
     #[serde(rename = "shortUnits", skip_serializing_if = "Option::is_none")]
     pub short_units: Option<String>,
+    /// Optional client extensions to attach to the market order created to
+    /// close the short side. Omitted when `None`.
     #[serde(
         rename = "shortClientExtensions",
         skip_serializing_if = "Option::is_none"
@@ -159,6 +169,11 @@ pub struct ClosePositionRequest {
 }
 
 impl ClosePositionRequest {
+    /// Creates a new request with all fields unset.
+    ///
+    /// The OANDA API interprets omitted `longUnits`/`shortUnits` as closing
+    /// all units on each side. Use the builder methods to close only specific
+    /// sides or a partial number of units.
     pub fn new() -> Self {
         ClosePositionRequest {
             long_units: None,
@@ -181,20 +196,28 @@ impl ClosePositionRequest {
 /// polymorphic union of transaction sub-types.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ClosePositionResponse {
+    /// The market order transaction created to close the long side, if any.
     #[serde(rename = "longOrderCreateTransaction")]
     pub long_order_create_transaction: Option<serde_json::Value>,
+    /// The fill transaction for the long-side close order, if it was filled.
     #[serde(rename = "longOrderFillTransaction")]
     pub long_order_fill_transaction: Option<serde_json::Value>,
+    /// The cancel transaction for the long-side close order, if it was cancelled.
     #[serde(rename = "longOrderCancelTransaction")]
     pub long_order_cancel_transaction: Option<serde_json::Value>,
+    /// The market order transaction created to close the short side, if any.
     #[serde(rename = "shortOrderCreateTransaction")]
     pub short_order_create_transaction: Option<serde_json::Value>,
+    /// The fill transaction for the short-side close order, if it was filled.
     #[serde(rename = "shortOrderFillTransaction")]
     pub short_order_fill_transaction: Option<serde_json::Value>,
+    /// The cancel transaction for the short-side close order, if it was cancelled.
     #[serde(rename = "shortOrderCancelTransaction")]
     pub short_order_cancel_transaction: Option<serde_json::Value>,
+    /// IDs of all transactions related to this close request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// ID of the most recent transaction on the account after this request.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
