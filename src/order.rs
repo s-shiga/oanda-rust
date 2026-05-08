@@ -1475,7 +1475,7 @@ impl TrailingStopLossOrderRequest {
 
 /// JSON request body sent to `POST /v3/accounts/{accountID}/orders`.
 #[derive(Debug, Serialize)]
-pub struct CreateOrderBody {
+pub struct CreateOrderRequest {
     /// The order to create.
     pub order: OrderRequest,
 }
@@ -1541,7 +1541,7 @@ pub struct ReplaceOrderResponse {
 /// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order creation was rejected {error_code}: {error_message}")]
-pub struct OrderCreateRejectResponse {
+pub struct OrderCreateErrorResponse {
     /// The transaction that recorded the rejection reason.
     #[serde(rename = "orderRejectTransaction")]
     pub order_reject_transaction: OrderCreateRejectTransaction,
@@ -1565,7 +1565,7 @@ pub struct OrderCreateRejectResponse {
 /// (e.g. the order was already filled).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order cancellation was rejected {error_code}: {error_message}")]
-pub struct OrderCancelRejectResponse {
+pub struct OrderCancelErrorResponse {
     /// The transaction that recorded the rejection reason, if one was created.
     #[serde(rename = "orderCancelRejectTransaction")]
     pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
@@ -1982,13 +1982,13 @@ impl<'a> OrderService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let body = CreateOrderBody { order };
+        let body = CreateOrderRequest { order };
         let http_resp = self.client.http_client.post(url).json(&body).send().await?;
         handle_response!(
             http_resp,
             success: StatusCode::CREATED => CreateOrderResponse,
             errors: [
-                StatusCode::BAD_REQUEST => (OrderCreateRejectResponse, OrderCreateError)
+                StatusCode::BAD_REQUEST => (OrderCreateErrorResponse, OrderCreateError)
             ]
         )
     }
@@ -2111,14 +2111,14 @@ impl<'a> OrderService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let body = CreateOrderBody { order: req };
+        let body = CreateOrderRequest { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         handle_response!(
             http_resp,
             success: StatusCode::CREATED => ReplaceOrderResponse,
             errors: [
-                StatusCode::BAD_REQUEST => (OrderCreateRejectResponse, OrderCreateError),
-                StatusCode::NOT_FOUND => (OrderCancelRejectResponse, OrderCancelError),
+                StatusCode::BAD_REQUEST => (OrderCreateErrorResponse, OrderCreateError),
+                StatusCode::NOT_FOUND => (OrderCancelErrorResponse, OrderCancelError),
             ]
         )
     }
@@ -2148,7 +2148,7 @@ impl<'a> OrderService<'a> {
             http_resp,
             success: StatusCode::OK => CancelOrderResponse,
             errors: [
-                StatusCode::NOT_FOUND => (OrderCancelRejectResponse, OrderCancelError),
+                StatusCode::NOT_FOUND => (OrderCancelErrorResponse, OrderCancelError),
             ]
         )
     }

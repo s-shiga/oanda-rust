@@ -320,7 +320,7 @@ pub struct CloseTradeResponse {
 /// Wraps a [`ClientExtensions`] value to match the JSON envelope the OANDA API
 /// expects (`{"clientExtensions": {...}}`).
 #[derive(Debug, Serialize, Deserialize)]
-pub struct UpdateClientExtensionsRequest {
+pub struct UpdateTradeClientExtensionsRequest {
     /// The new client extensions to apply to the trade.
     #[serde(rename = "clientExtensions")]
     pub client_extensions: ClientExtensions,
@@ -542,7 +542,7 @@ impl<'a> TradeService<'a> {
                 .as_str(),
             )
             .unwrap();
-        let req = UpdateClientExtensionsRequest { client_extensions };
+        let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

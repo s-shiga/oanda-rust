@@ -1,6 +1,6 @@
 use crate::account::ConfigureAccountErrorResponse;
 use crate::order::{
-    OrderCancelRejectResponse, OrderCreateRejectResponse, UpdateOrderClientExtensionsErrorResponse,
+    OrderCancelErrorResponse, OrderCreateErrorResponse, UpdateOrderClientExtensionsErrorResponse,
 };
 use crate::trade::UpdateTradeClientExtensionsErrorResponse;
 use serde::{Deserialize, Serialize};
@@ -52,10 +52,10 @@ pub enum ErrorResponse {
     CommonError(CommonErrorResponse),
     /// An order-create request was rejected by the OANDA risk engine.
     #[error(transparent)]
-    OrderCreateError(OrderCreateRejectResponse),
+    OrderCreateError(OrderCreateErrorResponse),
     /// An order-cancel request was rejected.
     #[error(transparent)]
-    OrderCancelError(OrderCancelRejectResponse),
+    OrderCancelError(OrderCancelErrorResponse),
     /// An order client-extensions update was rejected.
     #[error(transparent)]
     UpdateOrderClientExtensionsError(#[from] UpdateOrderClientExtensionsErrorResponse),

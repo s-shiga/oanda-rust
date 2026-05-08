@@ -117,7 +117,7 @@ pub struct CalculatedPositionState {
 /// Response body for `GET /v3/accounts/{accountID}/positions` and
 /// `GET /v3/accounts/{accountID}/openPositions`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PositionListResponse {
+pub struct ListPositionsResponse {
     /// The list of positions matching the request.
     pub positions: Vec<Position>,
     /// ID of the most recent transaction on the account.
@@ -127,7 +127,7 @@ pub struct PositionListResponse {
 
 /// Response body for `GET /v3/accounts/{accountID}/positions/{instrument}`.
 #[derive(Debug, Serialize, Deserialize)]
-pub struct PositionDetailsResponse {
+pub struct GetPositionDetailsResponse {
     /// The requested position.
     pub position: Position,
     /// ID of the most recent transaction on the account.
@@ -243,7 +243,7 @@ impl<'a> PositionService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list(&self) -> Result<PositionListResponse, APIError> {
+    pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -259,7 +259,7 @@ impl<'a> PositionService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
             http_resp,
-            success: StatusCode::OK => PositionListResponse,
+            success: StatusCode::OK => ListPositionsResponse,
             errors: [ ]
         )
     }
@@ -271,7 +271,7 @@ impl<'a> PositionService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn list_open(&self) -> Result<PositionListResponse, APIError> {
+    pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -287,7 +287,7 @@ impl<'a> PositionService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
             http_resp,
-            success: StatusCode::OK => PositionListResponse,
+            success: StatusCode::OK => ListPositionsResponse,
             errors: [ ]
         )
     }
@@ -299,10 +299,10 @@ impl<'a> PositionService<'a> {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn details(
+    pub async fn get_details(
         &self,
         instrument: InstrumentName,
-    ) -> Result<PositionDetailsResponse, APIError> {
+    ) -> Result<GetPositionDetailsResponse, APIError> {
         let url = self
             .client
             .base_url
@@ -319,7 +319,7 @@ impl<'a> PositionService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
             http_resp,
-            success: StatusCode::OK => PositionDetailsResponse,
+            success: StatusCode::OK => GetPositionDetailsResponse,
             errors: [ ]
         )
     }
@@ -383,7 +383,7 @@ mod tests {
         let client = setup_test_client();
         let details = client
             .position()
-            .details(String::from("USD_JPY"))
+            .get_details(String::from("USD_JPY"))
             .await
             .unwrap();
         println!("{:#?}", details);
