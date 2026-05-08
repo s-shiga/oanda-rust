@@ -308,34 +308,56 @@ pub struct CloseTradeResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
+/// Request body for
+/// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`.
+///
+/// Wraps a [`ClientExtensions`] value to match the JSON envelope the OANDA API
+/// expects (`{"clientExtensions": {...}}`).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateClientExtensionsRequest {
     #[serde(rename = "clientExtensions")]
     pub client_extensions: ClientExtensions,
 }
 
+/// Response body for a successful
+/// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`
+/// (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
 pub struct UpdateTradeClientExtensionsResponse {
+    /// The transaction that recorded the client-extensions change on the trade.
     #[serde(rename = "tradeClientExtensionsModifyTransaction")]
     pub trade_client_extensions_modify_transaction: TradeClientExtensionsModifyTransaction,
+    /// IDs of all transactions created by this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// ID of the most recent transaction on the account after this request.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
 }
 
+/// Error response body for a failed
+/// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`
+/// (HTTP 400 or 404).
+///
+/// Returned when the update is rejected — for example, if the trade specifier
+/// does not match any trade on the account.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Trade client extensions update error {error_code}: {error_message}")]
 pub struct UpdateTradeClientExtensionsErrorResponse {
+    /// The reject transaction that recorded why the modification was refused.
     #[serde(rename = "TradeClientExtensionsModifyRejectTransaction")]
     pub trade_client_extensions_modify_reject_transaction:
         TradeClientExtensionsModifyRejectTransaction,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
+    /// IDs of all transactions related to this (failed) request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// Machine-readable error code returned by the OANDA API.
     #[serde(rename = "errorCode")]
     pub error_code: String,
+    /// Human-readable description of the error.
     #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
@@ -479,6 +501,23 @@ impl<'a> TradeService<'a> {
         )
     }
 
+    /// Replaces the client extensions on the trade identified by `specifier`.
+    ///
+    /// Calls `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`.
+    ///
+    /// Client extensions let you attach an optional client-assigned ID, tag, and
+    /// free-text comment to a trade. Passing a new [`ClientExtensions`] value
+    /// overwrites any previously stored extensions; fields left as `None` are
+    /// cleared on the server.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`APIError`] wrapping [`UpdateTradeClientExtensionsErrorResponse`]
+    /// on HTTP 400 (bad request) or 404 (trade not found).
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
     pub async fn update_client_extensions(
         &self,
         specifier: TradeSpecifier,
