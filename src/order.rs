@@ -1536,32 +1536,49 @@ pub struct ReplaceOrderResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
+/// Error response body for `POST /v3/accounts/{accountID}/orders` (HTTP 400).
+///
+/// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order creation was rejected {error_code}: {error_message}")]
 pub struct OrderCreateRejectResponse {
+    /// The transaction that recorded the rejection reason.
     #[serde(rename = "orderRejectTransaction")]
     pub order_reject_transaction: OrderCreateRejectTransaction,
+    /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
+    /// Machine-readable error code returned by the OANDA API.
     #[serde(rename = "errorCode")]
     pub error_code: String,
+    /// Human-readable description of why the order was rejected.
     #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
+/// Error response body for order cancellation and replacement requests (HTTP 404).
+///
+/// Returned when the target order cannot be found or the cancellation is rejected
+/// (e.g. the order was already filled).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order cancellation was rejected {error_code}: {error_message}")]
 pub struct OrderCancelRejectResponse {
+    /// The transaction that recorded the rejection reason, if one was created.
     #[serde(rename = "orderCancelRejectTransaction")]
     pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
+    /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
+    /// Machine-readable error code returned by the OANDA API.
     #[serde(rename = "errorCode")]
     pub error_code: String,
+    /// Human-readable description of why the cancellation was rejected.
     #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
@@ -1600,6 +1617,11 @@ pub struct UpdateOrderClientExtensionsRequest {
 }
 
 impl UpdateOrderClientExtensionsRequest {
+    /// Creates a new request with no extensions set.
+    ///
+    /// Call [`client_extensions`](Self::client_extensions) and/or
+    /// [`trade_client_extensions`](Self::trade_client_extensions) before passing
+    /// this to [`OrderService::update_client_extensions`].
     pub fn new() -> Self {
         UpdateOrderClientExtensionsRequest {
             client_extensions: None,
@@ -1625,18 +1647,27 @@ pub struct UpdateOrderClientExtensionsResponse {
     pub last_transaction_id: TransactionID,
 }
 
+/// Error response body for a failed order client-extensions update (HTTP 400 or 404).
+///
+/// Returned when the modification is rejected — for example, if the order
+/// specifier does not match any order on the account.
 #[derive(Debug, Serialize, Deserialize, Error)]
 #[error("Order client extensions update error {error_code}: {error_message}")]
 pub struct UpdateOrderClientExtensionsErrorResponse {
+    /// The reject transaction that recorded why the modification was refused.
     #[serde(rename = "orderClientExtensionsModifyRejectTransaction")]
     pub order_client_extensions_modify_reject_transaction:
         OrderClientExtensionsModifyRejectTransaction,
+    /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
+    /// IDs of all transactions related to this (failed) request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
+    /// Machine-readable error code returned by the OANDA API.
     #[serde(rename = "errorCode")]
     pub error_code: String,
+    /// Human-readable description of the error.
     #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
