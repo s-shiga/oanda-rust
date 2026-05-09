@@ -1,5 +1,6 @@
 use crate::account::AccountID;
 use crate::errors::APIError;
+use crate::pricing::PricingStreamItem;
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
@@ -22,7 +23,7 @@ use url::Url;
 /// let client = StreamClient::new_practice("my-api-key")
 ///     .with_account_id("001-001-1234567-001".to_string());
 ///
-/// client.stream_transactions(|item| {
+/// client.transactions(|item| {
 ///     println!("{:?}", item);
 ///     Ok(())
 /// }).await.unwrap();
@@ -98,7 +99,7 @@ impl<'a> StreamClient {
     /// # Panics
     ///
     /// Panics if no `account_id` has been set on the client.
-    pub async fn stream_transactions(
+    pub async fn transactions(
         &self,
         handler: fn(TransactionStreamItem) -> Result<(), APIError>,
     ) -> Result<(), APIError> {
@@ -141,6 +142,71 @@ impl<'a> StreamClient {
         }
         Ok(())
     }
+
+    /// Opens a persistent connection to the pricing stream and invokes
+    /// `handler` for each message received.
+    ///
+    /// Calls `GET /v3/accounts/{accountID}/pricing/stream`. The `instruments`
+    /// slice must contain at least one instrument name (e.g. `"EUR_USD"`).
+    /// The connection stays open until the server closes it, `handler` returns
+    /// an `Err`, or a network error occurs. Messages are newline-delimited JSON
+    /// and may be price updates or heartbeats — see [`PricingStreamItem`].
+    ///
+    /// # Errors
+    ///
+    /// Returns [`APIError`] if the initial HTTP request fails, the server
+    /// returns a non-2xx status, a chunk cannot be read, a message cannot be
+    /// deserialised, or `handler` itself returns an error.
+    ///
+    /// # Panics
+    ///
+    /// Panics if no `account_id` has been set on the client.
+    pub async fn pricing(
+        &self,
+        instruments: &[&str],
+        handler: fn(PricingStreamItem) -> Result<(), APIError>,
+    ) -> Result<(), APIError> {
+        let mut url = self
+            .base_url
+            .join(
+                format!(
+                    "/v3/accounts/{}/pricing/stream",
+                    self.account_id
+                        .as_ref()
+                        .expect("Missing account_id in client")
+                )
+                .as_str(),
+            )
+            .unwrap();
+        url.query_pairs_mut()
+            .append_pair("instruments", &instruments.join(","));
+        let http_req = Request::new(reqwest::Method::GET, url);
+        let http_resp = self
+            .http_client
+            .execute(http_req)
+            .await?
+            .error_for_status()?;
+        let mut stream = http_resp.bytes_stream();
+        let mut buffer = Vec::new();
+        while let Some(result) = stream.next().await {
+            match result {
+                Ok(chunk) => {
+                    buffer.extend_from_slice(&chunk);
+                    while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
+                        let line: Vec<u8> = buffer.drain(..=pos).collect();
+                        let trimmed = line.trim_ascii();
+                        if trimmed.is_empty() {
+                            continue;
+                        }
+                        let item = serde_json::from_slice::<PricingStreamItem>(trimmed)?;
+                        handler(item)?;
+                    }
+                }
+                Err(error) => return Err(APIError::from(error)),
+            }
+        }
+        Ok(())
+    }
 }
 
 #[cfg(test)]
@@ -156,11 +222,25 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
+    async fn test_pricing() {
+        let client = setup();
+        let _ = timeout(
+            Duration::from_secs(10),
+            client.pricing(&["EUR_USD"], |item| {
+                println!("{:#?}", item);
+                Ok(())
+            }),
+        )
+        .await;
+    }
+
+    #[tokio::test]
     async fn test_stream_transactions() {
         let client = setup();
         let _ = timeout(
             Duration::from_secs(10),
-            client.stream_transactions(|item| {
+            client.transactions(|item| {
                 println!("{:#?}", item);
                 Ok(())
             }),
