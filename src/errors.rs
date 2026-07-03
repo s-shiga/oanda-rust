@@ -23,8 +23,16 @@ pub enum APIError {
     #[error("JSON error: {0}")]
     JSONError(#[from] serde_json::Error),
     /// The OANDA API returned a non-success response with a structured error body.
+    ///
+    /// Boxed to keep `APIError` (and every `Result` carrying it) small.
     #[error(transparent)]
-    ErrorResponse(#[from] ErrorResponse),
+    ErrorResponse(Box<ErrorResponse>),
+}
+
+impl From<ErrorResponse> for APIError {
+    fn from(err: ErrorResponse) -> Self {
+        APIError::ErrorResponse(Box::new(err))
+    }
 }
 
 /// A generic OANDA error response body containing only a human-readable message.

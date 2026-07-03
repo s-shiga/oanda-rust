@@ -42,7 +42,7 @@ pub type OrderID = String;
 #[serde(tag = "type")]
 pub enum Transaction {
     #[serde(rename = "ORDER_FILL")]
-    OrderFillTransaction(OrderFillTransaction),
+    OrderFillTransaction(Box<OrderFillTransaction>),
     #[serde(rename = "ORDER_CANCEL")]
     OrderCancelTransaction(OrderCancelTransaction),
     #[serde(rename = "ORDER_CANCEL_REJECT")]
@@ -2358,8 +2358,9 @@ impl GetTransactionsBySinceIDRequest {
 #[serde(tag = "type")]
 pub enum TransactionStreamItem {
     HEARTBEAT(TransactionHeartbeat),
+    /// Boxed because `Transaction` is much larger than a heartbeat.
     #[serde(untagged)]
-    Transaction(Transaction),
+    Transaction(Box<Transaction>),
 }
 
 /// Provides access to the OANDA Transaction endpoints

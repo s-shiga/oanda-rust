@@ -222,7 +222,9 @@ pub struct PricingHeartbeat {
 #[serde(tag = "type")]
 pub enum PricingStreamItem {
     /// A live price update for an instrument.
-    PRICE(ClientPrice),
+    ///
+    /// Boxed because `ClientPrice` is much larger than a heartbeat.
+    PRICE(Box<ClientPrice>),
     /// A periodic keepalive message confirming the stream is active.
     HEARTBEAT(PricingHeartbeat),
 }

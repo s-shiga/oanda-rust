@@ -190,10 +190,10 @@ macro_rules! handle_response {
             $err_status => {
                 let text = $resp.text().await?;
                 match serde_json::from_str::<$err_type>(&text) {
-                    Ok(err) => Err(APIError::ErrorResponse(
+                    Ok(err) => Err(APIError::from(
                         ErrorResponse::$err_variant(err)
                     )),
-                    Err(_) => Err(APIError::ErrorResponse(
+                    Err(_) => Err(APIError::from(
                         ErrorResponse::CommonError(
                             serde_json::from_str::<CommonErrorResponse>(&text)?
                         )
@@ -201,7 +201,7 @@ macro_rules! handle_response {
                 }
             }
             )*
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+            _ => Err(APIError::from(ErrorResponse::CommonError(
                 $resp.json::<CommonErrorResponse>().await?
             )))
         }

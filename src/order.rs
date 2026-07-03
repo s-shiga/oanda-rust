@@ -1986,7 +1986,7 @@ impl<'a> OrderService<'a> {
         let http_resp = self.client.http_client.execute(http_req).await?;
         match http_resp.status() {
             StatusCode::OK => Ok(http_resp.json::<ListOrdersResponse>().await?),
-            _ => Err(APIError::ErrorResponse(ErrorResponse::CommonError(
+            _ => Err(APIError::from(ErrorResponse::CommonError(
                 http_resp.json::<CommonErrorResponse>().await?,
             ))),
         }
