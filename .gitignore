@@ -24,3 +24,8 @@ target
 # Added by cargo
 
 /target
+
+# JetBrains per-user IDE state
+.idea/workspace.xml
+.idea/modules.xml
+*.iml
