@@ -1,5 +1,6 @@
 use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::handle_response;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
@@ -9,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::ops::Not;
 use strum_macros::{Display, EnumString};
 use url::Url;
-use crate::handle_response;
 
 /// An instrument identifier string in `"BASE_QUOTE"` format (e.g. `"EUR_USD"`).
 pub type InstrumentName = String;

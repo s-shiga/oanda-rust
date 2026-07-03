@@ -278,7 +278,9 @@ impl<'a> PositionService<'a> {
         &self,
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("positions/{}", instrument));
+        let url = self
+            .client
+            .account_url(&format!("positions/{}", instrument));
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -303,7 +305,9 @@ impl<'a> PositionService<'a> {
         instrument: InstrumentName,
         req: ClosePositionRequest,
     ) -> Result<ClosePositionResponse, APIError> {
-        let url = self.client.account_url(&format!("positions/{}/close", instrument));
+        let url = self
+            .client
+            .account_url(&format!("positions/{}/close", instrument));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

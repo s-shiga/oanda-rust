@@ -1,11 +1,11 @@
 use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::handle_response;
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Deserializer, Serialize};
-use crate::handle_response;
 
 /// A price expressed as a decimal string (e.g. `"1.08523"`).
 ///

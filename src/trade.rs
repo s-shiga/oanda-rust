@@ -457,7 +457,9 @@ impl<'a> TradeService<'a> {
         specifier: TradeSpecifier,
         req: CloseTradeRequest,
     ) -> Result<CloseTradeResponse, APIError> {
-        let url = self.client.account_url(&format!("trades/{}/close", specifier));
+        let url = self
+            .client
+            .account_url(&format!("trades/{}/close", specifier));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,
@@ -488,7 +490,9 @@ impl<'a> TradeService<'a> {
         specifier: TradeSpecifier,
         client_extensions: ClientExtensions,
     ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
-        let url = self.client.account_url(&format!("trades/{}/clientExtensions", specifier));
+        let url = self
+            .client
+            .account_url(&format!("trades/{}/clientExtensions", specifier));
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(

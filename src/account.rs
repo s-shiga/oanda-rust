@@ -524,7 +524,10 @@ pub struct ConfigureAccountRequest {
 impl ConfigureAccountRequest {
     /// Creates a new request with no fields set.
     pub fn new() -> Self {
-        ConfigureAccountRequest { alias: None, margin_rate: None }
+        ConfigureAccountRequest {
+            alias: None,
+            margin_rate: None,
+        }
     }
 
     request_option_setter!(alias, String);
@@ -706,7 +709,8 @@ impl<'a> AccountService<'a> {
             .join(format!("/v3/accounts/{}/instruments", account_id).as_str())
             .unwrap();
         if let Some(names) = instruments {
-            url.query_pairs_mut().append_pair("instruments", &names.join(","));
+            url.query_pairs_mut()
+                .append_pair("instruments", &names.join(","));
         }
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -848,8 +852,8 @@ mod tests {
 #[cfg(feature = "write-tests")]
 #[cfg(test)]
 mod write_tests {
-    use crate::client::setup_test_client;
     use crate::account::ConfigureAccountRequest;
+    use crate::client::setup_test_client;
 
     #[tokio::test]
     async fn test_configure() {

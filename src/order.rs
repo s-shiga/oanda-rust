@@ -2065,7 +2065,9 @@ impl<'a> OrderService<'a> {
     ///
     /// Panics if no `account_id` has been set on the client.
     pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}/cancel", specifier));
+        let url = self
+            .client
+            .account_url(&format!("orders/{}/cancel", specifier));
         let http_resp = self.client.http_client.put(url).send().await?;
         handle_response!(
             http_resp,
@@ -2088,7 +2090,9 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
         req: UpdateOrderClientExtensionsRequest,
     ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}/clientExtensions", specifier));
+        let url = self
+            .client
+            .account_url(&format!("orders/{}/clientExtensions", specifier));
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,
@@ -2119,7 +2123,9 @@ mod tests {
 #[cfg(test)]
 mod write_tests {
     use crate::client::setup_test_client;
-    use crate::order::{LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
+    use crate::order::{
+        LimitOrderRequest, ListOrdersRequest, OrderRequest, UpdateOrderClientExtensionsRequest,
+    };
     use crate::transaction::ClientExtensions;
 
     #[tokio::test]
