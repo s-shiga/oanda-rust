@@ -38,7 +38,7 @@ pub struct StreamClient {
 const FX_TRADE_PRACTICE_STREAMING_URL: &str = "https://stream-fxpractice.oanda.com";
 const FX_TRADE_STREAMING_URL: &str = "https://stream-fxtrade.oanda.com";
 
-impl<'a> StreamClient {
+impl StreamClient {
     /// Creates a `StreamClient` targeting the live trading streaming API.
     ///
     /// The `api_key` is sent as a `Bearer` token on every request.

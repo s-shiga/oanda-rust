@@ -326,7 +326,7 @@ pub struct CandlesticksRequest {
     weekly_alignment: Option<WeeklyAlignment>,
 }
 
-impl<'a> CandlesticksRequest {
+impl CandlesticksRequest {
     /// Creates a new request for the given instrument with no parameters set.
     ///
     /// Call the builder methods (`bid`, `ask`, `mid`, `granularity`, etc.) to

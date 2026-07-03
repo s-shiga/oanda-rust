@@ -521,6 +521,12 @@ pub struct ConfigureAccountRequest {
     pub margin_rate: Option<DecimalNumber>,
 }
 
+impl Default for ConfigureAccountRequest {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ConfigureAccountRequest {
     /// Creates a new request with no fields set.
     pub fn new() -> Self {

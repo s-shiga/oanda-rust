@@ -1909,11 +1909,11 @@ impl ListOrdersRequest {
         });
         self.count.is_some().then(|| {
             url.query_pairs_mut()
-                .append_pair("count", &self.count.unwrap().to_string().as_str());
+                .append_pair("count", self.count.unwrap().to_string().as_str());
         });
-        self.before_id.as_ref().map(|id| {
+        if let Some(id) = self.before_id.as_ref() {
             url.query_pairs_mut().append_pair("beforeID", id.as_str());
-        });
+        }
     }
 }
 

@@ -2206,7 +2206,7 @@ impl ListTransactionsRequest {
             url.query_pairs_mut()
                 .append_pair("pageSize", page_size.to_string().as_str());
         }
-        if self.transaction_type.len() > 0 {
+        if !self.transaction_type.is_empty() {
             url.query_pairs_mut().append_pair(
                 "transactionType",
                 self.transaction_type
@@ -2283,11 +2283,10 @@ impl GetTransactionsByIDRangeRequest {
         url.query_pairs_mut()
             .append_pair("from", &self.from.to_string())
             .append_pair("to", &self.to.to_string());
-        if self.filter.len() > 0 {
+        if !self.filter.is_empty() {
             url.query_pairs_mut().append_pair(
                 "type",
-                &self
-                    .filter
+                self.filter
                     .iter()
                     .map(|f| f.to_string())
                     .collect::<Vec<String>>()
@@ -2337,7 +2336,7 @@ impl GetTransactionsBySinceIDRequest {
     pub(crate) fn set_params(&self, url: &mut Url) {
         url.query_pairs_mut()
             .append_pair("id", &self.id.to_string());
-        if self.filter.len() > 0 {
+        if !self.filter.is_empty() {
             url.query_pairs_mut().append_pair(
                 "filter",
                 &self
