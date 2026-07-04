@@ -95,17 +95,14 @@ pub struct ConversionFactor {
 /// Returned as part of dynamic account-state responses. Four factors cover the
 /// four cases: gain/loss × quote/base currency.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HomeConversionFactors {
     /// Factor for converting a quote-currency gain to home currency.
-    #[serde(rename = "gainQuoteHome")]
     pub gain_quote_home: ConversionFactor,
     /// Factor for converting a quote-currency loss to home currency.
-    #[serde(rename = "lossQuoteHome")]
     pub loss_quote_home: ConversionFactor,
     /// Factor for converting a base-currency gain to home currency.
-    #[serde(rename = "gainBaseHome")]
     pub gain_base_home: ConversionFactor,
     /// Factor for converting a base-currency loss to home currency.
-    #[serde(rename = "lossBaseHome")]
     pub loss_base_home: ConversionFactor,
 }

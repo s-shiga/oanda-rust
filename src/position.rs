@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 /// instrument. Returned by the position endpoints and embedded in full account
 /// detail responses.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Position {
     /// The instrument this position is on (e.g. `"EUR_USD"`).
     pub instrument: InstrumentName,
@@ -26,7 +27,6 @@ pub struct Position {
     pub unrealized_pl: AccountUnits,
     /// Margin currently consumed by the net open position, in home currency
     /// units. `None` when the position is closed.
-    #[serde(rename = "marginUsed")]
     pub margin_used: Option<AccountUnits>,
     /// Realised P&L since the last account P&L reset, in home currency units.
     #[serde(rename = "resettablePL")]
@@ -39,11 +39,9 @@ pub struct Position {
     pub commission: AccountUnits,
     /// Cumulative dividend adjustment applied to this position (for CFDs that
     /// pay dividends), in home currency units.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
     /// Cumulative fees paid for guaranteed stop-loss execution on this
     /// instrument, in home currency units.
-    #[serde(rename = "guaranteedExecutionFees")]
     pub guaranteed_execution_fees: AccountUnits,
     /// Aggregated state of all long (buy) trades on this instrument.
     pub long: PositionSide,
@@ -54,13 +52,13 @@ pub struct Position {
 /// The aggregated state of all trades on one side (long or short) of a
 /// [`Position`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PositionSide {
     /// Net number of units held on this side. Positive for long, negative for
     /// short. Zero when there are no open trades on this side.
     pub units: DecimalNumber,
     /// Volume-weighted average open price across all trades on this side.
     /// `None` when `units` is zero.
-    #[serde(rename = "averagePrice")]
     pub average_price: Option<DecimalNumber>,
     /// IDs of the open trades that make up this side of the position.
     /// `None` when there are no open trades on this side.
@@ -81,11 +79,9 @@ pub struct PositionSide {
     /// units.
     pub financing: AccountUnits,
     /// Cumulative dividend adjustment on this side, in home currency units.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
     /// Cumulative guaranteed execution fees on this side, in home currency
     /// units.
-    #[serde(rename = "guaranteedExecutionFees")]
     pub guaranteed_execution_fees: AccountUnits,
 }
 
@@ -95,6 +91,7 @@ pub struct PositionSide {
 /// Contains only the fields that change as the market moves; all static
 /// position data is in [`Position`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CalculatedPositionState {
     /// The instrument this position state belongs to.
     pub instrument: InstrumentName,
@@ -110,7 +107,6 @@ pub struct CalculatedPositionState {
     pub short_unrealized_pl: AccountUnits,
     /// Margin currently consumed by the net open position, in home currency
     /// units.
-    #[serde(rename = "marginUsed")]
     pub margin_used: AccountUnits,
 }
 
@@ -141,30 +137,25 @@ pub struct GetPositionDetailsResponse {
 /// or a decimal string (e.g. `"5000"`) to partially close. When both fields
 /// are omitted the API defaults to closing all units on both sides.
 #[derive(Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClosePositionRequest {
     /// Units of the long side to close. `"ALL"` closes all long units,
     /// `"NONE"` leaves the long side open, or a decimal string (e.g. `"5000"`)
     /// partially closes. Omitted when `None`.
-    #[serde(rename = "longUnits", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub long_units: Option<String>,
     /// Optional client extensions to attach to the market order created to
     /// close the long side. Omitted when `None`.
-    #[serde(
-        rename = "longClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub long_client_extensions: Option<ClientExtensions>,
     /// Units of the short side to close. `"ALL"` closes all short units,
     /// `"NONE"` leaves the short side open, or a decimal string partially
     /// closes. Omitted when `None`.
-    #[serde(rename = "shortUnits", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub short_units: Option<String>,
     /// Optional client extensions to attach to the market order created to
     /// close the short side. Omitted when `None`.
-    #[serde(
-        rename = "shortClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub short_client_extensions: Option<ClientExtensions>,
 }
 
@@ -190,24 +181,19 @@ impl ClosePositionRequest {
 /// Transaction fields are raw JSON values because the OANDA API returns a
 /// polymorphic union of transaction sub-types.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClosePositionResponse {
     /// The market order transaction created to close the long side, if any.
-    #[serde(rename = "longOrderCreateTransaction")]
     pub long_order_create_transaction: Option<serde_json::Value>,
     /// The fill transaction for the long-side close order, if it was filled.
-    #[serde(rename = "longOrderFillTransaction")]
     pub long_order_fill_transaction: Option<serde_json::Value>,
     /// The cancel transaction for the long-side close order, if it was cancelled.
-    #[serde(rename = "longOrderCancelTransaction")]
     pub long_order_cancel_transaction: Option<serde_json::Value>,
     /// The market order transaction created to close the short side, if any.
-    #[serde(rename = "shortOrderCreateTransaction")]
     pub short_order_create_transaction: Option<serde_json::Value>,
     /// The fill transaction for the short-side close order, if it was filled.
-    #[serde(rename = "shortOrderFillTransaction")]
     pub short_order_fill_transaction: Option<serde_json::Value>,
     /// The cancel transaction for the short-side close order, if it was cancelled.
-    #[serde(rename = "shortOrderCancelTransaction")]
     pub short_order_cancel_transaction: Option<serde_json::Value>,
     /// IDs of all transactions related to this close request.
     #[serde(rename = "relatedTransactionIDs")]

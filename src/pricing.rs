@@ -87,12 +87,11 @@ where
 ///
 /// **Deprecated** by OANDA — use [`HomeConversions`] instead.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct QuoteHomeConversionFactors {
     /// Conversion factor to apply when P&L is positive (gain).
-    #[serde(rename = "positiveUnits")]
     pub positive_units: DecimalNumber,
     /// Conversion factor to apply when P&L is negative (loss).
-    #[serde(rename = "negativeUnits")]
     pub negative_units: DecimalNumber,
 }
 
@@ -117,17 +116,15 @@ pub struct UnitsAvailableDetails {
 ///
 /// **Deprecated** by OANDA.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UnitsAvailable {
     /// Units available under the `Default` position-fill mode.
     pub default: UnitsAvailableDetails,
     /// Units available under the `OpenOnly` position-fill mode.
-    #[serde(rename = "openOnly")]
     pub open_only: UnitsAvailableDetails,
     /// Units available under the `ReduceFirst` position-fill mode.
-    #[serde(rename = "reduceFirst")]
     pub reduce_first: UnitsAvailableDetails,
     /// Units available under the `ReduceOnly` position-fill mode.
-    #[serde(rename = "reduceOnly")]
     pub reduce_only: UnitsAvailableDetails,
 }
 
@@ -140,20 +137,18 @@ pub struct UnitsAvailable {
 ///
 /// Returned alongside prices when `include_home_conversions` is requested.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct HomeConversions {
     /// The foreign currency these conversion factors apply to.
     pub currency: Currency,
     /// Factor to multiply a gain (positive P&L) in `currency` by to obtain
     /// the equivalent amount in home currency.
-    #[serde(rename = "accountGain")]
     pub account_gain: DecimalNumber,
     /// Factor to multiply a loss (negative P&L) in `currency` by to obtain
     /// the equivalent amount in home currency.
-    #[serde(rename = "accountLoss")]
     pub account_loss: DecimalNumber,
     /// Factor to convert a position's notional value in `currency` into home
     /// currency (used for margin calculations).
-    #[serde(rename = "positionValue")]
     pub position_value: DecimalNumber,
 }
 
@@ -167,6 +162,7 @@ pub struct HomeConversions {
 /// Returned by `GET /v3/accounts/{accountID}/pricing` and streamed by the
 /// pricing stream endpoint.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientPrice {
     /// The instrument this price is for (e.g. `"EUR_USD"`).
     pub instrument: Option<InstrumentName>,
@@ -183,18 +179,14 @@ pub struct ClientPrice {
     pub asks: Vec<PriceBucket>,
     /// The bid price used when closing positions or triggering stop-loss
     /// orders during margin closeout. May differ from the best bid.
-    #[serde(rename = "closeoutBid")]
     pub closeout_bid: PriceValue,
     /// The ask price used when closing positions or triggering stop-loss
     /// orders during margin closeout. May differ from the best ask.
-    #[serde(rename = "closeoutAsk")]
     pub closeout_ask: PriceValue,
     /// Deprecated conversion factors for quote-to-home-currency P&L.
     /// Use the `home_conversions` field in [`PricesResponse`] instead.
-    #[serde(rename = "quoteHomeConversionFactors")]
     pub quote_home_conversion_factors: Option<QuoteHomeConversionFactors>,
     /// Deprecated breakdown of units available to trade by position-fill mode.
-    #[serde(rename = "unitsAvailable")]
     pub units_available: Option<UnitsAvailable>,
 }
 
@@ -235,12 +227,12 @@ pub enum PricingStreamItem {
 
 /// Response body for `GET /v3/accounts/{accountID}/pricing`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PricesResponse {
     /// The current prices for each requested instrument.
     pub prices: Vec<ClientPrice>,
     /// Home-currency conversion factors for each foreign currency involved in
     /// the requested instruments. `None` if not requested.
-    #[serde(rename = "homeConversions")]
     pub home_conversions: Option<Vec<HomeConversions>>,
     /// The server timestamp at which the prices were generated. `None` when
     /// not included in the response.

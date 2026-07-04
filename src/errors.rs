@@ -41,9 +41,9 @@ impl From<ErrorResponse> for APIError {
 /// failure (e.g. authentication errors, rate-limit rejections).
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[error("{error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct CommonErrorResponse {
     /// Human-readable description of the error returned by the OANDA API.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 

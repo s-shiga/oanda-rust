@@ -76,6 +76,7 @@ pub enum TradePL {
 /// Returned by `GET /v3/accounts/{accountID}/trades/{tradeSpecifier}` and
 /// included in full account detail responses.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Trade {
     /// The trade's unique identifier assigned by OANDA.
     pub id: TradeID,
@@ -84,21 +85,17 @@ pub struct Trade {
     /// The price at which the trade was opened.
     pub price: PriceValue,
     /// Timestamp at which the trade was opened.
-    #[serde(rename = "openTime")]
     pub open_time: DateTime<Utc>,
     /// Current lifecycle state of the trade.
     pub state: TradeState,
     /// The number of units traded when the trade was first opened.
     /// Positive = long, negative = short.
-    #[serde(rename = "initialUnits")]
     pub initial_units: DecimalNumber,
     /// The margin required to open the trade at its initial size, in home
     /// currency units.
-    #[serde(rename = "initialMarginRequired")]
     pub initial_margin_required: AccountUnits,
     /// The number of units currently open. Decreases as partial closes occur.
     /// Zero once the trade is fully closed.
-    #[serde(rename = "currentUnits")]
     pub current_units: DecimalNumber,
     /// Cumulative realised profit/loss from partial closes of this trade,
     /// in home currency units.
@@ -109,11 +106,9 @@ pub struct Trade {
     #[serde(rename = "unrealizedPL")]
     pub unrealized_pl: AccountUnits,
     /// Margin currently consumed by this trade's open units, in home currency units.
-    #[serde(rename = "marginUsed")]
     pub margin_used: AccountUnits,
     /// The average price at which units have been closed. `None` if no units
     /// have been closed yet.
-    #[serde(rename = "averageClosePrice")]
     pub average_close_price: Option<PriceValue>,
     /// IDs of the transactions that fully or partially closed this trade.
     #[serde(rename = "closingTransactionIDs")]
@@ -123,25 +118,18 @@ pub struct Trade {
     pub financing: AccountUnits,
     /// Cumulative dividend adjustment applied to this trade (for CFDs that
     /// pay dividends), in home currency units.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
     /// Timestamp at which the trade was fully closed. `None` while open.
-    #[serde(rename = "closeTime")]
     pub close_time: Option<DateTime<Utc>>,
     /// Optional client-supplied metadata attached to this trade.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The take-profit order attached to this trade, if any.
-    #[serde(rename = "takeProfitOrder")]
     pub take_profit_order: Option<TakeProfitOrder>,
     /// The stop-loss order attached to this trade, if any.
-    #[serde(rename = "stopLossOrder")]
     pub stop_loss_order: Option<StopLossOrder>,
     /// The guaranteed stop-loss order attached to this trade, if any.
-    #[serde(rename = "guaranteedStopLossOrder")]
     pub guaranteed_stop_loss_order: Option<GuaranteedStopLossOrder>,
     /// The trailing stop-loss order attached to this trade, if any.
-    #[serde(rename = "trailingStopLossOrder")]
     pub trailing_stop_loss_order: Option<TrailingStopLossOrder>,
 }
 
@@ -155,6 +143,7 @@ pub struct Trade {
 /// Returned in account-level list responses (e.g. inside [`Account`](crate::account::Account))
 /// where embedding full order details would be redundant.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeSummary {
     /// The trade's unique identifier assigned by OANDA.
     pub id: TradeID,
@@ -163,20 +152,16 @@ pub struct TradeSummary {
     /// The price at which the trade was opened.
     pub price: PriceValue,
     /// Timestamp at which the trade was opened.
-    #[serde(rename = "openTime")]
     pub open_time: DateTime<Utc>,
     /// Current lifecycle state of the trade.
     pub state: TradeState,
     /// The number of units traded when the trade was first opened.
     /// Positive = long, negative = short.
-    #[serde(rename = "initialUnits")]
     pub initial_units: DecimalNumber,
     /// The margin required to open the trade at its initial size, in home
     /// currency units.
-    #[serde(rename = "initialMarginRequired")]
     pub initial_margin_required: AccountUnits,
     /// The number of units currently open.
-    #[serde(rename = "currentUnits")]
     pub current_units: DecimalNumber,
     /// Cumulative realised profit/loss from partial closes, in home currency units.
     #[serde(rename = "realizedPL")]
@@ -185,11 +170,9 @@ pub struct TradeSummary {
     #[serde(rename = "unrealizedPL")]
     pub unrealized_pl: AccountUnits,
     /// Margin currently consumed by this trade's open units, in home currency units.
-    #[serde(rename = "marginUsed")]
     pub margin_used: AccountUnits,
     /// Average price at which units have been closed. `None` if no units have
     /// been closed yet.
-    #[serde(rename = "averageClosePrice")]
     pub average_close_price: Option<PriceValue>,
     /// IDs of the transactions that fully or partially closed this trade.
     #[serde(rename = "closingTransactionIDs")]
@@ -198,13 +181,10 @@ pub struct TradeSummary {
     /// currency units.
     pub financing: AccountUnits,
     /// Cumulative dividend adjustment applied to this trade, in home currency units.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
     /// Timestamp at which the trade was fully closed. `None` while open.
-    #[serde(rename = "closeTime")]
     pub close_time: Option<DateTime<Utc>>,
     /// Optional client-supplied metadata attached to this trade.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// ID of the take-profit order attached to this trade, if any.
     #[serde(rename = "takeProfitOrderID")]
@@ -230,6 +210,7 @@ pub struct TradeSummary {
 /// Contains only the fields that change as the market moves; all static trade
 /// fields are in [`Trade`] or [`TradeSummary`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CalculatedTradeState {
     /// The trade's unique identifier.
     pub id: TradeID,
@@ -238,7 +219,6 @@ pub struct CalculatedTradeState {
     #[serde(rename = "unrealizedPL")]
     pub unrealized_pl: AccountUnits,
     /// Margin currently consumed by this trade's open units, in home currency units.
-    #[serde(rename = "marginUsed")]
     pub margin_used: AccountUnits,
 }
 
@@ -298,13 +278,12 @@ pub struct GetTradeDetailsResponse {
 /// Transaction fields are raw JSON values because the OANDA API returns a
 /// polymorphic union of transaction sub-types.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CloseTradeResponse {
     /// The order-fill transaction that recorded the trade closure.
-    #[serde(rename = "orderFillTransaction")]
     pub order_fill_transaction: Option<serde_json::Value>,
     /// The order-cancel transaction, present when the close order itself was
     /// cancelled (e.g. the trade was already closed).
-    #[serde(rename = "orderCancelTransaction")]
     pub order_cancel_transaction: Option<serde_json::Value>,
     /// IDs of all transactions related to this close request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -320,9 +299,9 @@ pub struct CloseTradeResponse {
 /// Wraps a [`ClientExtensions`] value to match the JSON envelope the OANDA API
 /// expects (`{"clientExtensions": {...}}`).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTradeClientExtensionsRequest {
     /// The new client extensions to apply to the trade.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: ClientExtensions,
 }
 
@@ -330,9 +309,9 @@ pub struct UpdateTradeClientExtensionsRequest {
 /// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`
 /// (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTradeClientExtensionsResponse {
     /// The transaction that recorded the client-extensions change on the trade.
-    #[serde(rename = "tradeClientExtensionsModifyTransaction")]
     pub trade_client_extensions_modify_transaction: TradeClientExtensionsModifyTransaction,
     /// IDs of all transactions created by this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -350,6 +329,7 @@ pub struct UpdateTradeClientExtensionsResponse {
 /// does not match any trade on the account.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Trade client extensions update error {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateTradeClientExtensionsErrorResponse {
     /// The reject transaction that recorded why the modification was refused.
     #[serde(rename = "TradeClientExtensionsModifyRejectTransaction")]
@@ -362,10 +342,8 @@ pub struct UpdateTradeClientExtensionsErrorResponse {
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
     /// Machine-readable error code returned by the OANDA API.
-    #[serde(rename = "errorCode")]
     pub error_code: String,
     /// Human-readable description of the error.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 

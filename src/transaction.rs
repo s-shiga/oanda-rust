@@ -209,6 +209,7 @@ pub enum OrderCreateRejectTransaction {
 /// Contains the initial settings for the account such as the home currency,
 /// division, and site identifiers assigned at creation time.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateTransaction {
     /// Unique transaction ID assigned by OANDA.
     pub id: TransactionID,
@@ -236,10 +237,8 @@ pub struct CreateTransaction {
     #[serde(rename = "accountUserID")]
     pub account_user_id: i64,
     /// OANDA account number (numeric form of the account ID).
-    #[serde(rename = "accountNumber")]
     pub account_number: i64,
     /// Home currency of the account (e.g. `"USD"`).
-    #[serde(rename = "homeCurrency")]
     pub home_currency: Currency,
 }
 
@@ -276,6 +275,7 @@ pub struct ReopenTransaction {
 /// Transaction recorded when an account's configuration is changed by the client
 /// (e.g. updating the alias or margin rate).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientConfigureTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -290,13 +290,13 @@ pub struct ClientConfigureTransaction {
     /// New display name set for the account, if changed.
     pub alias: Option<String>,
     /// New margin rate applied to the account, if changed.
-    #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
 }
 
 /// Transaction recorded when an account configuration change is rejected.
 /// Transaction recorded when an account configuration change is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ClientConfigureRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -309,15 +309,14 @@ pub struct ClientConfigureRejectTransaction {
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
     pub alias: Option<String>,
-    #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
     /// Reason why the configuration change was rejected.
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when funds are deposited into or withdrawn from an account.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferFundsTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -332,18 +331,17 @@ pub struct TransferFundsTransaction {
     /// Amount transferred, in home currency units. Positive = deposit, negative = withdrawal.
     pub amount: AccountUnits,
     /// Why the transfer occurred.
-    #[serde(rename = "fundingReason")]
     pub funding_reason: FundingReason,
     /// Optional free-text comment attached to the transfer.
     pub comment: Option<String>,
     /// Account balance after the transfer, in home currency units.
-    #[serde(rename = "accountBalance")]
     pub account_balance: AccountUnits,
 }
 
 /// Transaction recorded when a funds transfer request is rejected.
 /// Transaction recorded when a funds transfer request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransferFundsRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -356,11 +354,9 @@ pub struct TransferFundsRejectTransaction {
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
     pub amount: AccountUnits,
-    #[serde(rename = "fundingReason")]
     pub funding_reason: FundingReason,
     pub comment: Option<String>,
     /// Reason why the transfer was rejected.
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -369,6 +365,7 @@ pub struct TransferFundsRejectTransaction {
 /// A market order fills immediately at the current market price. This transaction
 /// is created before the corresponding [`OrderFillTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -382,39 +379,26 @@ pub struct MarketOrderTransaction {
     pub request_id: Option<RequestID>,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "tradeClose")]
     pub trade_close: Option<MarketOrderTradeClose>,
-    #[serde(rename = "longPositionCloseout")]
     pub long_position_closeout: Option<MarketOrderPositionCloseout>,
-    #[serde(rename = "shortPositionCloseout")]
     pub short_position_closeout: Option<MarketOrderPositionCloseout>,
-    #[serde(rename = "marginCloseout")]
     pub margin_closeout: Option<MarketOrderMarginCloseout>,
-    #[serde(rename = "delayedTradeClose")]
     pub delayed_trade_close: Option<MarketOrderDelayedTradeClose>,
     pub reason: MarketOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
 /// Transaction recorded when a market order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -428,36 +412,21 @@ pub struct MarketOrderRejectTransaction {
     pub request_id: Option<RequestID>,
     pub instrument: InstrumentName,
     pub units: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "tradeClose")]
     pub trade_close: Option<MarketOrderTradeClose>,
-    #[serde(rename = "longPositionCloseout")]
     pub long_position_closeout: Option<MarketOrderPositionCloseout>,
-    #[serde(rename = "shortPositionCloseout")]
     pub short_position_closeout: Option<MarketOrderPositionCloseout>,
-    #[serde(rename = "marginCloseout")]
     pub margin_closeout: Option<MarketOrderMarginCloseout>,
-    #[serde(rename = "delayedTradeClose")]
     pub delayed_trade_close: Option<MarketOrderDelayedTradeClose>,
     pub reason: MarketOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: Option<TransactionRejectReason>,
 }
 
@@ -466,6 +435,7 @@ pub struct MarketOrderRejectTransaction {
 /// Fixed-price orders are created by OANDA internally (e.g. during account
 /// migrations) and are not directly placeable by clients.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FixedPriceOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -480,27 +450,20 @@ pub struct FixedPriceOrderTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "tradeState")]
     pub trade_state: Option<String>,
     pub reason: Option<FixedPriceOrderReason>,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
 /// Transaction recorded when a limit order is created or replaces an existing order.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LimitOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -515,26 +478,16 @@ pub struct LimitOrderTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: LimitOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -544,6 +497,7 @@ pub struct LimitOrderTransaction {
 
 /// Transaction recorded when a limit order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LimitOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -558,26 +512,16 @@ pub struct LimitOrderRejectTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: LimitOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -585,12 +529,12 @@ pub struct LimitOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when a stop order is created or replaces an existing order.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -605,28 +549,17 @@ pub struct StopOrderTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: StopOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -636,6 +569,7 @@ pub struct StopOrderTransaction {
 
 /// Transaction recorded when a stop order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -650,28 +584,17 @@ pub struct StopOrderRejectTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: StopOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -679,7 +602,6 @@ pub struct StopOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -687,6 +609,7 @@ pub struct StopOrderRejectTransaction {
 ///
 /// A MIT order becomes a market order once the instrument price crosses the specified trigger price.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketIfTouchedOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -701,28 +624,17 @@ pub struct MarketIfTouchedOrderTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: MarketIfTouchedOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -732,6 +644,7 @@ pub struct MarketIfTouchedOrderTransaction {
 
 /// Transaction recorded when a market-if-touched order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketIfTouchedOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -746,28 +659,17 @@ pub struct MarketIfTouchedOrderRejectTransaction {
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
     pub price: PriceValue,
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: MarketIfTouchedOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     #[serde(rename = "replacesOrderID")]
     pub replaces_order_id: Option<OrderID>,
@@ -775,12 +677,12 @@ pub struct MarketIfTouchedOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when a take-profit order is attached to or created for a trade.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TakeProfitOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -797,14 +699,10 @@ pub struct TakeProfitOrderTransaction {
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: TakeProfitOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -816,6 +714,7 @@ pub struct TakeProfitOrderTransaction {
 
 /// Transaction recorded when a take-profit order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TakeProfitOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -832,14 +731,10 @@ pub struct TakeProfitOrderRejectTransaction {
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: TakeProfitOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -849,12 +744,12 @@ pub struct TakeProfitOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when a stop-loss order is attached to or created for a trade.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopLossOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -872,14 +767,10 @@ pub struct StopLossOrderTransaction {
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
     pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: StopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -891,6 +782,7 @@ pub struct StopLossOrderTransaction {
 
 /// Transaction recorded when a stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopLossOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -908,14 +800,10 @@ pub struct StopLossOrderRejectTransaction {
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
     pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: StopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -925,7 +813,6 @@ pub struct StopLossOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -934,6 +821,7 @@ pub struct StopLossOrderRejectTransaction {
 /// Unlike a regular stop-loss, a GSLO guarantees the fill price at the specified level,
 /// regardless of market gaps, in exchange for a premium.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -951,14 +839,10 @@ pub struct GuaranteedStopLossOrderTransaction {
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
     pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: GuaranteedStopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -970,6 +854,7 @@ pub struct GuaranteedStopLossOrderTransaction {
 
 /// Transaction recorded when a guaranteed stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -987,14 +872,10 @@ pub struct GuaranteedStopLossOrderRejectTransaction {
     pub client_trade_id: Option<ClientID>,
     pub price: PriceValue,
     pub distance: Option<DecimalNumber>,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: GuaranteedStopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -1004,7 +885,6 @@ pub struct GuaranteedStopLossOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -1013,6 +893,7 @@ pub struct GuaranteedStopLossOrderRejectTransaction {
 /// The order trails the market price by the specified `distance`, locking in profit
 /// as the price moves in the trade's favour.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossOrderTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1029,14 +910,10 @@ pub struct TrailingStopLossOrderTransaction {
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
     pub distance: DecimalNumber,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: TrailingStopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -1048,6 +925,7 @@ pub struct TrailingStopLossOrderTransaction {
 
 /// Transaction recorded when a trailing stop-loss order request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossOrderRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1064,14 +942,10 @@ pub struct TrailingStopLossOrderRejectTransaction {
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
     pub distance: DecimalNumber,
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     pub reason: TrailingStopLossOrderReason,
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     #[serde(rename = "orderFillTransactionID")]
     pub order_fill_transaction_id: Option<TransactionID>,
@@ -1081,7 +955,6 @@ pub struct TrailingStopLossOrderRejectTransaction {
     pub cancelling_transaction_id: Option<TransactionID>,
     #[serde(rename = "intendedReplacesOrderID")]
     pub intended_replaces_order_id: Option<OrderID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -1090,6 +963,7 @@ pub struct TrailingStopLossOrderRejectTransaction {
 /// This is the primary transaction for all trade activity. Fields such as `trade_opened`,
 /// `trades_closed`, and `trade_reduced` describe what changed as a result of the fill.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OrderFillTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1107,33 +981,22 @@ pub struct OrderFillTransaction {
     pub client_order_id: Option<ClientID>,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
-    #[serde(rename = "homeConversionFactors")]
     pub home_conversion_factors: HomeConversionFactors,
     #[serde(rename = "fullVWAP")]
     pub full_vwap: PriceValue,
-    #[serde(rename = "fullPrice")]
     pub full_price: ClientPrice,
     pub reason: OrderFillReason,
     pub pl: AccountUnits,
     pub financing: AccountUnits,
-    #[serde(rename = "baseFinancing")]
     pub base_financing: AccountUnits,
-    #[serde(rename = "quoteFinancing")]
     pub quote_financing: Option<AccountUnits>,
     pub commission: AccountUnits,
-    #[serde(rename = "guaranteedExecutionFee")]
     pub guaranteed_execution_fee: AccountUnits,
-    #[serde(rename = "quoteGuaranteedExecutionFee")]
     pub quote_guaranteed_execution_fee: AccountUnits,
-    #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: AccountUnits,
-    #[serde(rename = "accountBalance")]
     pub account_balance: AccountUnits,
-    #[serde(rename = "tradeOpened")]
     pub trade_opened: Option<TradeOpen>,
-    #[serde(rename = "tradesClosed")]
     pub trades_closed: Option<Vec<TradeReduce>>,
-    #[serde(rename = "tradeReduced")]
     pub trade_reduced: Option<TradeReduce>,
 }
 
@@ -1161,6 +1024,7 @@ pub struct OrderCancelTransaction {
 
 /// Transaction recorded when an order cancellation request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OrderCancelRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1176,12 +1040,12 @@ pub struct OrderCancelRejectTransaction {
     pub order_id: OrderID,
     #[serde(rename = "clientOrderID")]
     pub client_order_id: Option<ClientID>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when the client extensions on an order are successfully updated.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OrderClientExtensionsModifyTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1197,14 +1061,13 @@ pub struct OrderClientExtensionsModifyTransaction {
     pub order_id: OrderID,
     #[serde(rename = "clientOrderID")]
     pub client_order_id: Option<ClientID>,
-    #[serde(rename = "clientExtensionsModify")]
     pub client_extensions_modify: Option<ClientExtensions>,
-    #[serde(rename = "tradeClientExtensionsModify")]
     pub trade_client_extensions_modify: Option<ClientExtensions>,
 }
 
 /// Transaction recorded when an order client-extensions modification request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OrderClientExtensionsModifyRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1220,16 +1083,14 @@ pub struct OrderClientExtensionsModifyRejectTransaction {
     pub order_id: OrderID,
     #[serde(rename = "clientOrderID")]
     pub client_order_id: Option<ClientID>,
-    #[serde(rename = "clientExtensionsModify")]
     pub client_extensions_modify: Option<ClientExtensions>,
-    #[serde(rename = "tradeClientExtensionsModify")]
     pub trade_client_extensions_modify: Option<ClientExtensions>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
 /// Transaction recorded when the client extensions on a trade are successfully updated.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeClientExtensionsModifyTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1245,12 +1106,12 @@ pub struct TradeClientExtensionsModifyTransaction {
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
-    #[serde(rename = "tradeClientExtensionsModify")]
     pub trade_client_extensions_modify: Option<ClientExtensions>,
 }
 
 /// Transaction recorded when a trade client-extensions modification request is rejected.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeClientExtensionsModifyRejectTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1266,9 +1127,7 @@ pub struct TradeClientExtensionsModifyRejectTransaction {
     pub trade_id: TradeID,
     #[serde(rename = "clientTradeID")]
     pub client_trade_id: Option<ClientID>,
-    #[serde(rename = "tradeClientExtensionsModify")]
     pub trade_client_extensions_modify: Option<ClientExtensions>,
-    #[serde(rename = "rejectReason")]
     pub reject_reason: TransactionRejectReason,
 }
 
@@ -1293,6 +1152,7 @@ pub struct MarginCallEnterTransaction {
 ///
 /// OANDA allows a grace period before forced liquidation; each extension is recorded here.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarginCallExtendTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1305,7 +1165,6 @@ pub struct MarginCallExtendTransaction {
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
     /// The number of times this margin call has been extended.
-    #[serde(rename = "extensionNumber")]
     pub extension_number: Option<i64>,
 }
 
@@ -1347,6 +1206,7 @@ pub struct DelayedTradeClosureTransaction {
 /// Transaction recorded at the end of each trading day when financing (swap/rollover)
 /// charges or credits are applied to all open positions.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DailyFinancingTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1359,15 +1219,14 @@ pub struct DailyFinancingTransaction {
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
     pub financing: AccountUnits,
-    #[serde(rename = "accountBalance")]
     pub account_balance: AccountUnits,
-    #[serde(rename = "positionFinancings")]
     pub position_financings: Vec<PositionFinancing>,
 }
 
 /// Transaction recorded when a dividend adjustment is applied to open CFD positions
 /// in an instrument that has paid a dividend.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DividendAdjustmentTransaction {
     pub id: TransactionID,
     pub time: DateTime<Utc>,
@@ -1380,15 +1239,10 @@ pub struct DividendAdjustmentTransaction {
     #[serde(rename = "requestID")]
     pub request_id: Option<RequestID>,
     pub instrument: InstrumentName,
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
-    #[serde(rename = "quoteDividendAdjustment")]
     pub quote_dividend_adjustment: AccountUnits,
-    #[serde(rename = "homeConversionFactors")]
     pub home_conversion_factors: HomeConversionFactors,
-    #[serde(rename = "accountBalance")]
     pub account_balance: AccountUnits,
-    #[serde(rename = "openTradeDividendAdjustments")]
     pub open_trade_dividend_adjustments: Vec<OpenTradeDividendAdjustment>,
 }
 
@@ -1932,17 +1786,15 @@ pub struct MarketOrderPositionCloseout {
 ///
 /// Embedded in order-creation request types via the `take_profit_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TakeProfitDetails {
     /// Price at which the take-profit triggers.
     pub price: PriceValue,
     /// How long the order remains active (`GTC`, `GTD`, or `GFD`).
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created take-profit order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1950,6 +1802,7 @@ pub struct TakeProfitDetails {
 ///
 /// Embedded in order-creation request types via the `stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopLossDetails {
     /// Absolute price level at which the stop-loss triggers. Mutually exclusive with `distance`.
     pub price: PriceValue,
@@ -1957,13 +1810,10 @@ pub struct StopLossDetails {
     /// Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created stop-loss order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1971,17 +1821,15 @@ pub struct StopLossDetails {
 ///
 /// Embedded in order-creation request types via the `trailing_stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossDetails {
     /// Distance in price units that the trailing stop follows behind the best price.
     pub distance: DecimalNumber,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created trailing stop-loss order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1989,19 +1837,17 @@ pub struct TrailingStopLossDetails {
 ///
 /// Embedded in order-creation request types via the `guaranteed_stop_loss_on_fill` field.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossDetails {
     /// Absolute price level at which the guaranteed stop triggers. Mutually exclusive with `distance`.
     pub price: PriceValue,
     /// Distance in price units from the trade price. Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created guaranteed stop-loss order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -2009,6 +1855,7 @@ pub struct GuaranteedStopLossDetails {
 ///
 /// Present in [`OrderFillTransaction::trade_opened`] when the fill created a new trade.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeOpen {
     /// The newly opened trade's ID.
     #[serde(rename = "tradeID")]
@@ -2016,19 +1863,14 @@ pub struct TradeOpen {
     /// Number of units opened. Positive = long, negative = short.
     pub units: DecimalNumber,
     /// The price at which the trade was opened.
-    #[serde(rename = "price")]
     pub price: PriceValue,
     /// Fee charged for guaranteed execution, in home currency units.
-    #[serde(rename = "guaranteedExecutionFee")]
     pub guaranteed_execution_fee: AccountUnits,
     /// Optional client extensions attached to the trade at open time.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// Half of the bid-ask spread cost at the time of opening, in home currency units.
-    #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: AccountUnits,
     /// Margin required to hold the newly opened units, in home currency units.
-    #[serde(rename = "initialMarginRequired")]
     pub initial_margin_required: AccountUnits,
 }
 
@@ -2037,6 +1879,7 @@ pub struct TradeOpen {
 /// Present in [`OrderFillTransaction::trades_closed`] (full close) or
 /// [`OrderFillTransaction::trade_reduced`] (partial close).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TradeReduce {
     /// The trade that was closed or reduced.
     #[serde(rename = "tradeID")]
@@ -2044,7 +1887,6 @@ pub struct TradeReduce {
     /// Number of units closed. Always positive.
     pub units: DecimalNumber,
     /// Price at which the units were closed. `None` for administrative closures.
-    #[serde(rename = "price")]
     pub price: Option<PriceValue>,
     /// Realised profit/loss from this closure, in home currency units.
     #[serde(rename = "realizedPL")]
@@ -2052,10 +1894,8 @@ pub struct TradeReduce {
     /// Financing applied to the closed units, in home currency units.
     pub financing: AccountUnits,
     /// Guaranteed execution fee applicable to this closure, if any.
-    #[serde(rename = "guaranteedExecutionFee")]
     pub guaranteed_execution_fee: Option<AccountUnits>,
     /// Half spread cost for this closure, in home currency units.
-    #[serde(rename = "halfSpreadCost")]
     pub half_spread_cost: Option<AccountUnits>,
 }
 
@@ -2072,25 +1912,25 @@ pub struct OpenTradeFinancing {
 /// Financing applied to all open trades in a single instrument position,
 /// as part of a [`DailyFinancingTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PositionFinancing {
     /// The instrument whose position received financing.
     pub instrument: InstrumentName,
     /// Total financing for this instrument, in home currency units.
     pub financing: AccountUnits,
     /// Per-trade breakdown of the financing applied.
-    #[serde(rename = "openTradeFinancings")]
     pub open_trade_financings: Option<Vec<OpenTradeFinancing>>,
 }
 
 /// Dividend adjustment applied to a single open trade as part of a
 /// [`DividendAdjustmentTransaction`].
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct OpenTradeDividendAdjustment {
     /// The trade to which the dividend adjustment was applied.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
     /// Dividend adjustment amount, in home currency units.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: AccountUnits,
 }
 
@@ -2225,6 +2065,7 @@ impl ListTransactionsRequest {
 /// The actual transactions are not embedded here; instead, `pages` contains
 /// URLs for fetching each page of transactions individually.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ListTransactionsResponse {
     /// Total number of transactions matching the query.
     pub count: i64,
@@ -2233,7 +2074,6 @@ pub struct ListTransactionsResponse {
     /// End of the time range covered by this response.
     pub to: DateTime<Utc>,
     /// Maximum number of transactions per page used for this response.
-    #[serde(rename = "pageSize")]
     pub page_size: i64,
     /// URLs for each page of results. Fetch each URL to retrieve the transactions.
     pub pages: Vec<String>,

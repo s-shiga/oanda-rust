@@ -27,11 +27,11 @@ pub enum InstrumentType {
 
 /// Commission structure applied to trades on a specific instrument.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentCommission {
     /// Commission charged per `units_traded` units, expressed in home currency.
     pub commission: DecimalNumber,
     /// The number of units of the instrument to which `commission` applies.
-    #[serde(rename = "unitsTraded")]
     pub units_traded: DecimalNumber,
     /// The minimum commission charged per trade, regardless of size.
     #[serde(rename = "minimumCommission")]
@@ -53,12 +53,12 @@ pub enum GuaranteedStopLossOrderModeForInstrument {
 /// Restricts where a Guaranteed Stop Loss Order may be placed relative to the
 /// current price, based on overall position volume.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderLevelRestriction {
     /// Total position volume (in units) above which the price range restriction applies.
     pub volume: DecimalNumber,
     /// Minimum distance (in price units) from the current price that a GSLO must maintain
     /// when the position volume exceeds `volume`.
-    #[serde(rename = "priceRange")]
     pub price_range: DecimalNumber,
 }
 
@@ -80,23 +80,21 @@ pub enum DayOfWeek {
 /// Some instruments charge multiple days of financing on a single day (e.g. triple
 /// swap on Wednesdays for most spot FX pairs).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FinancingDayOfWeek {
     /// The day on which the financing charge is applied.
-    #[serde(rename = "dayOfWeek")]
     pub day_of_week: DayOfWeek,
     /// Number of days of financing charged on this day (typically 1, but 3 on rollover days).
-    #[serde(rename = "daysCharged")]
     pub days_charged: i8,
 }
 
 /// Financing (swap/rollover) rates applied to long and short positions on an instrument.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct InstrumentFinancing {
     /// Daily financing rate applied to long positions (expressed as a decimal fraction).
-    #[serde(rename = "longRate")]
     pub long_rate: DecimalNumber,
     /// Daily financing rate applied to short positions (expressed as a decimal fraction).
-    #[serde(rename = "shortRate")]
     pub short_rate: DecimalNumber,
 }
 
@@ -106,6 +104,7 @@ pub struct InstrumentFinancing {
 /// Returned as part of [`ListInstrumentsResponse`] by
 /// `GET /v3/accounts/{accountID}/instruments`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Instrument {
     /// The instrument name in `"BASE_QUOTE"` format (e.g. `"EUR_USD"`).
     pub name: String,
@@ -113,17 +112,13 @@ pub struct Instrument {
     #[serde(rename = "type")]
     pub instrument_type: InstrumentType,
     /// A human-readable display name (e.g. `"EUR/USD"`).
-    #[serde(rename = "displayName")]
     pub display_name: String,
     /// The exponent of the pip value: a pip is `10^pip_location` price units.
     /// For example, `-4` means a pip is 0.0001.
-    #[serde(rename = "pipLocation")]
     pub pip_location: i8,
     /// Number of decimal places to display for prices of this instrument.
-    #[serde(rename = "displayPrecision")]
     pub display_precision: i8,
     /// Number of decimal places to which trade unit sizes must be rounded.
-    #[serde(rename = "tradeUnitsPrecision")]
     pub trade_units_precision: i8,
     /// Minimum number of units that can be traded in a single order.
     #[serde(rename = "minimumTradeSize")]
@@ -149,27 +144,19 @@ pub struct Instrument {
     #[serde(rename = "maximumOrderUnits")]
     pub max_order_units: DecimalNumber,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
-    #[serde(rename = "marginRate")]
     pub margin_rate: DecimalNumber,
     /// Commission structure for this instrument, if applicable.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub commission: Option<InstrumentCommission>,
     /// Whether GSLOs are disabled, allowed, or required for this instrument.
-    #[serde(rename = "guaranteedStopLossOrderMode")]
     pub guaranteed_stop_loss_order_mode: GuaranteedStopLossOrderModeForInstrument,
     /// Additional premium (in price units) charged when a GSLO is executed,
     /// above the normal spread. Only present when GSLOs are available.
-    #[serde(
-        rename = "guaranteedStopLossOrderExecutionPremium",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_order_execution_premium: Option<DecimalNumber>,
     /// Volume-based restriction on where GSLOs may be placed. Only present
     /// when GSLOs are available.
-    #[serde(
-        rename = "guaranteedStopLossOrderLevelRestriction",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_order_level_restriction:
         Option<GuaranteedStopLossOrderLevelRestriction>,
     /// Financing rates and schedule for this instrument.

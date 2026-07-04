@@ -71,51 +71,41 @@ pub enum Order {
 /// The `time_in_force` is always `FOK` (fill-or-kill) or `IOC`
 /// (immediate-or-cancel).
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
     /// Number of units to trade. Positive = buy (long), negative = sell (short).
     pub units: DecimalNumber,
     /// How long the order remains active (`FOK` or `IOC` for market orders).
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// The worst fill price acceptable. If the order cannot be filled within
     /// this bound, it is cancelled.
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     /// ID of the transaction that filled this order, if it has been filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of the trade opened by this order, if any.
     #[serde(rename = "tradeOpenedID")]
@@ -130,23 +120,17 @@ pub struct MarketOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// Details of the trade close this market order was created to perform.
-    #[serde(rename = "tradeClose")]
     pub trade_close: Option<MarketOrderTradeClose>,
     /// Details of the long position closeout this order was created to perform.
-    #[serde(rename = "longPositionCloseout")]
     pub long_position_closeout: Option<MarketOrderPositionCloseout>,
     /// Details of the short position closeout this order was created to perform.
-    #[serde(rename = "shortPositionCloseout")]
     pub short_position_closeout: Option<MarketOrderPositionCloseout>,
     /// Details when this order was created as part of a margin closeout.
-    #[serde(rename = "marginCloseout")]
     pub margin_closeout: Option<MarketOrderMarginCloseout>,
     /// Details when this order was created to close a trade that could not be
     /// closed at the time it was reduced.
-    #[serde(rename = "delayedTradeClose")]
     pub delayed_trade_close: Option<MarketOrderDelayedTradeClose>,
 }
 
@@ -156,16 +140,15 @@ pub struct MarketOrder {
 /// price, for example during account corrections or transfers. Cannot be created
 /// by clients directly.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FixedPriceOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
@@ -174,31 +157,23 @@ pub struct FixedPriceOrder {
     /// The fixed price at which the order will be filled.
     pub price: PriceValue,
     /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// The state of the trade the order is intended to result in.
-    #[serde(rename = "tradeState")]
     pub trade_state: String,
     /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of any trade opened as a result of this order being filled.
     #[serde(rename = "tradeOpenedID")]
@@ -213,7 +188,6 @@ pub struct FixedPriceOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
 }
 
@@ -222,16 +196,15 @@ pub struct FixedPriceOrder {
 /// Executes at `price` or better once the market reaches that level.
 /// Supports `GTC`, `GTD`, and `GFD` time-in-force values.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LimitOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
@@ -240,37 +213,27 @@ pub struct LimitOrder {
     /// The limit price at which the order will execute.
     pub price: PriceValue,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of the trade opened by this order, if any.
     #[serde(rename = "tradeOpenedID")]
@@ -285,7 +248,6 @@ pub struct LimitOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -300,16 +262,15 @@ pub struct LimitOrder {
 /// Becomes a market order once the stop `price` is reached, with an optional
 /// `price_bound` to limit the worst acceptable fill.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
@@ -318,40 +279,29 @@ pub struct StopOrder {
     /// The stop trigger price.
     pub price: PriceValue,
     /// The worst fill price acceptable after the stop triggers.
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of the trade opened by this order, if any.
     #[serde(rename = "tradeOpenedID")]
@@ -366,7 +316,6 @@ pub struct StopOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -381,16 +330,15 @@ pub struct StopOrder {
 /// Sits as a pending order until the market price touches `price`, at which
 /// point it becomes a market order.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketIfTouchedOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The instrument to be traded.
     pub instrument: InstrumentName,
@@ -400,43 +348,31 @@ pub struct MarketIfTouchedOrder {
     /// to a market order.
     pub price: PriceValue,
     /// Worst acceptable fill price after the order triggers.
-    #[serde(rename = "priceBound")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position on the instrument.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// The market price at the time the order was created.
-    #[serde(rename = "initialMarketPrice")]
     pub initial_market_price: PriceValue,
     /// Take-profit order to attach to any trade opened by this order.
-    #[serde(rename = "takeProfitOnFill")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss order to attach to any trade opened by this order.
-    #[serde(rename = "stopLossOnFill")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Trailing stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "trailingStopLossOnFill")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Guaranteed stop-loss to attach to any trade opened by this order.
-    #[serde(rename = "guaranteedStopLossOnFill")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Client extensions to apply to the trade opened by this order.
-    #[serde(rename = "tradeClientExtensions")]
     pub trade_client_extensions: Option<ClientExtensions>,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of the trade opened by this order, if any.
     #[serde(rename = "tradeOpenedID")]
@@ -451,7 +387,6 @@ pub struct MarketIfTouchedOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -466,16 +401,15 @@ pub struct MarketIfTouchedOrder {
 /// A trade-attached order that closes the linked trade when the market reaches
 /// the target `price`, locking in profit.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TakeProfitOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The ID of the trade this order is attached to.
     #[serde(rename = "tradeID")]
@@ -486,19 +420,15 @@ pub struct TakeProfitOrder {
     /// The price at which the take-profit will trigger and close the trade.
     pub price: PriceValue,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of any trade opened as a result of this order being filled.
     #[serde(rename = "tradeOpenedID")]
@@ -513,7 +443,6 @@ pub struct TakeProfitOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -529,16 +458,15 @@ pub struct TakeProfitOrder {
 /// price moves adversely. May be specified by absolute `price` or by `distance`
 /// from the current price. Can optionally be `guaranteed`.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopLossOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The ID of the trade this order is attached to.
     #[serde(rename = "tradeID")]
@@ -552,19 +480,15 @@ pub struct StopLossOrder {
     /// Mutually exclusive with `price`.
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of any trade opened as a result of this order being filled.
     #[serde(rename = "tradeOpenedID")]
@@ -579,7 +503,6 @@ pub struct StopLossOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -594,16 +517,15 @@ pub struct StopLossOrder {
 /// Like a stop-loss order but guaranteed to execute at exactly the stop `price`
 /// regardless of gapping or slippage. An execution premium is charged.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The ID of the trade this order is attached to.
     #[serde(rename = "tradeID")]
@@ -617,22 +539,17 @@ pub struct GuaranteedStopLossOrder {
     /// an absolute `price` by the server.
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// The premium paid for guaranteed execution.
-    #[serde(rename = "guaranteedExecutionPremium")]
     pub guaranteed_execution_premium: DecimalNumber,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of any trade opened as a result of this order being filled.
     #[serde(rename = "tradeOpenedID")]
@@ -647,7 +564,6 @@ pub struct GuaranteedStopLossOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -662,16 +578,15 @@ pub struct GuaranteedStopLossOrder {
 /// A trade-attached order whose stop price follows the market at a fixed
 /// `distance` below (for long trades) or above (for short trades) the current price.
 #[derive(Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossOrder {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Timestamp at which the order was created.
-    #[serde(rename = "createTime")]
     pub create_time: DateTime<Utc>,
     /// Current lifecycle state of the order.
     pub state: OrderState,
     /// Optional client-supplied metadata attached to the order.
-    #[serde(rename = "clientExtensions")]
     pub client_extensions: Option<ClientExtensions>,
     /// The ID of the trade this order is attached to.
     #[serde(rename = "tradeID")]
@@ -683,23 +598,18 @@ pub struct TrailingStopLossOrder {
     /// and the stop.
     pub distance: DecimalNumber,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// The current calculated absolute stop price, derived from `distance`
     /// and the current market price.
-    #[serde(rename = "trailingStopValue")]
     pub trailing_stop_value: PriceValue,
     /// ID of the transaction that filled this order, if filled.
     #[serde(rename = "fillingTransactionID")]
     pub filling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was filled.
-    #[serde(rename = "filledTime")]
     pub filled_time: Option<DateTime<Utc>>,
     /// ID of any trade opened as a result of this order being filled.
     #[serde(rename = "tradeOpenedID")]
@@ -714,7 +624,6 @@ pub struct TrailingStopLossOrder {
     #[serde(rename = "cancellingTransactionID")]
     pub cancelling_transaction_id: Option<TransactionID>,
     /// Timestamp at which the order was cancelled.
-    #[serde(rename = "cancelledTime")]
     pub cancelled_time: Option<DateTime<Utc>>,
     /// The ID of the order this order replaced, if applicable.
     #[serde(rename = "replacesOrderID")]
@@ -735,22 +644,15 @@ pub struct TrailingStopLossOrder {
 /// field is written automatically by serde.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderRequest {
-    #[serde(rename = "MARKET")]
     Market(MarketOrderRequest),
-    #[serde(rename = "LIMIT")]
     Limit(LimitOrderRequest),
-    #[serde(rename = "STOP")]
     Stop(StopOrderRequest),
-    #[serde(rename = "MARKET_IF_TOUCHED")]
     MarketIfTouched(MarketIfTouchedOrderRequest),
-    #[serde(rename = "TAKE_PROFIT")]
     TakeProfit(TakeProfitOrderRequest),
-    #[serde(rename = "STOP_LOSS")]
     StopLoss(StopLossOrderRequest),
-    #[serde(rename = "GUARANTEED_STOP_LOSS")]
     GuaranteedStopLoss(GuaranteedStopLossOrderRequest),
-    #[serde(rename = "TRAILING_STOP_LOSS")]
     TrailingStopLoss(TrailingStopLossOrderRequest),
 }
 
@@ -761,6 +663,7 @@ pub enum OrderRequest {
 ///
 /// Defaults: `time_in_force = FOK`, `position_fill = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketOrderRequest {
     /// Always `OrderType::Market`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -770,40 +673,29 @@ pub struct MarketOrderRequest {
     /// Units to trade. Positive = buy (long), negative = sell (short).
     pub units: DecimalNumber,
     /// Time-in-force (`FOK` or `IOC` for market orders).
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Worst acceptable fill price. Omitted if `None`.
-    #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     /// How the order interacts with an existing position.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// Take-profit to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Guaranteed stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "guaranteedStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Trailing stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "trailingStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Client extensions to apply to the resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "tradeClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -854,6 +746,7 @@ impl MarketOrderRequest {
 /// Defaults: `time_in_force = GTC`, `position_fill = Default`,
 /// `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LimitOrderRequest {
     /// Always `OrderType::Limit`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -865,43 +758,31 @@ pub struct LimitOrderRequest {
     /// The limit price. The order fills only at this price or better.
     pub price: PriceValue,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is changed to `GTD` via [`Self::gtd`].
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// Take-profit to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Guaranteed stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "guaranteedStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Trailing stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "trailingStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Client extensions to apply to the resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "tradeClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -964,6 +845,7 @@ impl LimitOrderRequest {
 /// Defaults: `time_in_force = GTC`, `position_fill = Default`,
 /// `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopOrderRequest {
     /// Always `OrderType::Stop`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -975,46 +857,34 @@ pub struct StopOrderRequest {
     /// The stop trigger price.
     pub price: PriceValue,
     /// Worst acceptable fill price after the stop triggers. Omitted if `None`.
-    #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// Take-profit to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Guaranteed stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "guaranteedStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Trailing stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "trailingStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Client extensions to apply to the resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "tradeClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -1075,6 +945,7 @@ impl StopOrderRequest {
 /// Defaults: `time_in_force = GTC`, `position_fill = Default`,
 /// `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct MarketIfTouchedOrderRequest {
     /// Always `OrderType::MarketIfTouched`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -1086,46 +957,34 @@ pub struct MarketIfTouchedOrderRequest {
     /// The trigger price. When touched, the order converts to a market order.
     pub price: PriceValue,
     /// Worst acceptable fill price after triggering. Omitted if `None`.
-    #[serde(rename = "priceBound", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub price_bound: Option<PriceValue>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// How the order interacts with an existing position.
-    #[serde(rename = "positionFill")]
     pub position_fill: OrderPositionFill,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// Take-profit to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "takeProfitOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub take_profit_on_fill: Option<TakeProfitDetails>,
     /// Stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(rename = "stopLossOnFill", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub stop_loss_on_fill: Option<StopLossDetails>,
     /// Guaranteed stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "guaranteedStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed_stop_loss_on_fill: Option<GuaranteedStopLossDetails>,
     /// Trailing stop-loss to attach to any resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "trailingStopLossOnFill",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trailing_stop_loss_on_fill: Option<TrailingStopLossDetails>,
     /// Client extensions to apply to the resulting trade. Omitted if `None`.
-    #[serde(
-        rename = "tradeClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -1184,6 +1043,7 @@ impl MarketIfTouchedOrderRequest {
 ///
 /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TakeProfitOrderRequest {
     /// Always `OrderType::TakeProfit`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -1197,16 +1057,14 @@ pub struct TakeProfitOrderRequest {
     /// The price at which the trade will be closed to take profit.
     pub price: PriceValue,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1251,6 +1109,7 @@ impl TakeProfitOrderRequest {
 ///
 /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct StopLossOrderRequest {
     /// Always `OrderType::StopLoss`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -1271,16 +1130,14 @@ pub struct StopLossOrderRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed: Option<bool>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1329,6 +1186,7 @@ impl StopLossOrderRequest {
 ///
 /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderRequest {
     /// Always `OrderType::GuaranteedStopLoss`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -1346,16 +1204,14 @@ pub struct GuaranteedStopLossOrderRequest {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub distance: Option<DecimalNumber>,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1403,6 +1259,7 @@ impl GuaranteedStopLossOrderRequest {
 ///
 /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossOrderRequest {
     /// Always `OrderType::TrailingStopLoss`; set automatically by `new`.
     #[serde(rename = "type")]
@@ -1416,16 +1273,14 @@ pub struct TrailingStopLossOrderRequest {
     /// The trailing distance kept between market price and the stop.
     pub distance: DecimalNumber,
     /// How long the order remains active.
-    #[serde(rename = "timeInForce")]
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
-    #[serde(rename = "gtdTime", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Which price stream triggers the order.
-    #[serde(rename = "triggerCondition")]
     pub trigger_condition: OrderTriggerCondition,
     /// Client metadata to attach to the order. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
 }
 
@@ -1478,23 +1333,19 @@ pub struct CreateOrderRequest {
 
 /// Response body for a successful `POST /v3/accounts/{accountID}/orders` (HTTP 201).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CreateOrderResponse {
     /// The transaction that recorded the order creation.
-    #[serde(rename = "orderCreateTransaction")]
     pub order_create_transaction: Option<OrderCreateTransaction>,
     /// The transaction that filled the order, if it was immediately filled
     /// (e.g. a market order).
-    #[serde(rename = "orderFillTransaction")]
     pub order_fill_transaction: Option<OrderFillTransaction>,
     /// The transaction that cancelled the order, if it was immediately cancelled
     /// (e.g. a FOK order that could not be filled).
-    #[serde(rename = "orderCancelTransaction")]
     pub order_cancel_transaction: Option<OrderCancelTransaction>,
     /// The transaction that re-issued the order (e.g. an IOC order partially filled).
-    #[serde(rename = "orderReissueTransaction")]
     pub order_reissue_transaction: Option<OrderCreateTransaction>,
     /// The transaction that rejected the re-issued order, if applicable.
-    #[serde(rename = "orderReissueRejectTransaction")]
     pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1508,21 +1359,17 @@ pub struct CreateOrderResponse {
 /// (HTTP 201). Fields are raw JSON values because the response contains a
 /// polymorphic union of transaction types.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ReplaceOrderResponse {
     /// The transaction that cancelled the replaced order.
-    #[serde(rename = "orderCancelTransaction")]
     pub order_cancel_transaction: Option<OrderCancelTransaction>,
     /// The transaction that created the replacement order.
-    #[serde(rename = "orderCreateTransaction")]
     pub order_create_transaction: Option<OrderCreateTransaction>,
     /// The transaction that filled the replacement order, if immediately filled.
-    #[serde(rename = "orderFillTransaction")]
     pub order_fill_transaction: Option<OrderFillTransaction>,
     /// The transaction that re-issued the order, if applicable.
-    #[serde(rename = "orderReissueTransaction")]
     pub order_reissue_transaction: Option<OrderCreateTransaction>,
     /// The transaction that rejected the re-issue, if applicable.
-    #[serde(rename = "orderReissueRejectTransaction")]
     pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1537,9 +1384,9 @@ pub struct ReplaceOrderResponse {
 /// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order creation was rejected {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct OrderCreateErrorResponse {
     /// The transaction that recorded the rejection reason.
-    #[serde(rename = "orderRejectTransaction")]
     pub order_reject_transaction: OrderCreateRejectTransaction,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1548,10 +1395,8 @@ pub struct OrderCreateErrorResponse {
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
     /// Machine-readable error code returned by the OANDA API.
-    #[serde(rename = "errorCode")]
     pub error_code: String,
     /// Human-readable description of why the order was rejected.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
@@ -1561,9 +1406,9 @@ pub struct OrderCreateErrorResponse {
 /// (e.g. the order was already filled).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Order cancellation was rejected {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct OrderCancelErrorResponse {
     /// The transaction that recorded the rejection reason, if one was created.
-    #[serde(rename = "orderCancelRejectTransaction")]
     pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1572,19 +1417,17 @@ pub struct OrderCancelErrorResponse {
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
     /// Machine-readable error code returned by the OANDA API.
-    #[serde(rename = "errorCode")]
     pub error_code: String,
     /// Human-readable description of why the cancellation was rejected.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
 /// Response body for a successful
 /// `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}/cancel` (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CancelOrderResponse {
     /// The transaction that cancelled the order.
-    #[serde(rename = "orderCancelTransaction")]
     pub order_cancel_transaction: Option<serde_json::Value>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1599,16 +1442,14 @@ pub struct CancelOrderResponse {
 ///
 /// At least one of `client_extensions` or `trade_client_extensions` must be set.
 #[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateOrderClientExtensionsRequest {
     /// New client extensions for the order itself. Omitted if `None`.
-    #[serde(rename = "clientExtensions", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
     /// New client extensions for the trade that would result from filling this
     /// order. Omitted if `None`.
-    #[serde(
-        rename = "tradeClientExtensions",
-        skip_serializing_if = "Option::is_none"
-    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub trade_client_extensions: Option<ClientExtensions>,
 }
 
@@ -1628,9 +1469,9 @@ impl UpdateOrderClientExtensionsRequest {
 
 /// Response body for a successful client-extensions update (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateOrderClientExtensionsResponse {
     /// The transaction recording the modification.
-    #[serde(rename = "orderClientExtensionsModifyTransaction")]
     pub order_client_extensions_modify_transaction: OrderClientExtensionsModifyTransaction,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
@@ -1646,9 +1487,9 @@ pub struct UpdateOrderClientExtensionsResponse {
 /// specifier does not match any order on the account.
 #[derive(Debug, Serialize, Deserialize, Error)]
 #[error("Order client extensions update error {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateOrderClientExtensionsErrorResponse {
     /// The reject transaction that recorded why the modification was refused.
-    #[serde(rename = "orderClientExtensionsModifyRejectTransaction")]
     pub order_client_extensions_modify_reject_transaction:
         OrderClientExtensionsModifyRejectTransaction,
     /// ID of the most recent transaction on the account.
@@ -1658,10 +1499,8 @@ pub struct UpdateOrderClientExtensionsErrorResponse {
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
     /// Machine-readable error code returned by the OANDA API.
-    #[serde(rename = "errorCode")]
     pub error_code: String,
     /// Human-readable description of the error.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
@@ -1675,20 +1514,18 @@ pub struct UpdateOrderClientExtensionsErrorResponse {
 /// Contains only the fields that change as the market moves; the static order
 /// fields are in the corresponding [`Order`] variant.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct DynamicOrderState {
     /// The order's unique identifier.
     pub id: OrderID,
     /// Current absolute stop price for a trailing stop-loss order,
     /// recalculated as the market moves.
-    #[serde(rename = "trailingStopValue")]
     pub trailing_stop_value: Option<PriceValue>,
     /// The distance between the current market price and the order's trigger
     /// price. Positive = the order has not yet triggered.
-    #[serde(rename = "triggerDistance")]
     pub trigger_distance: Option<PriceValue>,
     /// `true` if `trigger_distance` is an exact value; `false` if it is
     /// approximate (e.g. when the market is closed).
-    #[serde(rename = "isTriggerDistanceExact")]
     pub is_trigger_distance_exact: Option<bool>,
 }
 

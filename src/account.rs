@@ -27,6 +27,7 @@ pub type AccountID = String;
 /// Returned by the `GET /v3/accounts/{accountID}` endpoint. Fields that are
 /// not always populated by OANDA are modelled as `Option`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Account {
     /// The account's unique identifier.
     pub id: AccountID,
@@ -38,34 +39,25 @@ pub struct Account {
     #[serde(rename = "createdByUserID")]
     pub created_by_user_id: i64,
     /// Timestamp at which the account was created.
-    #[serde(rename = "createdTime")]
     pub created_time: DateTime<Utc>,
     /// GSLO parameters governing mutability when markets are open vs halted.
-    #[serde(rename = "guaranteedStopLossOrderParameters")]
     pub guaranteed_stop_loss_order_parameters: Option<GuaranteedStopLossOrderParameters>,
     /// Whether GSLOs are disabled, allowed, or required on this account.
-    #[serde(rename = "guaranteedStopLossOrderMode")]
     pub guaranteed_stop_loss_order_mode: Option<GuaranteedStopLossOrderMode>,
     /// The mutability setting for GSLOs on this account (deprecated field).
-    #[serde(rename = "guaranteedStopLossOrderMutability")]
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
     #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
-    #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
     /// Number of currently open trades.
-    #[serde(rename = "openTradeCount")]
     pub open_trade_count: Option<i32>,
     /// Number of currently open positions.
-    #[serde(rename = "openPositionCount")]
     pub open_position_count: Option<i32>,
     /// Number of pending orders.
-    #[serde(rename = "pendingOrderCount")]
     pub pending_order_count: Option<i32>,
     /// Whether hedging (simultaneous long and short positions) is enabled.
-    #[serde(rename = "hedgingEnabled")]
     pub hedging_enabled: Option<bool>,
     /// Unrealized profit/loss across all open trades, in home currency units.
     #[serde(rename = "unrealizedPL")]
@@ -74,13 +66,10 @@ pub struct Account {
     #[serde(rename = "NAV")]
     pub nav: Option<AccountUnits>,
     /// Margin currently consumed by open positions.
-    #[serde(rename = "marginUsed")]
     pub margin_used: Option<AccountUnits>,
     /// Margin available to open new positions.
-    #[serde(rename = "marginAvailable")]
     pub margin_available: Option<AccountUnits>,
     /// The value of all open positions expressed in home currency.
-    #[serde(rename = "positionValue")]
     pub position_value: Option<AccountUnits>,
     /// Unrealized P&L used in the margin closeout calculation.
     #[serde(rename = "marginCloseoutUnrealizedPL")]
@@ -89,22 +78,16 @@ pub struct Account {
     #[serde(rename = "marginCloseoutNAV")]
     pub margin_closeout_nav: Option<AccountUnits>,
     /// Margin used in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutMarginUsed")]
     pub margin_closeout_margin_used: Option<AccountUnits>,
     /// Ratio of margin closeout margin used to NAV (`marginCloseoutMarginUsed / marginCloseoutNAV`).
-    #[serde(rename = "marginCloseoutPercent")]
     pub margin_closeout_percent: Option<DecimalNumber>,
     /// Value of all open positions in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutPositionValue")]
     pub margin_closeout_position_value: Option<DecimalNumber>,
     /// Maximum funds that can be withdrawn without margin impact.
-    #[serde(rename = "withdrawalLimit")]
     pub withdrawal_limit: Option<AccountUnits>,
     /// Margin used as computed for the margin call trigger.
-    #[serde(rename = "marginCallMarginUsed")]
     pub margin_call_margin_used: Option<AccountUnits>,
     /// Ratio of margin call margin used to NAV.
-    #[serde(rename = "marginCallPercent")]
     pub margin_call_percent: Option<DecimalNumber>,
     /// Current cash balance of the account.
     pub balance: Option<AccountUnits>,
@@ -118,19 +101,14 @@ pub struct Account {
     /// Cumulative commission paid.
     pub commission: Option<AccountUnits>,
     /// Cumulative dividend adjustment received.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: Option<AccountUnits>,
     /// Cumulative fees paid for guaranteed execution.
-    #[serde(rename = "guaranteedExecutionFees")]
     pub guaranteed_execution_fees: Option<AccountUnits>,
     /// Timestamp at which the account entered margin call, if applicable.
-    #[serde(rename = "marginCallEnterTime")]
     pub margin_call_enter_time: Option<DateTime<Utc>>,
     /// Number of times the margin call deadline has been extended.
-    #[serde(rename = "marginCallExtensionCount")]
     pub margin_call_extension_count: Option<i32>,
     /// Timestamp of the most recent margin call deadline extension.
-    #[serde(rename = "lastMarginCallExtensionTime")]
     pub last_margin_call_extension_time: Option<DateTime<Utc>>,
     /// ID of the most recent transaction applied to this account.
     #[serde(rename = "lastTransactionID")]
@@ -169,6 +147,7 @@ pub struct AccountProperties {
 ///
 /// Returned by the `GET /v3/accounts/{accountID}/summary` endpoint.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountSummary {
     /// The account's unique identifier.
     pub id: AccountID,
@@ -180,34 +159,25 @@ pub struct AccountSummary {
     #[serde(rename = "createdByUserID")]
     pub created_by_user_id: i64,
     /// Timestamp at which the account was created.
-    #[serde(rename = "createdTime")]
     pub created_time: DateTime<Utc>,
     /// GSLO parameters governing mutability when markets are open vs halted.
-    #[serde(rename = "guaranteedStopLossOrderParameters")]
     pub guaranteed_stop_loss_order_parameters: Option<GuaranteedStopLossOrderParameters>,
     /// Whether GSLOs are disabled, allowed, or required on this account.
-    #[serde(rename = "guaranteedStopLossOrderMode")]
     pub guaranteed_stop_loss_order_mode: Option<GuaranteedStopLossOrderMode>,
     /// The mutability setting for GSLOs on this account (deprecated field).
-    #[serde(rename = "guaranteedStopLossOrderMutability")]
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
     #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
-    #[serde(rename = "marginRate")]
     pub margin_rate: Option<DecimalNumber>,
     /// Number of currently open trades.
-    #[serde(rename = "openTradeCount")]
     pub open_trade_count: Option<i32>,
     /// Number of currently open positions.
-    #[serde(rename = "openPositionCount")]
     pub open_position_count: Option<i32>,
     /// Number of pending orders.
-    #[serde(rename = "pendingOrderCount")]
     pub pending_order_count: Option<i32>,
     /// Whether hedging (simultaneous long and short positions) is enabled.
-    #[serde(rename = "hedgingEnabled")]
     pub hedging_enabled: Option<bool>,
     /// Unrealized profit/loss across all open trades, in home currency units.
     #[serde(rename = "unrealizedPL")]
@@ -216,13 +186,10 @@ pub struct AccountSummary {
     #[serde(rename = "NAV")]
     pub nav: Option<AccountUnits>,
     /// Margin currently consumed by open positions.
-    #[serde(rename = "marginUsed")]
     pub margin_used: Option<AccountUnits>,
     /// Margin available to open new positions.
-    #[serde(rename = "marginAvailable")]
     pub margin_available: Option<AccountUnits>,
     /// The value of all open positions expressed in home currency.
-    #[serde(rename = "positionValue")]
     pub position_value: Option<AccountUnits>,
     /// Unrealized P&L used in the margin closeout calculation.
     #[serde(rename = "marginCloseoutUnrealizedPL")]
@@ -231,22 +198,16 @@ pub struct AccountSummary {
     #[serde(rename = "marginCloseoutNAV")]
     pub margin_closeout_nav: Option<AccountUnits>,
     /// Margin used in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutMarginUsed")]
     pub margin_closeout_margin_used: Option<AccountUnits>,
     /// Ratio of margin closeout margin used to NAV.
-    #[serde(rename = "marginCloseoutPercent")]
     pub margin_closeout_percent: Option<DecimalNumber>,
     /// Value of all open positions in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutPositionValue")]
     pub margin_closeout_position_value: Option<DecimalNumber>,
     /// Maximum funds that can be withdrawn without margin impact.
-    #[serde(rename = "withdrawalLimit")]
     pub withdrawal_limit: Option<AccountUnits>,
     /// Margin used as computed for the margin call trigger.
-    #[serde(rename = "marginCallMarginUsed")]
     pub margin_call_margin_used: Option<AccountUnits>,
     /// Ratio of margin call margin used to NAV.
-    #[serde(rename = "marginCallPercent")]
     pub margin_call_percent: Option<DecimalNumber>,
     /// Current cash balance of the account.
     pub balance: Option<AccountUnits>,
@@ -260,19 +221,14 @@ pub struct AccountSummary {
     /// Cumulative commission paid.
     pub commission: Option<AccountUnits>,
     /// Cumulative dividend adjustment received.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: Option<AccountUnits>,
     /// Cumulative fees paid for guaranteed execution.
-    #[serde(rename = "guaranteedExecutionFees")]
     pub guaranteed_execution_fees: Option<AccountUnits>,
     /// Timestamp at which the account entered margin call, if applicable.
-    #[serde(rename = "marginCallEnterTime")]
     pub margin_call_enter_time: Option<DateTime<Utc>>,
     /// Number of times the margin call deadline has been extended.
-    #[serde(rename = "marginCallExtensionCount")]
     pub margin_call_extension_count: Option<i32>,
     /// Timestamp of the most recent margin call deadline extension.
-    #[serde(rename = "lastMarginCallExtensionTime")]
     pub last_margin_call_extension_time: Option<DateTime<Utc>>,
     /// ID of the most recent transaction applied to this account.
     #[serde(rename = "lastTransactionID")]
@@ -286,27 +242,21 @@ pub struct AccountSummary {
 /// Describes every change applied to an account since a given transaction ID,
 /// returned by `GET /v3/accounts/{accountID}/changes`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountChanges {
     /// Orders that were created in the period.
-    #[serde(rename = "ordersCreated")]
     pub orders_created: Option<Vec<Order>>,
     /// Orders that were cancelled in the period.
-    #[serde(rename = "ordersCancelled")]
     pub orders_cancelled: Option<Vec<Order>>,
     /// Orders that were filled (executed) in the period.
-    #[serde(rename = "ordersFilled")]
     pub orders_filled: Option<Vec<Order>>,
     /// Orders that were triggered in the period.
-    #[serde(rename = "ordersTriggered")]
     pub orders_triggered: Option<Vec<Order>>,
     /// Trades that were newly opened in the period.
-    #[serde(rename = "tradesOpened")]
     pub trades_opened: Option<Vec<TradeSummary>>,
     /// Trades that were partially closed (reduced) in the period.
-    #[serde(rename = "tradesReduced")]
     pub trades_reduced: Option<Vec<TradeSummary>>,
     /// Trades that were fully closed in the period.
-    #[serde(rename = "tradesClosed")]
     pub trades_closed: Option<Vec<TradeSummary>>,
     /// Positions affected by changes in the period.
     pub positions: Option<Vec<Position>>,
@@ -328,6 +278,7 @@ pub struct AccountChanges {
 /// Contains the same financial fields as [`Account`] but omits static
 /// identity fields such as `id`, `currency`, and `createdTime`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AccountChangesState {
     /// Unrealized profit/loss across all open trades.
     #[serde(rename = "unrealizedPL")]
@@ -336,13 +287,10 @@ pub struct AccountChangesState {
     #[serde(rename = "NAV")]
     pub nav: Option<AccountUnits>,
     /// Margin currently consumed by open positions.
-    #[serde(rename = "marginUsed")]
     pub margin_used: Option<AccountUnits>,
     /// Margin available to open new positions.
-    #[serde(rename = "marginAvailable")]
     pub margin_available: Option<AccountUnits>,
     /// Value of all open positions in home currency.
-    #[serde(rename = "positionValue")]
     pub position_value: Option<AccountUnits>,
     /// Unrealized P&L used in the margin closeout calculation.
     #[serde(rename = "marginCloseoutUnrealizedPL")]
@@ -351,22 +299,16 @@ pub struct AccountChangesState {
     #[serde(rename = "marginCloseoutNAV")]
     pub margin_closeout_nav: Option<AccountUnits>,
     /// Margin used in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutMarginUsed")]
     pub margin_closeout_margin_used: Option<AccountUnits>,
     /// Ratio of margin closeout margin used to NAV.
-    #[serde(rename = "marginCloseoutPercent")]
     pub margin_closeout_percent: Option<DecimalNumber>,
     /// Value of all open positions in the margin closeout calculation.
-    #[serde(rename = "marginCloseoutPositionValue")]
     pub margin_closeout_position_value: Option<DecimalNumber>,
     /// Maximum funds that can be withdrawn without margin impact.
-    #[serde(rename = "withdrawalLimit")]
     pub withdrawal_limit: Option<AccountUnits>,
     /// Margin used as computed for the margin call trigger.
-    #[serde(rename = "marginCallMarginUsed")]
     pub margin_call_margin_used: Option<AccountUnits>,
     /// Ratio of margin call margin used to NAV.
-    #[serde(rename = "marginCallPercent")]
     pub margin_call_percent: Option<DecimalNumber>,
     /// Current cash balance of the account.
     pub balance: Option<AccountUnits>,
@@ -380,19 +322,14 @@ pub struct AccountChangesState {
     /// Cumulative commission paid.
     pub commission: Option<AccountUnits>,
     /// Cumulative dividend adjustment received.
-    #[serde(rename = "dividendAdjustment")]
     pub dividend_adjustment: Option<AccountUnits>,
     /// Cumulative fees paid for guaranteed execution.
-    #[serde(rename = "guaranteedExecutionFees")]
     pub guaranteed_execution_fees: Option<AccountUnits>,
     /// Timestamp at which the account entered margin call, if applicable.
-    #[serde(rename = "marginCallEnterTime")]
     pub margin_call_enter_time: Option<DateTime<Utc>>,
     /// Number of times the margin call deadline has been extended.
-    #[serde(rename = "marginCallExtensionCount")]
     pub margin_call_extension_count: Option<i32>,
     /// Timestamp of the most recent margin call deadline extension.
-    #[serde(rename = "lastMarginCallExtensionTime")]
     pub last_margin_call_extension_time: Option<DateTime<Utc>>,
     /// Dynamic state of each pending order (price-dependent fields).
     pub orders: Option<Vec<DynamicOrderState>>,
@@ -409,12 +346,11 @@ pub struct AccountChangesState {
 /// Configures mutability rules for Guaranteed Stop Loss Orders, separately
 /// for when the market is open versus halted.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderParameters {
     /// Mutability rule that applies while the market is open.
-    #[serde(rename = "mutabilityMarketOpen")]
     pub mutability_market_open: GuaranteedStopLossOrderMutability,
     /// Mutability rule that applies while the market is halted.
-    #[serde(rename = "mutabilityMarketHalted")]
     pub mutability_market_halted: GuaranteedStopLossOrderMutability,
 }
 
@@ -480,6 +416,7 @@ pub enum PositionAggregationMode {
 /// Profile information about the OANDA user who owns an account,
 /// returned by `GET /v3/users/{userSpecifier}`.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserAttributes {
     /// OANDA's numeric user identifier.
     #[serde(rename = "userID")]
@@ -493,13 +430,10 @@ pub struct UserAttributes {
     /// The user's email address.
     pub email: String,
     /// Abbreviation of the OANDA division the account belongs to (e.g. `"001"`).
-    #[serde(rename = "divisionAbbreviation")]
     pub division_abbreviation: String,
     /// BCP 47 language tag for the user's preferred language (e.g. `"en"`).
-    #[serde(rename = "languageAbbreviation")]
     pub language_abbreviation: String,
     /// The user's home/base currency (e.g. `"USD"`).
-    #[serde(rename = "homeCurrency")]
     pub home_currency: Currency,
 }
 
@@ -512,12 +446,13 @@ pub struct UserAttributes {
 /// At least one field must be set; fields left as `None` are not sent and
 /// therefore not changed on the server.
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigureAccountRequest {
     /// New display name for the account.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub alias: Option<String>,
     /// New margin rate expressed as a decimal (e.g. `"0.05"` for 5 % margin / 20:1 leverage).
-    #[serde(rename = "marginRate", skip_serializing_if = "Option::is_none")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub margin_rate: Option<DecimalNumber>,
 }
 
@@ -583,9 +518,9 @@ pub struct GetInstrumentsResponse {
 
 /// Response body for `PATCH /v3/accounts/{accountID}/configuration` (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigureAccountResponse {
     /// The transaction that recorded the configuration change.
-    #[serde(rename = "clientConfigureTransaction")]
     pub client_configure_transaction: ClientConfigureTransaction,
     /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
@@ -596,18 +531,16 @@ pub struct ConfigureAccountResponse {
 /// (HTTP 400 or 403).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error("Configure account error: {error_message}")]
+#[serde(rename_all = "camelCase")]
 pub struct ConfigureAccountErrorResponse {
     /// The reject transaction that recorded the failed configuration attempt.
-    #[serde(rename = "clientConfigureRejectTransaction")]
     pub client_configure_reject_transaction: ClientConfigureRejectTransaction,
     /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
     /// A machine-readable error code, if provided.
-    #[serde(rename = "errorCode")]
     pub error_code: Option<String>,
     /// A human-readable description of why the request was rejected.
-    #[serde(rename = "errorMessage")]
     pub error_message: String,
 }
 
