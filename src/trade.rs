@@ -7,7 +7,8 @@ use crate::order::{
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{
-    AccountUnits, ClientExtensions, OrderID, TradeClientExtensionsModifyRejectTransaction,
+    AccountUnits, ClientExtensions, MarketOrderTransaction, OrderCancelTransaction,
+    OrderFillTransaction, OrderID, TradeClientExtensionsModifyRejectTransaction,
     TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
 };
 use crate::{handle_response, request_option_setter};
@@ -274,17 +275,16 @@ pub struct GetTradeDetailsResponse {
 
 /// Response body for `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close`
 /// (HTTP 200).
-///
-/// Transaction fields are raw JSON values because the OANDA API returns a
-/// polymorphic union of transaction sub-types.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CloseTradeResponse {
+    /// The market order transaction created to close the trade.
+    pub order_create_transaction: Option<MarketOrderTransaction>,
     /// The order-fill transaction that recorded the trade closure.
-    pub order_fill_transaction: Option<serde_json::Value>,
+    pub order_fill_transaction: Option<Box<OrderFillTransaction>>,
     /// The order-cancel transaction, present when the close order itself was
     /// cancelled (e.g. the trade was already closed).
-    pub order_cancel_transaction: Option<serde_json::Value>,
+    pub order_cancel_transaction: Option<OrderCancelTransaction>,
     /// IDs of all transactions related to this close request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,

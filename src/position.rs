@@ -2,7 +2,10 @@ use crate::client::Client;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
-use crate::transaction::{AccountUnits, ClientExtensions, TradeID, TransactionID};
+use crate::transaction::{
+    AccountUnits, ClientExtensions, MarketOrderTransaction, OrderCancelTransaction,
+    OrderFillTransaction, TradeID, TransactionID,
+};
 use crate::{handle_response, request_option_setter};
 use reqwest::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -177,24 +180,21 @@ impl ClosePositionRequest {
 
 /// Response body for `PUT /v3/accounts/{accountID}/positions/{instrument}/close`
 /// (HTTP 200).
-///
-/// Transaction fields are raw JSON values because the OANDA API returns a
-/// polymorphic union of transaction sub-types.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ClosePositionResponse {
     /// The market order transaction created to close the long side, if any.
-    pub long_order_create_transaction: Option<serde_json::Value>,
+    pub long_order_create_transaction: Option<MarketOrderTransaction>,
     /// The fill transaction for the long-side close order, if it was filled.
-    pub long_order_fill_transaction: Option<serde_json::Value>,
+    pub long_order_fill_transaction: Option<Box<OrderFillTransaction>>,
     /// The cancel transaction for the long-side close order, if it was cancelled.
-    pub long_order_cancel_transaction: Option<serde_json::Value>,
+    pub long_order_cancel_transaction: Option<OrderCancelTransaction>,
     /// The market order transaction created to close the short side, if any.
-    pub short_order_create_transaction: Option<serde_json::Value>,
+    pub short_order_create_transaction: Option<MarketOrderTransaction>,
     /// The fill transaction for the short-side close order, if it was filled.
-    pub short_order_fill_transaction: Option<serde_json::Value>,
+    pub short_order_fill_transaction: Option<Box<OrderFillTransaction>>,
     /// The cancel transaction for the short-side close order, if it was cancelled.
-    pub short_order_cancel_transaction: Option<serde_json::Value>,
+    pub short_order_cancel_transaction: Option<OrderCancelTransaction>,
     /// IDs of all transactions related to this close request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,

@@ -6,7 +6,8 @@ use crate::position::{CalculatedPositionState, Position};
 use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{
-    AccountUnits, ClientConfigureRejectTransaction, ClientConfigureTransaction, TransactionID,
+    AccountUnits, ClientConfigureRejectTransaction, ClientConfigureTransaction, Transaction,
+    TransactionID,
 };
 use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
@@ -261,10 +262,7 @@ pub struct AccountChanges {
     /// Positions affected by changes in the period.
     pub positions: Option<Vec<Position>>,
     /// Transactions generated in the period.
-    ///
-    /// Stored as raw JSON values because the OANDA API returns a polymorphic
-    /// union of many transaction sub-types.
-    pub transactions: Option<Vec<serde_json::Value>>,
+    pub transactions: Option<Vec<Transaction>>,
 }
 
 // ---------------------------------------------------------------------------

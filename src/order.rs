@@ -1428,7 +1428,7 @@ pub struct OrderCancelErrorResponse {
 #[serde(rename_all = "camelCase")]
 pub struct CancelOrderResponse {
     /// The transaction that cancelled the order.
-    pub order_cancel_transaction: Option<serde_json::Value>,
+    pub order_cancel_transaction: Option<OrderCancelTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,
