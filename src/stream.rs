@@ -216,9 +216,10 @@ mod tests {
     use tokio::time::timeout;
 
     fn setup() -> StreamClient {
-        let api_key = env!("OANDA_API_KEY_DEMO");
-        let account_id = env!("OANDA_ACCOUNT_ID_DEMO").to_string();
-        StreamClient::new_practice(api_key).with_account_id(account_id)
+        let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");
+        let account_id =
+            std::env::var("OANDA_ACCOUNT_ID_DEMO").expect("OANDA_ACCOUNT_ID_DEMO must be set");
+        StreamClient::new_practice(&api_key).with_account_id(account_id)
     }
 
     #[tokio::test]
