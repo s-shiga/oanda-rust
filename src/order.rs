@@ -15,7 +15,6 @@ use crate::{handle_response, request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::ops::Not;
 use strum_macros::Display;
 use thiserror::Error;
 use url::Url;
@@ -1888,7 +1887,7 @@ impl ListOrdersRequest {
     /// Called internally by [`OrderService::list`] before dispatching the
     /// HTTP request.
     pub fn set_params(&self, url: &mut Url) {
-        self.ids.is_empty().not().then(|| {
+        if !self.ids.is_empty() {
             url.query_pairs_mut().append_pair(
                 "ids",
                 self.ids
@@ -1898,19 +1897,19 @@ impl ListOrdersRequest {
                     .join(",")
                     .as_str(),
             );
-        });
-        self.state.is_some().then(|| {
+        }
+        if let Some(state) = &self.state {
             url.query_pairs_mut()
-                .append_pair("state", self.state.as_ref().unwrap().to_string().as_str());
-        });
-        self.instrument.is_some().then(|| {
+                .append_pair("state", state.to_string().as_str());
+        }
+        if let Some(instrument) = &self.instrument {
             url.query_pairs_mut()
-                .append_pair("instrument", self.instrument.as_ref().unwrap().as_str());
-        });
-        self.count.is_some().then(|| {
+                .append_pair("instrument", instrument.as_str());
+        }
+        if let Some(count) = self.count {
             url.query_pairs_mut()
-                .append_pair("count", self.count.unwrap().to_string().as_str());
-        });
+                .append_pair("count", count.to_string().as_str());
+        }
         if let Some(id) = self.before_id.as_ref() {
             url.query_pairs_mut().append_pair("beforeID", id.as_str());
         }

@@ -7,7 +7,6 @@ use crate::transaction::TransactionID;
 use chrono::{DateTime, Local};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
-use std::ops::Not;
 use strum_macros::{Display, EnumString};
 use url::Url;
 
@@ -437,52 +436,44 @@ impl CandlesticksRequest {
     /// Called internally by [`InstrumentService::candlesticks`] before
     /// dispatching the HTTP request.
     pub fn set_params(&self, url: &mut Url) {
-        self.price.is_empty().not().then(|| {
+        if !self.price.is_empty() {
             url.query_pairs_mut()
                 .append_pair("price", self.price.as_str());
-        });
-        self.granularity.is_some().then(|| {
-            url.query_pairs_mut().append_pair(
-                "granularity",
-                &self.granularity.as_ref().unwrap().to_string(),
-            );
-        });
-        self.count.is_some().then(|| {
+        }
+        if let Some(granularity) = &self.granularity {
             url.query_pairs_mut()
-                .append_pair("count", &self.count.unwrap().to_string());
-        });
-        self.from.is_some().then(|| {
+                .append_pair("granularity", &granularity.to_string());
+        }
+        if let Some(count) = self.count {
             url.query_pairs_mut()
-                .append_pair("from", &self.from.unwrap().to_string());
-        });
-        self.to.is_some().then(|| {
+                .append_pair("count", &count.to_string());
+        }
+        if let Some(from) = self.from {
+            url.query_pairs_mut().append_pair("from", &from.to_string());
+        }
+        if let Some(to) = self.to {
+            url.query_pairs_mut().append_pair("to", &to.to_string());
+        }
+        if let Some(smooth) = self.smooth {
             url.query_pairs_mut()
-                .append_pair("to", &self.to.unwrap().to_string());
-        });
-        self.smooth.is_some().then(|| {
+                .append_pair("smooth", &smooth.to_string());
+        }
+        if let Some(include_first) = self.include_first {
             url.query_pairs_mut()
-                .append_pair("smooth", &self.smooth.unwrap().to_string());
-        });
-        self.include_first.is_some().then(|| {
+                .append_pair("includeFirst", &include_first.to_string());
+        }
+        if let Some(daily_alignment) = self.daily_alignment {
             url.query_pairs_mut()
-                .append_pair("includeFirst", &self.include_first.unwrap().to_string());
-        });
-        self.daily_alignment.is_some().then(|| {
+                .append_pair("dailyAlignment", &daily_alignment.to_string());
+        }
+        if let Some(alignment_timezone) = &self.alignment_timezone {
             url.query_pairs_mut()
-                .append_pair("dailyAlignment", &self.daily_alignment.unwrap().to_string());
-        });
-        self.alignment_timezone.is_some().then(|| {
-            url.query_pairs_mut().append_pair(
-                "alignmentTimezone",
-                &self.alignment_timezone.as_ref().unwrap().to_string(),
-            );
-        });
-        self.weekly_alignment.is_some().then(|| {
-            url.query_pairs_mut().append_pair(
-                "weeklyAlignment",
-                &self.weekly_alignment.as_ref().unwrap().to_string(),
-            );
-        });
+                .append_pair("alignmentTimezone", alignment_timezone);
+        }
+        if let Some(weekly_alignment) = &self.weekly_alignment {
+            url.query_pairs_mut()
+                .append_pair("weeklyAlignment", &weekly_alignment.to_string());
+        }
     }
 }
 
