@@ -169,7 +169,7 @@ pub struct Instrument {
 ///
 /// Variants follow the OANDA naming convention:
 /// `S` = seconds, `M` = minutes, `H` = hours, `D` = day, `W` = week, `M` (last) = month.
-#[derive(Debug, Serialize, Deserialize, Display, EnumString)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Display, EnumString)]
 pub enum CandlestickGranularity {
     /// 5-second bars.
     S5,
