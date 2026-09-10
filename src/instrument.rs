@@ -239,7 +239,7 @@ pub struct Candlestick {
     /// Mid-point OHLC data, present when `"M"` is included in the price component.
     pub mid: Option<CandlestickData>,
     /// Number of ticks that contributed to this bar.
-    pub volume: i16,
+    pub volume: u64,
     /// `true` if the bar is complete (its period has fully elapsed).
     pub complete: bool,
 }
@@ -560,6 +560,16 @@ mod tests {
 
         assert_eq!(parameters["from"], from.to_rfc3339());
         assert_eq!(parameters["to"], to.to_rfc3339());
+    }
+
+    #[test]
+    fn candlestick_volume_accepts_values_above_i16() {
+        let response: super::CandlesticksResponse = serde_json::from_str(
+            r#"{"instrument":"EUR_USD","granularity":"D","candles":[{"time":"2026-01-01T00:00:00Z","mid":{"o":"1","h":"1","l":"1","c":"1"},"volume":100000,"complete":true}]}"#,
+        )
+        .unwrap();
+
+        assert_eq!(response.candles[0].volume, 100_000);
     }
 
     #[tokio::test]
