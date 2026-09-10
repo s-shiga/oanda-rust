@@ -471,9 +471,9 @@ pub struct CandlesticksResponse {
     /// The instrument the candles belong to.
     pub instrument: InstrumentName,
     /// The granularity of the returned candles.
-    granularity: CandlestickGranularity,
+    pub granularity: CandlestickGranularity,
     /// The candlestick bars, ordered chronologically.
-    candles: Vec<Candlestick>,
+    pub candles: Vec<Candlestick>,
 }
 
 /// Provides access to the OANDA Instrument endpoints.
