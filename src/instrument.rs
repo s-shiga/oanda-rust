@@ -436,10 +436,11 @@ impl CandlesticksRequest {
                 .append_pair("count", &count.to_string());
         }
         if let Some(from) = self.from {
-            url.query_pairs_mut().append_pair("from", &from.to_string());
+            url.query_pairs_mut()
+                .append_pair("from", &from.to_rfc3339());
         }
         if let Some(to) = self.to {
-            url.query_pairs_mut().append_pair("to", &to.to_string());
+            url.query_pairs_mut().append_pair("to", &to.to_rfc3339());
         }
         if let Some(smooth) = self.smooth {
             url.query_pairs_mut()
@@ -534,6 +535,32 @@ impl<'a> InstrumentService<'a> {
 mod tests {
     use crate::client::setup_test_client;
     use crate::instrument::{CandlestickGranularity, CandlesticksRequest};
+    use chrono::{Local, TimeZone, Utc};
+    use url::Url;
+
+    #[test]
+    fn candlestick_ranges_are_encoded_as_rfc3339() {
+        let from = Utc
+            .with_ymd_and_hms(2026, 1, 1, 0, 0, 0)
+            .unwrap()
+            .with_timezone(&Local);
+        let to = Utc
+            .with_ymd_and_hms(2026, 1, 2, 0, 0, 0)
+            .unwrap()
+            .with_timezone(&Local);
+        let request = CandlesticksRequest::new("EUR_USD".to_string())
+            .from(from)
+            .to(to);
+        let mut url = Url::parse("https://example.com/candles").unwrap();
+
+        request.set_params(&mut url);
+        let parameters = url
+            .query_pairs()
+            .collect::<std::collections::BTreeMap<_, _>>();
+
+        assert_eq!(parameters["from"], from.to_rfc3339());
+        assert_eq!(parameters["to"], to.to_rfc3339());
+    }
 
     #[tokio::test]
     async fn test_list_instruments() {
