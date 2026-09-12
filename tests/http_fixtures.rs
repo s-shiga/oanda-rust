@@ -152,6 +152,51 @@ async fn invalid_success_and_error_bodies_keep_status_and_request_id() {
 }
 
 #[tokio::test]
+async fn streams_accept_captured_handlers_and_custom_transport() {
+    let body =
+        "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:00Z\",\"lastTransactionID\":\"1\"}\n";
+    for pricing in [false, true] {
+        let (url, request) = fixture("200 OK", body).await;
+        let client = StreamClient::new_practice("fixture-token")
+            .unwrap()
+            .with_http_client(custom_http_client())
+            .with_base_url(url)
+            .unwrap()
+            .with_account_id("account".into());
+        let mut count = 0;
+        if pricing {
+            client
+                .pricing(&["EUR_USD", "USD_JPY"], |_| {
+                    count += 1;
+                    Ok(())
+                })
+                .await
+                .unwrap();
+        } else {
+            client
+                .transactions(|_| {
+                    count += 1;
+                    Ok(())
+                })
+                .await
+                .unwrap();
+        }
+        assert_eq!(count, 1);
+        let request = request.await.unwrap().to_ascii_lowercase();
+        assert!(request.contains("authorization: bearer fixture-token\r\n"));
+        assert!(request.contains("accept: application/octet-stream\r\n"));
+        assert!(request.contains("x-fixture: injected\r\n"));
+        if pricing {
+            assert!(request.starts_with(
+                "get /v3/accounts/account/pricing/stream?instruments=eur_usd%2cusd_jpy "
+            ));
+        } else {
+            assert!(request.starts_with("get /v3/accounts/account/transactions/stream "));
+        }
+    }
+}
+
+#[tokio::test]
 async fn stream_http_error_retains_context() {
     let (url, request) = fixture("401 Unauthorized", r#"{"errorMessage":"invalid token"}"#).await;
     let client = StreamClient::new_practice("fixture-token")

@@ -4,7 +4,9 @@ use crate::http::{self, HttpClient};
 use crate::pricing::PricingStreamItem;
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
+use futures_util::Stream;
 use reqwest::Request;
+use serde::de::DeserializeOwned;
 use url::Url;
 
 /// HTTP client for OANDA's long-lived streaming endpoints.
@@ -102,40 +104,16 @@ impl StreamClient {
     /// deserialised, or `handler` itself returns an error.
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
-    pub async fn transactions(
-        &self,
-        handler: fn(TransactionStreamItem) -> Result<(), APIError>,
-    ) -> Result<(), APIError> {
+    pub async fn transactions<F>(&self, handler: F) -> Result<(), APIError>
+    where
+        F: FnMut(TransactionStreamItem) -> Result<(), APIError>,
+    {
         let url = http::account_url(
             &self.base_url,
             self.account_id.as_ref(),
             "transactions/stream",
         )?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        if http_resp.status() != reqwest::StatusCode::OK {
-            return http::decode_response::<()>(http_resp, reqwest::StatusCode::OK, None).await;
-        }
-        let mut stream = http_resp.bytes_stream();
-        let mut buffer = Vec::new();
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(chunk) => {
-                    buffer.extend_from_slice(&chunk);
-                    while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
-                        let line: Vec<u8> = buffer.drain(..=pos).collect();
-                        let trimmed = line.trim_ascii();
-                        if trimmed.is_empty() {
-                            continue;
-                        }
-                        let transaction = serde_json::from_slice::<TransactionStreamItem>(trimmed)?;
-                        handler(transaction)?;
-                    }
-                }
-                Err(error) => return Err(APIError::from(error)),
-            }
-        }
-        Ok(())
+        self.consume(url, handler).await
     }
 
     /// Opens a persistent connection to the pricing stream and invokes
@@ -154,41 +132,68 @@ impl StreamClient {
     /// deserialised, or `handler` itself returns an error.
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
-    pub async fn pricing(
-        &self,
-        instruments: &[&str],
-        handler: fn(PricingStreamItem) -> Result<(), APIError>,
-    ) -> Result<(), APIError> {
+    pub async fn pricing<F>(&self, instruments: &[&str], handler: F) -> Result<(), APIError>
+    where
+        F: FnMut(PricingStreamItem) -> Result<(), APIError>,
+    {
         let mut url =
             http::account_url(&self.base_url, self.account_id.as_ref(), "pricing/stream")?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments.join(","));
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.http_client.execute(http_req).await?;
-        if http_resp.status() != reqwest::StatusCode::OK {
-            return http::decode_response::<()>(http_resp, reqwest::StatusCode::OK, None).await;
+        self.consume(url, handler).await
+    }
+
+    async fn consume<T, F>(&self, url: Url, handler: F) -> Result<(), APIError>
+    where
+        T: DeserializeOwned,
+        F: FnMut(T) -> Result<(), APIError>,
+    {
+        let response = self
+            .http_client
+            .execute(Request::new(reqwest::Method::GET, url))
+            .await?;
+        if response.status() != reqwest::StatusCode::OK {
+            return http::decode_response::<()>(response, reqwest::StatusCode::OK, None).await;
         }
-        let mut stream = http_resp.bytes_stream();
-        let mut buffer = Vec::new();
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(chunk) => {
-                    buffer.extend_from_slice(&chunk);
-                    while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
-                        let line: Vec<u8> = buffer.drain(..=pos).collect();
-                        let trimmed = line.trim_ascii();
-                        if trimmed.is_empty() {
-                            continue;
-                        }
-                        let item = serde_json::from_slice::<PricingStreamItem>(trimmed)?;
-                        handler(item)?;
-                    }
+        consume_ndjson(
+            response
+                .bytes_stream()
+                .map(|chunk| chunk.map_err(APIError::from)),
+            handler,
+        )
+        .await
+    }
+}
+
+/// Frames messages independently of HTTP chunk boundaries, including a final
+/// message without a newline. Incomplete JSON at EOF is reported as an error.
+async fn consume_ndjson<T, S, B, F>(stream: S, mut handler: F) -> Result<(), APIError>
+where
+    T: DeserializeOwned,
+    S: Stream<Item = Result<B, APIError>>,
+    B: AsRef<[u8]>,
+    F: FnMut(T) -> Result<(), APIError>,
+{
+    futures_util::pin_mut!(stream);
+    let mut buffer = Vec::new();
+    while let Some(chunk) = stream.next().await {
+        let chunk = chunk?;
+        for part in chunk.as_ref().split_inclusive(|byte| *byte == b'\n') {
+            buffer.extend_from_slice(part);
+            if part.last() == Some(&b'\n') {
+                let line = buffer.trim_ascii();
+                if !line.is_empty() {
+                    handler(serde_json::from_slice(line)?)?;
                 }
-                Err(error) => return Err(APIError::from(error)),
+                buffer.clear();
             }
         }
-        Ok(())
     }
+    let line = buffer.trim_ascii();
+    if !line.is_empty() {
+        handler(serde_json::from_slice(line)?)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -210,27 +215,113 @@ mod tests {
     #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_pricing() {
         let client = setup();
-        let _ = timeout(
+        let mut received = 0;
+        let result = timeout(
             Duration::from_secs(10),
             client.pricing(&["EUR_USD"], |item| {
+                received += 1;
                 println!("{:#?}", item);
                 Ok(())
             }),
         )
         .await;
+        if let Ok(result) = result {
+            result.unwrap();
+        }
+        assert!(received > 0, "stream did not deliver any messages");
     }
 
     #[tokio::test]
     #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_stream_transactions() {
         let client = setup();
-        let _ = timeout(
+        let mut received = 0;
+        let result = timeout(
             Duration::from_secs(10),
             client.transactions(|item| {
+                received += 1;
                 println!("{:#?}", item);
                 Ok(())
             }),
         )
         .await;
+        if let Ok(result) = result {
+            result.unwrap();
+        }
+        assert!(received > 0, "stream did not deliver any messages");
+    }
+}
+
+#[cfg(test)]
+mod framing_tests {
+    use super::*;
+    use futures_util::stream;
+    use serde_json::Value;
+
+    #[tokio::test]
+    async fn frames_split_utf8_blank_lines_and_final_message() {
+        let wire = "\n{\"name\":\"円\"}\r\n \n{\"n\":2}".as_bytes();
+        // Every UTF-8 code unit and delimiter can arrive in a separate chunk.
+        let chunks = stream::iter(wire.chunks(1).map(Ok::<_, APIError>));
+        let mut messages = Vec::<Value>::new();
+        consume_ndjson(chunks, |value| {
+            messages.push(value);
+            Ok(())
+        })
+        .await
+        .unwrap();
+        assert_eq!(
+            messages,
+            vec![serde_json::json!({"name":"円"}), serde_json::json!({"n":2})]
+        );
+        let mut count = 0;
+        consume_ndjson::<Value, _, _, _>(stream::iter([Ok(wire)]), |_| {
+            count += 1;
+            Ok(())
+        })
+        .await
+        .unwrap();
+        assert_eq!(count, 2);
+    }
+
+    #[tokio::test]
+    async fn malformed_or_truncated_messages_return_errors() {
+        for wire in [b"{bad}\n".as_slice(), b"{\"n\":".as_slice()] {
+            let result =
+                consume_ndjson::<Value, _, _, _>(stream::iter([Ok(wire)]), |_| Ok(())).await;
+            assert!(matches!(result, Err(APIError::JSONError(_))));
+        }
+    }
+
+    #[tokio::test]
+    async fn handler_error_stops_before_later_messages() {
+        let mut count = 0;
+        let result = consume_ndjson::<Value, _, _, _>(stream::iter([Ok(b"1\n2\n")]), |_| {
+            count += 1;
+            Err(APIError::InvalidRequest("handler stopped".into()))
+        })
+        .await;
+        assert_eq!(count, 1);
+        assert!(
+            matches!(result, Err(APIError::InvalidRequest(message)) if message == "handler stopped")
+        );
+    }
+
+    #[tokio::test]
+    async fn chunk_error_is_propagated_without_dispatching_partial_json() {
+        let chunks = stream::iter([
+            Ok(b"{\"n\":".as_slice()),
+            Err(APIError::InvalidRequest("transport stopped".into())),
+        ]);
+        let mut count = 0;
+        let result = consume_ndjson::<Value, _, _, _>(chunks, |_| {
+            count += 1;
+            Ok(())
+        })
+        .await;
+        assert_eq!(count, 0);
+        assert!(
+            matches!(result, Err(APIError::InvalidRequest(message)) if message == "transport stopped")
+        );
     }
 }
