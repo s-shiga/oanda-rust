@@ -1,6 +1,7 @@
 pub mod account;
 pub mod client;
 pub mod errors;
+mod http;
 pub mod instrument;
 pub mod order;
 pub mod position;

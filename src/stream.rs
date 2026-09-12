@@ -1,9 +1,9 @@
 use crate::account::AccountID;
 use crate::errors::APIError;
+use crate::http::{self, HttpClient};
 use crate::pricing::PricingStreamItem;
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::Request;
 use url::Url;
 
@@ -20,7 +20,7 @@ use url::Url;
 ///
 /// # #[tokio::main]
 /// # async fn main() {
-/// let client = StreamClient::new_practice("my-api-key")
+/// let client = StreamClient::new_practice("my-api-key").unwrap()
 ///     .with_account_id("001-001-1234567-001".to_string());
 ///
 /// client.transactions(|item| {
@@ -31,7 +31,7 @@ use url::Url;
 /// ```
 pub struct StreamClient {
     pub(crate) base_url: Url,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
     pub(crate) account_id: Option<AccountID>,
 }
 
@@ -43,37 +43,42 @@ impl StreamClient {
     ///
     /// The `api_key` is sent as a `Bearer` token on every request.
     /// Call [`with_account_id`](Self::with_account_id) before streaming.
-    pub fn new(api_key: &str) -> Self {
-        StreamClient {
+    ///
+    /// Returns an error if the token is invalid or the HTTP client cannot be built.
+    pub fn new(api_key: &str) -> Result<Self, APIError> {
+        Ok(StreamClient {
             base_url: Url::parse(FX_TRADE_STREAMING_URL).unwrap(),
-            http_client: StreamClient::build_client(api_key),
+            http_client: HttpClient::new(api_key, "application/octet-stream")?,
             account_id: None,
-        }
+        })
     }
 
     /// Creates a `StreamClient` targeting the practice (demo) streaming API.
     ///
     /// The `api_key` is sent as a `Bearer` token on every request.
     /// Call [`with_account_id`](Self::with_account_id) before streaming.
-    pub fn new_practice(api_key: &str) -> Self {
-        StreamClient {
+    ///
+    /// Returns an error if the token is invalid or the HTTP client cannot be built.
+    pub fn new_practice(api_key: &str) -> Result<Self, APIError> {
+        Ok(StreamClient {
             base_url: Url::parse(FX_TRADE_PRACTICE_STREAMING_URL).unwrap(),
-            http_client: StreamClient::build_client(api_key),
+            http_client: HttpClient::new(api_key, "application/octet-stream")?,
             account_id: None,
-        }
+        })
     }
 
-    fn build_client(api_key: &str) -> reqwest::Client {
-        let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT, "application/octet-stream".parse().unwrap());
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap(),
-        );
-        reqwest::ClientBuilder::new()
-            .default_headers(headers)
-            .build()
-            .unwrap()
+    /// Uses a custom HTTP client while preserving OANDA authentication headers.
+    pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client.client = client;
+        self
+    }
+
+    /// Overrides the streaming endpoint, for example for a local fixture server.
+    /// Requests to this endpoint include the configured API token.
+    pub fn with_base_url(mut self, url: Url) -> Result<Self, APIError> {
+        http::validate_base_url(&url)?;
+        self.base_url = url;
+        Ok(self)
     }
 
     /// Sets the account ID used for streaming endpoints and returns `self`.
@@ -96,25 +101,16 @@ impl StreamClient {
     /// returns a non-2xx status, a chunk cannot be read, a message cannot be
     /// deserialised, or `handler` itself returns an error.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn transactions(
         &self,
         handler: fn(TransactionStreamItem) -> Result<(), APIError>,
     ) -> Result<(), APIError> {
-        let url = self
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/transactions/stream",
-                    self.account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let url = http::account_url(
+            &self.base_url,
+            self.account_id.as_ref(),
+            "transactions/stream",
+        )?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self
             .http_client
@@ -158,26 +154,14 @@ impl StreamClient {
     /// returns a non-2xx status, a chunk cannot be read, a message cannot be
     /// deserialised, or `handler` itself returns an error.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn pricing(
         &self,
         instruments: &[&str],
         handler: fn(PricingStreamItem) -> Result<(), APIError>,
     ) -> Result<(), APIError> {
-        let mut url = self
-            .base_url
-            .join(
-                format!(
-                    "/v3/accounts/{}/pricing/stream",
-                    self.account_id
-                        .as_ref()
-                        .expect("Missing account_id in client")
-                )
-                .as_str(),
-            )
-            .unwrap();
+        let mut url =
+            http::account_url(&self.base_url, self.account_id.as_ref(), "pricing/stream")?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments.join(","));
         let http_req = Request::new(reqwest::Method::GET, url);
@@ -219,7 +203,9 @@ mod tests {
         let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");
         let account_id =
             std::env::var("OANDA_ACCOUNT_ID_DEMO").expect("OANDA_ACCOUNT_ID_DEMO must be set");
-        StreamClient::new_practice(&api_key).with_account_id(account_id)
+        StreamClient::new_practice(&api_key)
+            .unwrap()
+            .with_account_id(account_id)
     }
 
     #[tokio::test]

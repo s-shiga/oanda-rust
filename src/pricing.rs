@@ -263,11 +263,9 @@ impl<'a> PricingService<'a> {
     /// Calls `GET /v3/accounts/{accountID}/pricing` with the given
     /// `instruments` list as a comma-separated query parameter.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
-        let mut url = self.client.account_url("pricing");
+        let mut url = self.client.account_url("pricing")?;
         url.query_pairs_mut()
             .append_pair("instruments", instruments.join(",").as_str());
         let http_req = Request::new(reqwest::Method::GET, url);

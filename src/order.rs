@@ -1761,11 +1761,9 @@ impl<'a> OrderService<'a> {
     /// Calls `POST /v3/accounts/{accountID}/orders`. On success (HTTP 201)
     /// returns [`CreateOrderResponse`].
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
-        let url = self.client.account_url("orders");
+        let url = self.client.account_url("orders")?;
         let body = CreateOrderRequest { order };
         let http_resp = self.client.http_client.post(url).json(&body).send().await?;
         handle_response!(
@@ -1781,11 +1779,9 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/orders`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
-        let mut url = self.client.account_url("orders");
+        let mut url = self.client.account_url("orders")?;
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -1801,11 +1797,9 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/pendingOrders`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
-        let url = self.client.account_url("pendingOrders");
+        let url = self.client.account_url("pendingOrders")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -1819,14 +1813,12 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/orders/{orderSpecifier}`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_details(
         &self,
         specifier: OrderSpecifier,
     ) -> Result<GetOrderDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}", specifier));
+        let url = self.client.account_url(&format!("orders/{}", specifier))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -1841,15 +1833,13 @@ impl<'a> OrderService<'a> {
     /// Calls `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}`.
     /// The original order is cancelled and a new one is created atomically.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn replace(
         &self,
         specifier: OrderSpecifier,
         req: OrderRequest,
     ) -> Result<ReplaceOrderResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}", specifier));
+        let url = self.client.account_url(&format!("orders/{}", specifier))?;
         let body = CreateOrderRequest { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
         handle_response!(
@@ -1866,13 +1856,11 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}/cancel`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("orders/{}/cancel", specifier));
+            .account_url(&format!("orders/{}/cancel", specifier))?;
         let http_resp = self.client.http_client.put(url).send().await?;
         handle_response!(
             http_resp,
@@ -1887,9 +1875,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}/clientExtensions`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn update_client_extensions(
         &self,
         specifier: OrderSpecifier,
@@ -1897,7 +1883,7 @@ impl<'a> OrderService<'a> {
     ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("orders/{}/clientExtensions", specifier));
+            .account_url(&format!("orders/{}/clientExtensions", specifier))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

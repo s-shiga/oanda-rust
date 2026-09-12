@@ -1,11 +1,12 @@
 use crate::account::{AccountID, AccountService};
+use crate::errors::APIError;
+use crate::http::{self, HttpClient};
 use crate::instrument::InstrumentService;
 use crate::order::OrderService;
 use crate::position::PositionService;
 use crate::pricing::PricingService;
 use crate::trade::TradeService;
 use crate::transaction::TransactionService;
-use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use url::Url;
 
 /// Base URL for the OANDA live/production trading environment.
@@ -25,7 +26,7 @@ const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 /// ```no_run
 /// use oanda_rust::client::Client;
 ///
-/// let client = Client::new_practice("YOUR_API_KEY")
+/// let client = Client::new_practice("YOUR_API_KEY").unwrap()
 ///     .with_account_id("YOUR_ACCOUNT_ID".to_string());
 ///
 /// // Access a specific service:
@@ -33,7 +34,7 @@ const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 /// ```
 pub struct Client {
     pub(crate) base_url: Url,
-    pub(crate) http_client: reqwest::Client,
+    pub(crate) http_client: HttpClient,
     pub(crate) account_id: Option<AccountID>,
 }
 
@@ -46,12 +47,14 @@ impl<'a> Client {
     /// # Arguments
     ///
     /// * `api_key` – Your OANDA personal access token.
-    pub fn new(api_key: &str) -> Client {
-        Client {
+    ///
+    /// Returns an error if the token is invalid or the HTTP client cannot be built.
+    pub fn new(api_key: &str) -> Result<Client, APIError> {
+        Ok(Client {
             base_url: Url::parse(FX_TRADE_URL).unwrap(),
-            http_client: Client::build_client(api_key),
+            http_client: HttpClient::new(api_key, "application/json")?,
             account_id: None,
-        }
+        })
     }
 
     /// Creates a client targeting the OANDA **practice** (paper trading) environment.
@@ -59,27 +62,28 @@ impl<'a> Client {
     /// # Arguments
     ///
     /// * `api_key` – Your OANDA practice personal access token.
-    pub fn new_practice(api_key: &str) -> Client {
-        Client {
+    ///
+    /// Returns an error if the token is invalid or the HTTP client cannot be built.
+    pub fn new_practice(api_key: &str) -> Result<Client, APIError> {
+        Ok(Client {
             base_url: Url::parse(FX_TRADE_PRACTICE_URL).unwrap(),
-            http_client: Client::build_client(api_key),
+            http_client: HttpClient::new(api_key, "application/json")?,
             account_id: None,
-        }
+        })
     }
 
-    /// Builds a [`reqwest::Client`] with the `Authorization` and `Accept` headers
-    /// pre-populated for every request.
-    fn build_client(api_key: &str) -> reqwest::Client {
-        let mut headers = HeaderMap::new();
-        headers.insert(ACCEPT, "application/json".parse().unwrap());
-        headers.insert(
-            AUTHORIZATION,
-            HeaderValue::from_str(format!("Bearer {}", api_key).as_str()).unwrap(),
-        );
-        reqwest::ClientBuilder::new()
-            .default_headers(headers)
-            .build()
-            .unwrap()
+    /// Uses a custom HTTP client while preserving OANDA authentication headers.
+    pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
+        self.http_client.client = client;
+        self
+    }
+
+    /// Overrides the API endpoint, for example for a local fixture server.
+    /// Requests to this endpoint include the configured API token.
+    pub fn with_base_url(mut self, url: Url) -> Result<Self, APIError> {
+        http::validate_base_url(&url)?;
+        self.base_url = url;
+        Ok(self)
     }
 
     /// Sets the default account ID used by service calls that require one.
@@ -131,17 +135,9 @@ impl<'a> Client {
     /// `suffix` is the path segment(s) after the account ID (e.g. `"positions"`,
     /// `"orders/123/cancel"`). Pass an empty string to target the account root.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
-    pub(crate) fn account_url(&self, suffix: &str) -> Url {
-        let id = self.account_id.as_ref().expect("Missing account_id");
-        let path = if suffix.is_empty() {
-            format!("/v3/accounts/{}", id)
-        } else {
-            format!("/v3/accounts/{}/{}", id, suffix)
-        };
-        self.base_url.join(&path).unwrap()
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
+    pub(crate) fn account_url(&self, suffix: &str) -> Result<Url, APIError> {
+        http::account_url(&self.base_url, self.account_id.as_ref(), suffix)
     }
 }
 
@@ -213,5 +209,7 @@ pub(crate) fn setup_test_client() -> Client {
     let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");
     let account_id =
         std::env::var("OANDA_ACCOUNT_ID_DEMO").expect("OANDA_ACCOUNT_ID_DEMO must be set");
-    Client::new_practice(&api_key).with_account_id(account_id)
+    Client::new_practice(&api_key)
+        .unwrap()
+        .with_account_id(account_id)
 }

@@ -221,11 +221,9 @@ impl<'a> PositionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/positions`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.client.account_url("positions");
+        let url = self.client.account_url("positions")?;
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -239,11 +237,9 @@ impl<'a> PositionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/openPositions`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.client.account_url("openPositions");
+        let url = self.client.account_url("openPositions")?;
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -257,16 +253,14 @@ impl<'a> PositionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/positions/{instrument}`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_details(
         &self,
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("positions/{}", instrument));
+            .account_url(&format!("positions/{}", instrument))?;
         let http_req = Request::new(Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -283,9 +277,7 @@ impl<'a> PositionService<'a> {
     /// Use [`ClosePositionRequest`] to control how many long/short units to
     /// close. Omitting both sides defaults to closing all open units.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn close(
         &self,
         instrument: InstrumentName,
@@ -293,7 +285,7 @@ impl<'a> PositionService<'a> {
     ) -> Result<ClosePositionResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("positions/{}/close", instrument));
+            .account_url(&format!("positions/{}/close", instrument))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,

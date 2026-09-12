@@ -368,11 +368,9 @@ impl<'a> TradeService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/trades`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.client.account_url("trades");
+        let url = self.client.account_url("trades")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -386,11 +384,9 @@ impl<'a> TradeService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/openTrades`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.client.account_url("openTrades");
+        let url = self.client.account_url("openTrades")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -404,14 +400,12 @@ impl<'a> TradeService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/trades/{tradeSpecifier}`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_details(
         &self,
         specifier: TradeSpecifier,
     ) -> Result<GetTradeDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("trades/{}", specifier));
+        let url = self.client.account_url(&format!("trades/{}", specifier))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -427,9 +421,7 @@ impl<'a> TradeService<'a> {
     /// To partially close a trade (reduce units), use the OANDA API directly
     /// with a units parameter — partial-close is not yet exposed here.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn close(
         &self,
         specifier: TradeSpecifier,
@@ -437,7 +429,7 @@ impl<'a> TradeService<'a> {
     ) -> Result<CloseTradeResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("trades/{}/close", specifier));
+            .account_url(&format!("trades/{}/close", specifier))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(
             http_resp,
@@ -460,9 +452,7 @@ impl<'a> TradeService<'a> {
     /// Returns [`APIError`] wrapping [`UpdateTradeClientExtensionsErrorResponse`]
     /// on HTTP 400 (bad request) or 404 (trade not found).
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn update_client_extensions(
         &self,
         specifier: TradeSpecifier,
@@ -470,7 +460,7 @@ impl<'a> TradeService<'a> {
     ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
         let url = self
             .client
-            .account_url(&format!("trades/{}/clientExtensions", specifier));
+            .account_url(&format!("trades/{}/clientExtensions", specifier))?;
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
         handle_response!(

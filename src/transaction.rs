@@ -2226,14 +2226,12 @@ impl<'a> TransactionService<'a> {
     /// Returns page URLs rather than inline transactions; follow each URL in
     /// [`ListTransactionsResponse::pages`] to retrieve the actual transaction data.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(
         &self,
         req: ListTransactionsRequest,
     ) -> Result<ListTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions");
+        let mut url = self.client.account_url("transactions")?;
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -2248,14 +2246,12 @@ impl<'a> TransactionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/transactions/{transactionID}`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_details(
         &self,
         id: TransactionID,
     ) -> Result<GetTransactionDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("transactions/{}", id));
+        let url = self.client.account_url(&format!("transactions/{}", id))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
@@ -2269,14 +2265,12 @@ impl<'a> TransactionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/transactions/idrange`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_by_id_range(
         &self,
         req: GetTransactionsByIDRangeRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions/idrange");
+        let mut url = self.client.account_url("transactions/idrange")?;
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
@@ -2291,14 +2285,12 @@ impl<'a> TransactionService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/transactions/sinceid`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get_by_since_id(
         &self,
         req: GetTransactionsBySinceIDRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions/sinceid");
+        let mut url = self.client.account_url("transactions/sinceid")?;
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;

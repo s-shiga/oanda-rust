@@ -493,11 +493,9 @@ impl<'a> InstrumentService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/instruments`.
     ///
-    /// # Panics
-    ///
-    /// Panics if no `account_id` has been set on the client.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
-        let url = self.client.account_url("instruments");
+        let url = self.client.account_url("instruments")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         handle_response!(
