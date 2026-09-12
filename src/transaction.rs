@@ -2039,10 +2039,11 @@ impl ListTransactionsRequest {
 
     pub(crate) fn set_params(&self, url: &mut Url) {
         if let Some(from) = self.from {
-            url.query_pairs_mut().append_pair("from", &from.to_string());
+            url.query_pairs_mut()
+                .append_pair("from", &from.to_rfc3339());
         }
         if let Some(to) = self.to {
-            url.query_pairs_mut().append_pair("to", &to.to_string());
+            url.query_pairs_mut().append_pair("to", &to.to_rfc3339());
         }
         if let Some(page_size) = self.page_size {
             url.query_pairs_mut()
@@ -2346,6 +2347,24 @@ mod tests {
         assert_eq!(params.len(), 2);
         assert_eq!(params["id"], "5");
         assert_eq!(params["type"], "ORDER_FILL,FUNDING");
+    }
+
+    #[test]
+    fn regression_transaction_date_range_query_parameters() {
+        use std::collections::BTreeMap;
+        let from: DateTime<Utc> = "2026-01-01T00:00:00.123456789Z".parse().unwrap();
+        let to: DateTime<Utc> = "2026-01-02T00:00:00Z".parse().unwrap();
+        let mut url = Url::parse("https://example.com/transactions").unwrap();
+        ListTransactionsRequest::new()
+            .from_time(from)
+            .to(to)
+            .page_size(25)
+            .set_params(&mut url);
+        let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(params.len(), 3);
+        assert_eq!(params["from"], from.to_rfc3339());
+        assert_eq!(params["to"], to.to_rfc3339());
+        assert_eq!(params["pageSize"], "25");
     }
 
     #[tokio::test]
