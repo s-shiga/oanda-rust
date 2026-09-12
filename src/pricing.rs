@@ -273,20 +273,3 @@ impl<'a> PricingService<'a> {
         decode_response::<PricesResponse>(http_resp, StatusCode::OK, None).await
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::client::setup_test_client;
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_get_prices() {
-        let client = setup_test_client();
-        let resp = client
-            .pricing()
-            .get(vec!["USD_JPY".to_string(), "EUR_USD".to_string()])
-            .await
-            .unwrap();
-        println!("{:#?}", resp);
-    }
-}

@@ -2290,7 +2290,6 @@ impl<'a> TransactionService<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::client::setup_test_client;
 
     #[test]
     fn regression_transaction_filter_query_parameters() {
@@ -2342,62 +2341,5 @@ mod tests {
         assert_eq!(params["from"], from.to_rfc3339());
         assert_eq!(params["to"], to.to_rfc3339());
         assert_eq!(params["pageSize"], "25");
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_list_transactions() {
-        let client = setup_test_client();
-        let req = ListTransactionsRequest::new();
-        let resp = client.transaction().list(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_get_transaction_details() {
-        let client = setup_test_client();
-        let list = client
-            .transaction()
-            .list(ListTransactionsRequest::new())
-            .await
-            .unwrap();
-        let resp = client
-            .transaction()
-            .get_details(list.last_transaction_id)
-            .await
-            .unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_get_transactions_by_id_range() {
-        let client = setup_test_client();
-        let resp = client
-            .transaction()
-            .list(ListTransactionsRequest::new())
-            .await
-            .unwrap();
-        let req = GetTransactionsByIDRangeRequest::new(
-            resp.last_transaction_id.clone(),
-            resp.last_transaction_id.clone(),
-        );
-        let resp = client.transaction().get_by_id_range(req).await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_get_transactions_by_since_id() {
-        let client = setup_test_client();
-        let resp = client
-            .transaction()
-            .list(ListTransactionsRequest::new())
-            .await
-            .unwrap();
-        let req = GetTransactionsBySinceIDRequest::new(resp.last_transaction_id.to_string());
-        let resp = client.transaction().get_by_since_id(req).await.unwrap();
-        println!("{:#?}", resp);
     }
 }

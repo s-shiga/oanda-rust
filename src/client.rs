@@ -168,13 +168,3 @@ macro_rules! request_option_setter {
         }
     };
 }
-
-#[cfg(test)]
-pub(crate) fn setup_test_client() -> Client {
-    let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");
-    let account_id =
-        std::env::var("OANDA_ACCOUNT_ID_DEMO").expect("OANDA_ACCOUNT_ID_DEMO must be set");
-    Client::new_practice(&api_key)
-        .unwrap()
-        .with_account_id(account_id)
-}

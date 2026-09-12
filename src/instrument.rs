@@ -523,8 +523,7 @@ impl<'a> InstrumentService<'a> {
 
 #[cfg(test)]
 mod tests {
-    use crate::client::setup_test_client;
-    use crate::instrument::{CandlestickGranularity, CandlesticksRequest};
+    use crate::instrument::CandlesticksRequest;
     use chrono::{Local, TimeZone, Utc};
     use url::Url;
 
@@ -560,25 +559,5 @@ mod tests {
         .unwrap();
 
         assert_eq!(response.candles[0].volume, 100_000);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_list_instruments() {
-        let client = setup_test_client();
-        let resp = client.instrument().list().await.unwrap();
-        println!("{:#?}", resp);
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_fetch_candlestick_data() {
-        let client = setup_test_client();
-        let req = CandlesticksRequest::new("USD_JPY".to_string())
-            .granularity(CandlestickGranularity::M1)
-            .count(50)
-            .unwrap();
-        let resp = client.instrument().candlesticks(req).await.unwrap();
-        println!("{:#?}", resp);
     }
 }

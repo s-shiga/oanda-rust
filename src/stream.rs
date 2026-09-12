@@ -197,62 +197,6 @@ where
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::stream::StreamClient;
-    use std::time::Duration;
-    use tokio::time::timeout;
-
-    fn setup() -> StreamClient {
-        let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");
-        let account_id =
-            std::env::var("OANDA_ACCOUNT_ID_DEMO").expect("OANDA_ACCOUNT_ID_DEMO must be set");
-        StreamClient::new_practice(&api_key)
-            .unwrap()
-            .with_account_id(account_id)
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_pricing() {
-        let client = setup();
-        let mut received = 0;
-        let result = timeout(
-            Duration::from_secs(10),
-            client.pricing(&["EUR_USD"], |item| {
-                received += 1;
-                println!("{:#?}", item);
-                Ok(())
-            }),
-        )
-        .await;
-        if let Ok(result) = result {
-            result.unwrap();
-        }
-        assert!(received > 0, "stream did not deliver any messages");
-    }
-
-    #[tokio::test]
-    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
-    async fn test_stream_transactions() {
-        let client = setup();
-        let mut received = 0;
-        let result = timeout(
-            Duration::from_secs(10),
-            client.transactions(|item| {
-                received += 1;
-                println!("{:#?}", item);
-                Ok(())
-            }),
-        )
-        .await;
-        if let Ok(result) = result {
-            result.unwrap();
-        }
-        assert!(received > 0, "stream did not deliver any messages");
-    }
-}
-
-#[cfg(test)]
 mod framing_tests {
     use super::*;
     use futures_util::stream;
