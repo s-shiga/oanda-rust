@@ -2050,7 +2050,7 @@ impl ListTransactionsRequest {
         }
         if !self.transaction_type.is_empty() {
             url.query_pairs_mut().append_pair(
-                "transactionType",
+                "type",
                 self.transaction_type
                     .iter()
                     .map(|t| t.to_string())
@@ -2180,7 +2180,7 @@ impl GetTransactionsBySinceIDRequest {
             .append_pair("id", &self.id.to_string());
         if !self.filter.is_empty() {
             url.query_pairs_mut().append_pair(
-                "filter",
+                "type",
                 &self
                     .filter
                     .iter()
@@ -2313,6 +2313,40 @@ impl<'a> TransactionService<'a> {
 mod tests {
     use super::*;
     use crate::client::setup_test_client;
+
+    #[test]
+    fn regression_transaction_filter_query_parameters() {
+        use std::collections::BTreeMap;
+        let mut url = Url::parse("https://example.com/transactions").unwrap();
+        ListTransactionsRequest::new()
+            .transaction_type(TransactionType::OrderFill)
+            .transaction_type(TransactionType::MarketOrder)
+            .set_params(&mut url);
+        let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(params.len(), 1);
+        assert_eq!(params["type"], "ORDER_FILL,MARKET_ORDER");
+
+        let mut url = Url::parse("https://example.com/transactions/idrange").unwrap();
+        GetTransactionsByIDRangeRequest::new("1".into(), "5".into())
+            .filter(TransactionFilter::OrderFill)
+            .filter(TransactionFilter::Funding)
+            .set_params(&mut url);
+        let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(params.len(), 3);
+        assert_eq!(params["from"], "1");
+        assert_eq!(params["to"], "5");
+        assert_eq!(params["type"], "ORDER_FILL,FUNDING");
+
+        let mut url = Url::parse("https://example.com/transactions/sinceid").unwrap();
+        GetTransactionsBySinceIDRequest::new("5".into())
+            .filter(TransactionFilter::OrderFill)
+            .filter(TransactionFilter::Funding)
+            .set_params(&mut url);
+        let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(params.len(), 2);
+        assert_eq!(params["id"], "5");
+        assert_eq!(params["type"], "ORDER_FILL,FUNDING");
+    }
 
     #[tokio::test]
     async fn test_list_transactions() {
