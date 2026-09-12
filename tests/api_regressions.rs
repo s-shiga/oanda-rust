@@ -1,3 +1,4 @@
+use oanda_rust::order::*;
 use oanda_rust::pricing::{ClientPrice, PricingStreamItem};
 use serde_json::json;
 
@@ -21,4 +22,69 @@ fn regression_prices_accept_rest_stream_and_full_price_timestamps() {
     fixture["timestamp"] = json!(time);
     let full_price: ClientPrice = serde_json::from_value(fixture).unwrap();
     assert_eq!(full_price.timestamp, price.timestamp);
+}
+
+#[test]
+fn regression_order_requests_have_one_discriminator_and_round_trip() {
+    let orders = [
+        (
+            "MARKET",
+            OrderRequest::Market(MarketOrderRequest::new("EUR_USD".into(), "1".into())),
+        ),
+        (
+            "LIMIT",
+            OrderRequest::Limit(LimitOrderRequest::new(
+                "EUR_USD".into(),
+                "1".into(),
+                "1.1".into(),
+            )),
+        ),
+        (
+            "STOP",
+            OrderRequest::Stop(StopOrderRequest::new(
+                "EUR_USD".into(),
+                "1".into(),
+                "1.1".into(),
+            )),
+        ),
+        (
+            "MARKET_IF_TOUCHED",
+            OrderRequest::MarketIfTouched(MarketIfTouchedOrderRequest::new(
+                "EUR_USD".into(),
+                "1".into(),
+                "1.1".into(),
+            )),
+        ),
+        (
+            "TAKE_PROFIT",
+            OrderRequest::TakeProfit(TakeProfitOrderRequest::new("42".into(), "1.1".into())),
+        ),
+        (
+            "STOP_LOSS",
+            OrderRequest::StopLoss(StopLossOrderRequest::new("42".into(), "1.1".into())),
+        ),
+        (
+            "GUARANTEED_STOP_LOSS",
+            OrderRequest::GuaranteedStopLoss(GuaranteedStopLossOrderRequest::new(
+                "42".into(),
+                "1.1".into(),
+            )),
+        ),
+        (
+            "TRAILING_STOP_LOSS",
+            OrderRequest::TrailingStopLoss(TrailingStopLossOrderRequest::new(
+                "42".into(),
+                "0.01".into(),
+            )),
+        ),
+    ];
+    for (tag, order) in orders {
+        let order_wire = serde_json::to_string(&order).unwrap();
+        let wire = serde_json::to_string(&CreateOrderRequest { order }).unwrap();
+        assert_eq!(wire.matches("\"type\":").count(), 1, "{wire}");
+        let value: serde_json::Value = serde_json::from_str(&wire).unwrap();
+        assert_eq!(value["order"]["type"], tag);
+        let decoded: OrderRequest = serde_json::from_str(&order_wire).unwrap();
+        assert_eq!(serde_json::to_value(decoded).unwrap(), value["order"]);
+    }
 }

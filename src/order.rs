@@ -665,9 +665,6 @@ pub enum OrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketOrderRequest {
-    /// Always `OrderType::Market`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The instrument to trade.
     pub instrument: InstrumentName,
     /// Units to trade. Positive = buy (long), negative = sell (short).
@@ -705,7 +702,6 @@ impl MarketOrderRequest {
     /// Defaults: `time_in_force = FOK`, `position_fill = Default`.
     pub fn new(instrument: InstrumentName, units: DecimalNumber) -> MarketOrderRequest {
         MarketOrderRequest {
-            order_type: OrderType::Market,
             instrument,
             units,
             time_in_force: TimeInForce::FOK,
@@ -748,9 +744,6 @@ impl MarketOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LimitOrderRequest {
-    /// Always `OrderType::Limit`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The instrument to trade.
     pub instrument: InstrumentName,
     /// Units to trade. Positive = buy (long), negative = sell (short).
@@ -797,7 +790,6 @@ impl LimitOrderRequest {
         price: PriceValue,
     ) -> LimitOrderRequest {
         LimitOrderRequest {
-            order_type: OrderType::Limit,
             instrument,
             units,
             price,
@@ -847,9 +839,6 @@ impl LimitOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StopOrderRequest {
-    /// Always `OrderType::Stop`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The instrument to trade.
     pub instrument: InstrumentName,
     /// Units to trade. Positive = buy (long), negative = sell (short).
@@ -895,7 +884,6 @@ impl StopOrderRequest {
     /// `trigger_condition = Default`.
     pub fn new(instrument: InstrumentName, units: DecimalNumber, price: PriceValue) -> Self {
         StopOrderRequest {
-            order_type: OrderType::Stop,
             instrument,
             units,
             price,
@@ -947,9 +935,6 @@ impl StopOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MarketIfTouchedOrderRequest {
-    /// Always `OrderType::MarketIfTouched`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The instrument to trade.
     pub instrument: InstrumentName,
     /// Units to trade. Positive = buy (long), negative = sell (short).
@@ -995,7 +980,6 @@ impl MarketIfTouchedOrderRequest {
     /// `trigger_condition = Default`.
     pub fn new(instrument: InstrumentName, units: DecimalNumber, price: PriceValue) -> Self {
         MarketIfTouchedOrderRequest {
-            order_type: OrderType::MarketIfTouched,
             instrument,
             units,
             price,
@@ -1045,9 +1029,6 @@ impl MarketIfTouchedOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TakeProfitOrderRequest {
-    /// Always `OrderType::TakeProfit`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The ID of the trade to attach the take-profit to.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
@@ -1074,7 +1055,6 @@ impl TakeProfitOrderRequest {
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
         TakeProfitOrderRequest {
-            order_type: OrderType::TakeProfit,
             trade_id,
             client_trade_id: None,
             price,
@@ -1111,9 +1091,6 @@ impl TakeProfitOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StopLossOrderRequest {
-    /// Always `OrderType::StopLoss`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The ID of the trade to attach the stop-loss to.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
@@ -1147,7 +1124,6 @@ impl StopLossOrderRequest {
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
         StopLossOrderRequest {
-            order_type: OrderType::StopLoss,
             trade_id,
             client_trade_id: None,
             price,
@@ -1188,9 +1164,6 @@ impl StopLossOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossOrderRequest {
-    /// Always `OrderType::GuaranteedStopLoss`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The ID of the trade to attach the guaranteed stop-loss to.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
@@ -1221,7 +1194,6 @@ impl GuaranteedStopLossOrderRequest {
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
         GuaranteedStopLossOrderRequest {
-            order_type: OrderType::GuaranteedStopLoss,
             trade_id,
             client_trade_id: None,
             price,
@@ -1261,9 +1233,6 @@ impl GuaranteedStopLossOrderRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TrailingStopLossOrderRequest {
-    /// Always `OrderType::TrailingStopLoss`; set automatically by `new`.
-    #[serde(rename = "type")]
-    pub order_type: OrderType,
     /// The ID of the trade to attach the trailing stop-loss to.
     #[serde(rename = "tradeID")]
     pub trade_id: TradeID,
@@ -1291,7 +1260,6 @@ impl TrailingStopLossOrderRequest {
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, distance: DecimalNumber) -> Self {
         TrailingStopLossOrderRequest {
-            order_type: OrderType::TrailingStopLoss,
             trade_id,
             client_trade_id: None,
             distance,
