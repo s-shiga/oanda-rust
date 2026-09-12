@@ -1916,6 +1916,7 @@ mod tests {
     use crate::order::ListOrdersRequest;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_list_orders() {
         let client = setup_test_client();
         let req = ListOrdersRequest::new();
@@ -1934,6 +1935,7 @@ mod write_tests {
     use crate::transaction::ClientExtensions;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_limit_order() {
         let client = setup_test_client();
 

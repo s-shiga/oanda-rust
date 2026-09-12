@@ -308,6 +308,7 @@ mod tests {
     use crate::client::setup_test_client;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_position_list() {
         let client = setup_test_client();
         let positions = client.position().list().await.unwrap();
@@ -315,6 +316,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_position_list_open() {
         let client = setup_test_client();
         let positions = client.position().list_open().await.unwrap();
@@ -322,6 +324,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_position_details() {
         let client = setup_test_client();
         let details = client
@@ -340,6 +343,7 @@ mod write_tests {
     use crate::position::ClosePositionRequest;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_position_close() {
         use crate::order::{MarketOrderRequest, OrderRequest};
         let client = setup_test_client();

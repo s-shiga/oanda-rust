@@ -573,6 +573,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_list_instruments() {
         let client = setup_test_client();
         let resp = client.instrument().list().await.unwrap();
@@ -580,6 +581,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_fetch_candlestick_data() {
         let client = setup_test_client();
         let req = CandlesticksRequest::new("USD_JPY".to_string())

@@ -223,7 +223,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_pricing() {
         let client = setup();
         let _ = timeout(
@@ -237,6 +237,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_stream_transactions() {
         let client = setup();
         let _ = timeout(

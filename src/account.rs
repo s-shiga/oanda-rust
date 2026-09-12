@@ -715,6 +715,7 @@ mod tests {
     use crate::client::setup_test_client;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_list() {
         let client = setup_test_client();
         let account = client.account().list().await.unwrap();
@@ -722,6 +723,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_details() {
         let client = setup_test_client();
         let account_details = client
@@ -733,6 +735,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_summary() {
         let client = setup_test_client();
         let account_summary = client
@@ -744,6 +747,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_instruments() {
         let client = setup_test_client();
         let resp = client
@@ -755,6 +759,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_instruments_filtered() {
         let client = setup_test_client();
         let resp = client
@@ -769,6 +774,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_changes() {
         let client = setup_test_client();
         let summary = client
@@ -793,6 +799,7 @@ mod write_tests {
     use crate::client::setup_test_client;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_configure() {
         let client = setup_test_client();
         let resp = client

@@ -285,6 +285,7 @@ mod tests {
     use crate::client::setup_test_client;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_prices() {
         let client = setup_test_client();
         let resp = client

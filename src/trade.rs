@@ -489,6 +489,7 @@ mod tests {
     use crate::client::setup_test_client;
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_list_trades() {
         let client = setup_test_client();
         let resp = client.trade().list().await.unwrap();
@@ -516,6 +517,7 @@ mod write_tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_trades() {
         let client = setup_test_client();
 

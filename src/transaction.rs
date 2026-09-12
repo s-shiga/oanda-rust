@@ -2368,6 +2368,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_list_transactions() {
         let client = setup_test_client();
         let req = ListTransactionsRequest::new();
@@ -2376,6 +2377,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_transaction_details() {
         let client = setup_test_client();
         let list = client
@@ -2392,6 +2394,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_transactions_by_id_range() {
         let client = setup_test_client();
         let resp = client
@@ -2408,6 +2411,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore = "requires OANDA demo credentials; run explicitly with --ignored"]
     async fn test_get_transactions_by_since_id() {
         let client = setup_test_client();
         let resp = client
