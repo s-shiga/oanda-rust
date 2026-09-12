@@ -8,11 +8,13 @@ use thiserror::Error;
 
 /// Top-level error type returned by all service methods.
 ///
-/// Variants cover the four failure modes: a malformed request caught before
-/// sending, a transport-level HTTP failure, a JSON deserialisation failure,
-/// and a well-formed API error response from the OANDA server.
+/// Includes request, transport, decoding, and structured API failures.
+/// Response failures retain HTTP status and the server request ID.
 #[derive(Error, Debug)]
 pub enum APIError {
+    /// A response failure with HTTP status and request ID context.
+    #[error(transparent)]
+    Response(Box<HttpResponseError>),
     /// The request could not be constructed (e.g. a required field is missing).
     #[error("Invalid request: {0}")]
     InvalidRequest(String),
@@ -50,7 +52,7 @@ pub struct CommonErrorResponse {
 /// A structured error body returned by one of the OANDA API endpoints.
 ///
 /// Each variant corresponds to a specific endpoint's reject/error schema.
-/// Constructed by the `handle_response!` macro when the server returns a
+/// Constructed by the response decoder when the server returns a
 /// non-success status code with a recognised error payload.
 #[derive(Error, Debug, Serialize, Deserialize)]
 #[error(transparent)]
@@ -73,4 +75,14 @@ pub enum ErrorResponse {
     /// An account configuration update was rejected.
     #[error(transparent)]
     ConfigureAccountError(#[from] ConfigureAccountErrorResponse),
+}
+
+/// HTTP context retained when reading or decoding a response fails.
+#[derive(Debug, Error)]
+#[error("HTTP {status} (request ID {request_id:?}): {source}")]
+pub struct HttpResponseError {
+    pub status: reqwest::StatusCode,
+    pub request_id: Option<String>,
+    #[source]
+    pub source: APIError,
 }

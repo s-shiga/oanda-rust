@@ -1,15 +1,16 @@
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::errors::{APIError, ErrorResponse};
+use crate::http::decode_response;
 use crate::instrument::Instrument;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
 use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
+use crate::request_option_setter;
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{
     AccountUnits, ClientConfigureRejectTransaction, ClientConfigureTransaction, Transaction,
     TransactionID,
 };
-use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -579,11 +580,7 @@ impl<'a> AccountService<'a> {
         let url = self.client.base_url.join("/v3/accounts").unwrap();
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListAccountsResponse,
-            errors: [ ]
-        )
+        decode_response::<ListAccountsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns the full details of the specified account, including all open
@@ -597,11 +594,7 @@ impl<'a> AccountService<'a> {
         let url = crate::http::account_url(&self.client.base_url, Some(account_id), "")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetAccountDetailsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetAccountDetailsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns a condensed snapshot of the specified account's state.
@@ -615,11 +608,7 @@ impl<'a> AccountService<'a> {
         let url = crate::http::account_url(&self.client.base_url, Some(account_id), "summary")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetAccountSummaryResponse,
-            errors: [ ]
-        )
+        decode_response::<GetAccountSummaryResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns the list of tradeable instruments for the given account.
@@ -640,11 +629,7 @@ impl<'a> AccountService<'a> {
         }
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetInstrumentsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetInstrumentsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Updates the account's alias and/or margin rate.
@@ -660,14 +645,19 @@ impl<'a> AccountService<'a> {
         let url =
             crate::http::account_url(&self.client.base_url, Some(account_id), "configuration")?;
         let http_resp = self.client.http_client.patch(url).json(&req).send().await?;
-        handle_response!(
+        decode_response::<ConfigureAccountResponse>(
             http_resp,
-            success: StatusCode::OK => ConfigureAccountResponse,
-            errors: [
-                StatusCode::BAD_REQUEST => (ConfigureAccountErrorResponse, ConfigureAccountError),
-                StatusCode::FORBIDDEN => (ConfigureAccountErrorResponse, ConfigureAccountError),
-            ]
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST | StatusCode::FORBIDDEN => {
+                    serde_json::from_slice::<ConfigureAccountErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::ConfigureAccountError)
+                }
+                _ => None,
+            }),
         )
+        .await
     }
 
     /// Returns all changes to the account since the given transaction ID,
@@ -684,11 +674,7 @@ impl<'a> AccountService<'a> {
             .append_pair("sinceTransactionID", &since_transaction_id);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetAccountChangesResponse,
-            errors: [ ]
-        )
+        decode_response::<GetAccountChangesResponse>(http_resp, StatusCode::OK, None).await
     }
 }
 

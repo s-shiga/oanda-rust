@@ -1,6 +1,6 @@
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
-use crate::handle_response;
+use crate::errors::APIError;
+use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
@@ -270,11 +270,7 @@ impl<'a> PricingService<'a> {
             .append_pair("instruments", instruments.join(",").as_str());
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => PricesResponse,
-            errors: [ ]
-        )
+        decode_response::<PricesResponse>(http_resp, StatusCode::OK, None).await
     }
 }
 

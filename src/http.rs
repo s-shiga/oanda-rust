@@ -1,8 +1,9 @@
 //! Shared authenticated transport and response decoding.
 use crate::account::AccountID;
-use crate::errors::APIError;
+use crate::errors::{APIError, CommonErrorResponse, ErrorResponse, HttpResponseError};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
-use reqwest::{Request, RequestBuilder, Response};
+use reqwest::{Request, RequestBuilder, Response, StatusCode};
+use serde::de::DeserializeOwned;
 use url::Url;
 
 pub(crate) struct HttpClient {
@@ -81,4 +82,38 @@ pub(crate) fn validate_base_url(url: &Url) -> Result<(), APIError> {
         ));
     }
     Ok(())
+}
+
+type ErrorDecoder = fn(StatusCode, &[u8]) -> Option<ErrorResponse>;
+
+pub(crate) async fn decode_response<T: DeserializeOwned>(
+    response: Response,
+    success: StatusCode,
+    decode_error: Option<ErrorDecoder>,
+) -> Result<T, APIError> {
+    let status = response.status();
+    let request_id = response
+        .headers()
+        .get("RequestID")
+        .and_then(|value| value.to_str().ok())
+        .map(str::to_owned);
+    let result = async {
+        let body = response.bytes().await?;
+        if status == success {
+            return Ok(serde_json::from_slice::<T>(&body)?);
+        }
+        if let Some(error) = decode_error.and_then(|decode| decode(status, &body)) {
+            return Err(APIError::from(error));
+        }
+        let error = serde_json::from_slice::<CommonErrorResponse>(&body)?;
+        Err(APIError::from(ErrorResponse::CommonError(error)))
+    }
+    .await;
+    result.map_err(|source| {
+        APIError::Response(Box::new(HttpResponseError {
+            status,
+            request_id,
+            source,
+        }))
+    })
 }

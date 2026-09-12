@@ -169,41 +169,6 @@ macro_rules! request_option_setter {
     };
 }
 
-#[macro_export]
-macro_rules! handle_response {
-    (
-        $resp:expr,
-        success: $ok_status:pat => $ok_type:ty,
-        errors: [
-            $($err_status:pat => ($err_type:ty, $err_variant:ident)),* $(,)?
-        ]
-    ) => {{
-        match $resp.status() {
-            $ok_status => {
-                Ok($resp.json::<$ok_type>().await?)
-            }
-            $(
-            $err_status => {
-                let text = $resp.text().await?;
-                match serde_json::from_str::<$err_type>(&text) {
-                    Ok(err) => Err(APIError::from(
-                        ErrorResponse::$err_variant(err)
-                    )),
-                    Err(_) => Err(APIError::from(
-                        ErrorResponse::CommonError(
-                            serde_json::from_str::<CommonErrorResponse>(&text)?
-                        )
-                    ))
-                }
-            }
-            )*
-            _ => Err(APIError::from(ErrorResponse::CommonError(
-                $resp.json::<CommonErrorResponse>().await?
-            )))
-        }
-    }};
-}
-
 #[cfg(test)]
 pub(crate) fn setup_test_client() -> Client {
     let api_key = std::env::var("OANDA_API_KEY_DEMO").expect("OANDA_API_KEY_DEMO must be set");

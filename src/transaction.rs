@@ -1,11 +1,12 @@
 use crate::account::AccountID;
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::errors::APIError;
+use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
 use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
-use crate::{handle_response, request_option_setter};
+use crate::request_option_setter;
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -2235,11 +2236,7 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListTransactionsResponse,
-            errors: [ ]
-        )
+        decode_response::<ListTransactionsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns the details of the transaction identified by `id`.
@@ -2254,11 +2251,7 @@ impl<'a> TransactionService<'a> {
         let url = self.client.account_url(&format!("transactions/{}", id))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetTransactionDetailsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetTransactionDetailsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns all transactions with IDs in the inclusive range specified by `req`.
@@ -2274,11 +2267,7 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetTransactionsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetTransactionsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns all transactions with IDs greater than the one specified in `req`.
@@ -2294,11 +2283,7 @@ impl<'a> TransactionService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetTransactionsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetTransactionsResponse>(http_resp, StatusCode::OK, None).await
     }
 }
 

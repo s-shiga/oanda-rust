@@ -1,6 +1,6 @@
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
-use crate::handle_response;
+use crate::errors::APIError;
+use crate::http::decode_response;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
@@ -498,11 +498,7 @@ impl<'a> InstrumentService<'a> {
         let url = self.client.account_url("instruments")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListInstrumentsResponse,
-            errors: [ ]
-        )
+        decode_response::<ListInstrumentsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Fetches historical candlestick (OHLCV) data for an instrument.
@@ -521,11 +517,7 @@ impl<'a> InstrumentService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => CandlesticksResponse,
-            errors: [ ]
-        )
+        decode_response::<CandlesticksResponse>(http_resp, StatusCode::OK, None).await
     }
 }
 

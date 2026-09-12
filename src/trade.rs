@@ -1,17 +1,18 @@
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::errors::{APIError, ErrorResponse};
+use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::order::{
     GuaranteedStopLossOrder, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
 };
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
+use crate::request_option_setter;
 use crate::transaction::{
     AccountUnits, ClientExtensions, MarketOrderTransaction, OrderCancelTransaction,
     OrderFillTransaction, OrderID, TradeClientExtensionsModifyRejectTransaction,
     TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
 };
-use crate::{handle_response, request_option_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -373,11 +374,7 @@ impl<'a> TradeService<'a> {
         let url = self.client.account_url("trades")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListTradesResponse,
-            errors: [ ]
-        )
+        decode_response::<ListTradesResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Lists all currently open trades on the account.
@@ -389,11 +386,7 @@ impl<'a> TradeService<'a> {
         let url = self.client.account_url("openTrades")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListTradesResponse,
-            errors: [ ]
-        )
+        decode_response::<ListTradesResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns the details of the trade identified by `specifier`.
@@ -408,11 +401,7 @@ impl<'a> TradeService<'a> {
         let url = self.client.account_url(&format!("trades/{}", specifier))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetTradeDetailsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetTradeDetailsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Fully closes the trade identified by `specifier`.
@@ -431,11 +420,7 @@ impl<'a> TradeService<'a> {
             .client
             .account_url(&format!("trades/{}/close", specifier))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => CloseTradeResponse,
-            errors: [ ]
-        )
+        decode_response::<CloseTradeResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Replaces the client extensions on the trade identified by `specifier`.
@@ -463,14 +448,19 @@ impl<'a> TradeService<'a> {
             .account_url(&format!("trades/{}/clientExtensions", specifier))?;
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        handle_response!(
+        decode_response::<UpdateTradeClientExtensionsResponse>(
             http_resp,
-            success: StatusCode::OK => UpdateTradeClientExtensionsResponse,
-            errors: [
-                StatusCode::BAD_REQUEST => (UpdateTradeClientExtensionsErrorResponse, UpdateTradeClientExtensionsError),
-                StatusCode::NOT_FOUND => (UpdateTradeClientExtensionsErrorResponse, UpdateTradeClientExtensionsError),
-            ]
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                    serde_json::from_slice::<UpdateTradeClientExtensionsErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::UpdateTradeClientExtensionsError)
+                }
+                _ => None,
+            }),
         )
+        .await
     }
 }
 

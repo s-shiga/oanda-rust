@@ -1,5 +1,6 @@
 use crate::client::Client;
-use crate::errors::{APIError, CommonErrorResponse, ErrorResponse};
+use crate::errors::{APIError, ErrorResponse};
+use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
@@ -11,7 +12,7 @@ use crate::transaction::{
     OrderFillTransaction, OrderID, StopLossDetails, TakeProfitDetails, TradeID,
     TrailingStopLossDetails, TransactionID,
 };
-use crate::{handle_response, request_option_setter, request_setter};
+use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
@@ -1766,13 +1767,17 @@ impl<'a> OrderService<'a> {
         let url = self.client.account_url("orders")?;
         let body = CreateOrderRequest { order };
         let http_resp = self.client.http_client.post(url).json(&body).send().await?;
-        handle_response!(
+        decode_response::<CreateOrderResponse>(
             http_resp,
-            success: StatusCode::CREATED => CreateOrderResponse,
-            errors: [
-                StatusCode::BAD_REQUEST => (OrderCreateErrorResponse, OrderCreateError)
-            ]
+            StatusCode::CREATED,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST => serde_json::from_slice::<OrderCreateErrorResponse>(body)
+                    .ok()
+                    .map(ErrorResponse::OrderCreateError),
+                _ => None,
+            }),
         )
+        .await
     }
 
     /// Lists orders on the account, optionally filtered by the parameters in `req`.
@@ -1785,12 +1790,7 @@ impl<'a> OrderService<'a> {
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        match http_resp.status() {
-            StatusCode::OK => Ok(http_resp.json::<ListOrdersResponse>().await?),
-            _ => Err(APIError::from(ErrorResponse::CommonError(
-                http_resp.json::<CommonErrorResponse>().await?,
-            ))),
-        }
+        decode_response::<ListOrdersResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns all pending (not yet filled or cancelled) orders on the account.
@@ -1802,11 +1802,7 @@ impl<'a> OrderService<'a> {
         let url = self.client.account_url("pendingOrders")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => ListOrdersResponse,
-            errors: [ ]
-        )
+        decode_response::<ListOrdersResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Returns the details of a single order identified by `specifier`.
@@ -1821,11 +1817,7 @@ impl<'a> OrderService<'a> {
         let url = self.client.account_url(&format!("orders/{}", specifier))?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
-        handle_response!(
-            http_resp,
-            success: StatusCode::OK => GetOrderDetailsResponse,
-            errors: [ ]
-        )
+        decode_response::<GetOrderDetailsResponse>(http_resp, StatusCode::OK, None).await
     }
 
     /// Replaces the order identified by `specifier` with a new `order`.
@@ -1842,14 +1834,20 @@ impl<'a> OrderService<'a> {
         let url = self.client.account_url(&format!("orders/{}", specifier))?;
         let body = CreateOrderRequest { order: req };
         let http_resp = self.client.http_client.put(url).json(&body).send().await?;
-        handle_response!(
+        decode_response::<ReplaceOrderResponse>(
             http_resp,
-            success: StatusCode::CREATED => ReplaceOrderResponse,
-            errors: [
-                StatusCode::BAD_REQUEST => (OrderCreateErrorResponse, OrderCreateError),
-                StatusCode::NOT_FOUND => (OrderCancelErrorResponse, OrderCancelError),
-            ]
+            StatusCode::CREATED,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST => serde_json::from_slice::<OrderCreateErrorResponse>(body)
+                    .ok()
+                    .map(ErrorResponse::OrderCreateError),
+                StatusCode::NOT_FOUND => serde_json::from_slice::<OrderCancelErrorResponse>(body)
+                    .ok()
+                    .map(ErrorResponse::OrderCancelError),
+                _ => None,
+            }),
         )
+        .await
     }
 
     /// Cancels the pending order identified by `specifier`.
@@ -1862,13 +1860,17 @@ impl<'a> OrderService<'a> {
             .client
             .account_url(&format!("orders/{}/cancel", specifier))?;
         let http_resp = self.client.http_client.put(url).send().await?;
-        handle_response!(
+        decode_response::<CancelOrderResponse>(
             http_resp,
-            success: StatusCode::OK => CancelOrderResponse,
-            errors: [
-                StatusCode::NOT_FOUND => (OrderCancelErrorResponse, OrderCancelError),
-            ]
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::NOT_FOUND => serde_json::from_slice::<OrderCancelErrorResponse>(body)
+                    .ok()
+                    .map(ErrorResponse::OrderCancelError),
+                _ => None,
+            }),
         )
+        .await
     }
 
     /// Updates the client extensions on the order and/or its associated trade.
@@ -1885,14 +1887,19 @@ impl<'a> OrderService<'a> {
             .client
             .account_url(&format!("orders/{}/clientExtensions", specifier))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        handle_response!(
+        decode_response::<UpdateOrderClientExtensionsResponse>(
             http_resp,
-            success: StatusCode::OK => UpdateOrderClientExtensionsResponse,
-            errors: [
-                StatusCode::BAD_REQUEST => (UpdateOrderClientExtensionsErrorResponse, UpdateOrderClientExtensionsError),
-                StatusCode::NOT_FOUND => (UpdateOrderClientExtensionsErrorResponse, UpdateOrderClientExtensionsError),
-            ]
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                    serde_json::from_slice::<UpdateOrderClientExtensionsErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::UpdateOrderClientExtensionsError)
+                }
+                _ => None,
+            }),
         )
+        .await
     }
 }
 

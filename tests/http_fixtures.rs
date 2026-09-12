@@ -1,5 +1,5 @@
 use oanda_rust::client::Client;
-use oanda_rust::errors::APIError;
+use oanda_rust::errors::{APIError, ErrorResponse};
 use oanda_rust::order::{MarketOrderRequest, OrderRequest};
 use oanda_rust::stream::StreamClient;
 use std::time::Duration;
@@ -103,6 +103,73 @@ async fn post_keeps_json_body_and_accepts_created_status() {
     let body: serde_json::Value =
         serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap();
     assert_eq!(body["order"]["type"], "MARKET");
+}
+
+#[tokio::test]
+async fn structured_rejections_and_common_fallback_keep_http_context() {
+    for (body, typed) in [
+        (
+            r#"{"errorCode":"ORDER_DOESNT_EXIST","errorMessage":"missing order","relatedTransactionIDs":[],"lastTransactionID":"2"}"#,
+            true,
+        ),
+        (r#"{"errorMessage":"missing account"}"#, false),
+    ] {
+        let (url, request) = fixture("404 Not Found", body).await;
+        let error = client(url).order().cancel("1".into()).await.unwrap_err();
+        let APIError::Response(context) = error else {
+            panic!("missing HTTP context")
+        };
+        assert_eq!(context.status, reqwest::StatusCode::NOT_FOUND);
+        assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
+        let APIError::ErrorResponse(error) = context.source else {
+            panic!("missing API error")
+        };
+        if typed {
+            assert!(matches!(*error, ErrorResponse::OrderCancelError(_)));
+        } else {
+            assert!(matches!(*error, ErrorResponse::CommonError(_)));
+        }
+        assert!(request.await.unwrap().starts_with("PUT "));
+    }
+}
+
+#[tokio::test]
+async fn invalid_success_and_error_bodies_keep_status_and_request_id() {
+    for (status, code, body) in [
+        ("200 OK", 200, "{invalid"),
+        ("502 Bad Gateway", 502, "<html>gateway unavailable</html>"),
+    ] {
+        let (url, request) = fixture(status, body).await;
+        let error = client(url).account().list().await.unwrap_err();
+        let APIError::Response(context) = error else {
+            panic!("missing HTTP context")
+        };
+        assert_eq!(context.status.as_u16(), code);
+        assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
+        assert!(matches!(context.source, APIError::JSONError(_)));
+        request.await.unwrap();
+    }
+}
+
+#[tokio::test]
+async fn stream_http_error_retains_context() {
+    let (url, request) = fixture("401 Unauthorized", r#"{"errorMessage":"invalid token"}"#).await;
+    let client = StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_http_client(custom_http_client())
+        .with_base_url(url)
+        .unwrap()
+        .with_account_id("account".into());
+    let error = client
+        .transactions(|_| panic!("must not dispatch error response"))
+        .await
+        .unwrap_err();
+    let APIError::Response(context) = error else {
+        panic!("missing HTTP context")
+    };
+    assert_eq!(context.status, reqwest::StatusCode::UNAUTHORIZED);
+    assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
+    request.await.unwrap();
 }
 
 #[tokio::test]

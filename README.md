@@ -23,6 +23,11 @@ transport options. Authentication and Accept headers are retained when replacing
 the HTTP client. `with_base_url(url)?` overrides the endpoint for local fixtures
 or a custom gateway; requests to that endpoint include the configured token.
 
+HTTP response failures are wrapped in `APIError::Response`. The contained
+`HttpResponseError` exposes `status`, `request_id`, and `source`; structured OANDA
+errors remain available as `APIError::ErrorResponse` inside `source`. Transport
+failures before receiving a response use `APIError::HTTPError`.
+
 ## Testing
 
 Run the offline suite, including fixtures served on localhost:
@@ -49,3 +54,7 @@ cargo test --features write-tests --lib write_tests:: -- --ignored
 
 - Add `?` or handle the result from `Client::new`, `Client::new_practice`, and the
   corresponding `StreamClient` constructors.
+- Match response failures through `APIError::Response(context)` and inspect
+  `context.source` for structured API errors or decoding failures.
+- The exported `handle_response!` macro has been replaced by internal typed
+  response helpers.

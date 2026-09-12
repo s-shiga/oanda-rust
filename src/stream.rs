@@ -112,11 +112,10 @@ impl StreamClient {
             "transactions/stream",
         )?;
         let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self
-            .http_client
-            .execute(http_req)
-            .await?
-            .error_for_status()?;
+        let http_resp = self.http_client.execute(http_req).await?;
+        if http_resp.status() != reqwest::StatusCode::OK {
+            return http::decode_response::<()>(http_resp, reqwest::StatusCode::OK, None).await;
+        }
         let mut stream = http_resp.bytes_stream();
         let mut buffer = Vec::new();
         while let Some(result) = stream.next().await {
@@ -165,11 +164,10 @@ impl StreamClient {
         url.query_pairs_mut()
             .append_pair("instruments", &instruments.join(","));
         let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self
-            .http_client
-            .execute(http_req)
-            .await?
-            .error_for_status()?;
+        let http_resp = self.http_client.execute(http_req).await?;
+        if http_resp.status() != reqwest::StatusCode::OK {
+            return http::decode_response::<()>(http_resp, reqwest::StatusCode::OK, None).await;
+        }
         let mut stream = http_resp.bytes_stream();
         let mut buffer = Vec::new();
         while let Some(result) = stream.next().await {
