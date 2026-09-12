@@ -1,5 +1,6 @@
 use oanda_rust::order::*;
 use oanda_rust::pricing::{ClientPrice, PricingStreamItem};
+use oanda_rust::transaction::{GetTransactionsResponse, Transaction};
 use oanda_rust::transaction::{TransactionFilter, TransactionType};
 use serde_json::json;
 use url::Url;
@@ -112,4 +113,20 @@ fn regression_transaction_filter_values_use_api_casing() {
     assert_eq!(TransactionType::MarketOrder.to_string(), "MARKET_ORDER");
     assert_eq!(TransactionFilter::OrderFill.to_string(), "ORDER_FILL");
     assert_eq!(TransactionFilter::Funding.to_string(), "FUNDING");
+}
+
+#[test]
+fn regression_transaction_events_are_accessible_to_consumers() {
+    let response: GetTransactionsResponse = serde_json::from_value(json!({
+        "lastTransactionID":"2", "transactions":[{
+            "type":"ORDER_CANCEL", "id":"2", "time":"2026-09-12T00:00:00Z",
+            "userID":1, "accountID":"account", "batchID":"2", "orderID":"1",
+            "reason":"CLIENT_REQUEST"
+        }]
+    }))
+    .unwrap();
+    let events = response.transactions;
+    assert!(
+        matches!(&events[0], Transaction::OrderCancelTransaction(event) if event.order_id == "1")
+    );
 }

@@ -2145,7 +2145,7 @@ impl GetTransactionsByIDRangeRequest {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GetTransactionsResponse {
     /// The transactions matching the request.
-    transactions: Vec<Transaction>,
+    pub transactions: Vec<Transaction>,
     /// ID of the most recent transaction on the account.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: TransactionID,
