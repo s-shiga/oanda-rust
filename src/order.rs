@@ -1551,6 +1551,7 @@ pub enum OrderState {
 /// when listing orders.
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "UPPERCASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum OrderStateFilter {
     /// Return only pending orders.
     Pending,

@@ -1,6 +1,8 @@
 use oanda_rust::order::*;
 use oanda_rust::pricing::{ClientPrice, PricingStreamItem};
+use oanda_rust::transaction::{TransactionFilter, TransactionType};
 use serde_json::json;
+use url::Url;
 
 #[test]
 fn regression_prices_accept_rest_stream_and_full_price_timestamps() {
@@ -87,4 +89,27 @@ fn regression_order_requests_have_one_discriminator_and_round_trip() {
         let decoded: OrderRequest = serde_json::from_str(&order_wire).unwrap();
         assert_eq!(serde_json::to_value(decoded).unwrap(), value["order"]);
     }
+}
+
+#[test]
+fn regression_order_state_filters_use_wire_values() {
+    for (state, expected) in [
+        (OrderStateFilter::Pending, "PENDING"),
+        (OrderStateFilter::Filled, "FILLED"),
+        (OrderStateFilter::Triggered, "TRIGGERED"),
+        (OrderStateFilter::Cancelled, "CANCELLED"),
+        (OrderStateFilter::All, "ALL"),
+    ] {
+        let mut url = Url::parse("https://example.com/orders").unwrap();
+        ListOrdersRequest::new().state(state).set_params(&mut url);
+        assert_eq!(url.query(), Some(format!("state={expected}").as_str()));
+    }
+}
+
+#[test]
+fn regression_transaction_filter_values_use_api_casing() {
+    assert_eq!(TransactionType::OrderFill.to_string(), "ORDER_FILL");
+    assert_eq!(TransactionType::MarketOrder.to_string(), "MARKET_ORDER");
+    assert_eq!(TransactionFilter::OrderFill.to_string(), "ORDER_FILL");
+    assert_eq!(TransactionFilter::Funding.to_string(), "FUNDING");
 }

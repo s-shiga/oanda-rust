@@ -1268,6 +1268,7 @@ pub struct ResetResettablePLTransaction {
 /// Used as a filter value when listing transactions via [`ListTransactionsRequest`].
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionType {
     Create,
     Close,
@@ -1525,6 +1526,7 @@ pub enum AccountFinancingMode {
 /// and [`Funding`](Self::Funding) aggregate multiple [`TransactionType`] values.
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TransactionFilter {
     Order,
     Funding,
