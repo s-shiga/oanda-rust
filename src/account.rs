@@ -537,15 +537,20 @@ pub struct ConfigureAccountResponse {
 /// Error response body for `PATCH /v3/accounts/{accountID}/configuration`
 /// (HTTP 400 or 403).
 #[derive(Debug, Error, Serialize, Deserialize)]
-#[error("Configure account error: {error_message}")]
+#[error(
+    "Configure account error{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
+)]
 #[serde(rename_all = "camelCase")]
 pub struct ConfigureAccountErrorResponse {
     /// The reject transaction that recorded the failed configuration attempt.
-    pub client_configure_reject_transaction: ClientConfigureRejectTransaction,
-    /// ID of the most recent transaction on the account.
+    /// `None` when OANDA omits it.
+    pub client_configure_reject_transaction: Option<ClientConfigureRejectTransaction>,
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-    /// A machine-readable error code, if provided.
+    pub last_transaction_id: Option<TransactionID>,
+    /// Machine-readable error code. `None` when OANDA omits it.
     pub error_code: Option<String>,
     /// A human-readable description of why the request was rejected.
     pub error_message: String,

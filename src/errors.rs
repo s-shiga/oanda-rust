@@ -84,6 +84,12 @@ pub enum ErrorResponse {
     ConfigureAccountError(#[from] ConfigureAccountErrorResponse),
 }
 
+/// Formats an optional OANDA error code for an error message: `" CODE"`, or
+/// nothing when OANDA sent no code.
+pub(crate) fn code_suffix(code: Option<&str>) -> String {
+    code.map(|code| format!(" {code}")).unwrap_or_default()
+}
+
 /// HTTP context retained when reading or decoding a response fails.
 #[derive(Debug, Error)]
 #[error("HTTP {status} (request ID {request_id:?}): {source}")]

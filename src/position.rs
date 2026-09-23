@@ -216,8 +216,8 @@ pub struct ClosePositionResponse {
 /// `PUT /v3/accounts/{accountID}/positions/{instrument}/close` (HTTP 400 or 404).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error(
-    "Position close was rejected {code}: {error_message}",
-    code = .error_code.as_deref().unwrap_or("UNKNOWN")
+    "Position close was rejected{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
 )]
 #[serde(rename_all = "camelCase")]
 pub struct ClosePositionErrorResponse {
@@ -225,13 +225,15 @@ pub struct ClosePositionErrorResponse {
     pub long_order_reject_transaction: Option<Box<MarketOrderRejectTransaction>>,
     /// Why the market order closing the short side was rejected, if it was.
     pub short_order_reject_transaction: Option<Box<MarketOrderRejectTransaction>>,
-    /// IDs of transactions related to this request, if the account exists.
+    /// IDs of all transactions related to this request. `None` when OANDA
+    /// omits them.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,
-    /// ID of the most recent transaction, if the account exists.
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
-    /// Machine-readable error code, when supplied by OANDA.
+    /// Machine-readable error code. `None` when OANDA omits it.
     pub error_code: Option<String>,
     /// Human-readable description of why the close was rejected.
     pub error_message: String,

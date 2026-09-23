@@ -299,12 +299,13 @@ pub struct CloseTradeResponse {
 /// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close` (HTTP 400 or 404).
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error(
-    "Trade close was rejected {code}: {error_message}",
-    code = .error_code.as_deref().unwrap_or("UNKNOWN")
+    "Trade close was rejected{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
 )]
 #[serde(rename_all = "camelCase")]
 pub struct CloseTradeErrorResponse {
     /// The transaction that recorded why the closing market order was rejected.
+    /// `None` when OANDA omits it.
     pub order_reject_transaction: Option<MarketOrderRejectTransaction>,
     /// IDs of all transactions related to this request (HTTP 404 only).
     #[serde(rename = "relatedTransactionIDs")]
@@ -312,7 +313,7 @@ pub struct CloseTradeErrorResponse {
     /// ID of the most recent transaction on the account (HTTP 404 only).
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
-    /// Machine-readable error code, when supplied by OANDA.
+    /// Machine-readable error code. `None` when OANDA omits it.
     pub error_code: Option<String>,
     /// Human-readable description of why the close was rejected.
     pub error_message: String,
@@ -353,20 +354,26 @@ pub struct UpdateTradeClientExtensionsResponse {
 /// Returned when the update is rejected — for example, if the trade specifier
 /// does not match any trade on the account.
 #[derive(Debug, Error, Serialize, Deserialize)]
-#[error("Trade client extensions update error {error_code}: {error_message}")]
+#[error(
+    "Trade client extensions update error{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
+)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTradeClientExtensionsErrorResponse {
     /// The reject transaction that recorded why the modification was refused.
+    /// `None` when OANDA omits it.
     pub trade_client_extensions_modify_reject_transaction:
-        TradeClientExtensionsModifyRejectTransaction,
-    /// ID of the most recent transaction on the account.
+        Option<TradeClientExtensionsModifyRejectTransaction>,
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-    /// IDs of all transactions related to this (failed) request.
+    pub last_transaction_id: Option<TransactionID>,
+    /// IDs of all transactions related to this (failed) request. `None` when
+    /// OANDA omits them.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Vec<TransactionID>,
-    /// Machine-readable error code returned by the OANDA API.
-    pub error_code: String,
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    /// Machine-readable error code. `None` when OANDA omits it.
+    pub error_code: Option<String>,
     /// Human-readable description of the error.
     pub error_message: String,
 }

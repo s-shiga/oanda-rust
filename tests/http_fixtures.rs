@@ -1,7 +1,8 @@
+use oanda_rust::account::ConfigureAccountRequest;
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
 use oanda_rust::instrument::CandlesticksRequest;
-use oanda_rust::order::{MarketOrderRequest, OrderRequest};
+use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
 use oanda_rust::stream::StreamClient;
 use oanda_rust::trade::CloseTradeRequest;
@@ -112,19 +113,34 @@ async fn post_keeps_json_body_and_accepts_created_status() {
 
 #[tokio::test]
 async fn structured_rejections_and_common_fallback_keep_http_context() {
-    for (body, typed) in [
+    // A documented reject status decodes to the endpoint's type even when OANDA
+    // sends only errorMessage; other statuses fall back to CommonError.
+    for (status, code, body, typed) in [
         (
+            "404 Not Found",
+            404,
             r#"{"errorCode":"ORDER_DOESNT_EXIST","errorMessage":"missing order","relatedTransactionIDs":[],"lastTransactionID":"2"}"#,
             true,
         ),
-        (r#"{"errorMessage":"missing account"}"#, false),
+        (
+            "404 Not Found",
+            404,
+            r#"{"errorMessage":"missing account"}"#,
+            true,
+        ),
+        (
+            "401 Unauthorized",
+            401,
+            r#"{"errorMessage":"Insufficient authorization"}"#,
+            false,
+        ),
     ] {
-        let (url, request) = fixture("404 Not Found", body).await;
+        let (url, request) = fixture(status, body).await;
         let error = client(url).order().cancel("1".into()).await.unwrap_err();
         let APIError::Response(context) = error else {
             panic!("missing HTTP context")
         };
-        assert_eq!(context.status, reqwest::StatusCode::NOT_FOUND);
+        assert_eq!(context.status.as_u16(), code);
         assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
         let APIError::ErrorResponse(error) = context.source else {
             panic!("missing API error")
@@ -222,7 +238,9 @@ async fn endpoint_rejections_keep_reject_transactions() {
     assert!(matches!(
         error,
         ErrorResponse::UpdateTradeClientExtensionsError(ref e)
-            if e.trade_client_extensions_modify_reject_transaction.trade_id == "7"
+            if e.trade_client_extensions_modify_reject_transaction
+                .as_ref()
+                .is_some_and(|t| t.trade_id == "7")
     ));
     request.await.unwrap();
 
@@ -244,6 +262,10 @@ async fn endpoint_rejections_keep_reject_transactions() {
         ErrorResponse::CloseTradeError(ref e)
             if e.order_reject_transaction.is_some() && e.last_transaction_id.is_none()
     ));
+    assert_eq!(
+        error.to_string(),
+        "Trade close was rejected REJECTED: rejected"
+    );
     request.await.unwrap();
 
     let mut fields = json!({"longOrderRejectTransaction": market_reject});
@@ -356,6 +378,55 @@ async fn documented_optional_error_fields_can_be_absent() {
                 && e.last_transaction_id.is_none()
                 && e.error_code.is_none()
     ));
+    request.await.unwrap();
+
+    // The remaining reject types, with only the required errorMessage.
+    let minimal = r#"{"errorMessage":"rejected"}"#;
+    let (url, request) = fixture("404 Not Found", minimal).await;
+    let error = structured_error(
+        client(url)
+            .order()
+            .update_client_extensions("1".into(), UpdateOrderClientExtensionsRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::UpdateOrderClientExtensionsError(ref e)
+            if e.order_client_extensions_modify_reject_transaction.is_none()
+    ));
+    request.await.unwrap();
+
+    let (url, request) = fixture("400 Bad Request", minimal).await;
+    let error = structured_error(
+        client(url)
+            .trade()
+            .update_client_extensions("7".into(), ClientExtensions::default())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::UpdateTradeClientExtensionsError(ref e)
+            if e.trade_client_extensions_modify_reject_transaction.is_none()
+    ));
+    request.await.unwrap();
+
+    let (url, request) = fixture("403 Forbidden", minimal).await;
+    let error = structured_error(
+        client(url)
+            .account()
+            .configure(&"account".into(), ConfigureAccountRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::ConfigureAccountError(ref e)
+            if e.client_configure_reject_transaction.is_none()
+    ));
+    // Without an errorCode the message names no code.
+    assert_eq!(error.to_string(), "Configure account error: rejected");
     request.await.unwrap();
 }
 

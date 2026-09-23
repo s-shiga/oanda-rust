@@ -1356,20 +1356,23 @@ pub struct ReplaceOrderResponse {
 /// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
 #[error(
-    "Order creation was rejected {code}: {error_message}",
-    code = .error_code.as_deref().unwrap_or("UNKNOWN")
+    "Order creation was rejected{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
 )]
 #[serde(rename_all = "camelCase")]
 pub struct OrderCreateErrorResponse {
-    /// The transaction that recorded the rejection reason, if the account exists.
+    /// The transaction that recorded the rejection reason. `None` when OANDA
+    /// omits it.
     pub order_reject_transaction: Option<OrderCreateRejectTransaction>,
-    /// IDs of transactions related to this request, if the account exists.
+    /// IDs of all transactions related to this request. `None` when OANDA
+    /// omits them.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,
-    /// ID of the most recent transaction, if the account exists.
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
-    /// Machine-readable error code, when supplied by OANDA.
+    /// Machine-readable error code. `None` when OANDA omits it.
     pub error_code: Option<String>,
     /// Human-readable description of why the order was rejected.
     pub error_message: String,
@@ -1380,19 +1383,24 @@ pub struct OrderCreateErrorResponse {
 /// Returned when the target order cannot be found or the cancellation is rejected
 /// (e.g. the order was already filled).
 #[derive(Debug, Error, Serialize, Deserialize)]
-#[error("Order cancellation was rejected {error_code}: {error_message}")]
+#[error(
+    "Order cancellation was rejected{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderCancelErrorResponse {
     /// The transaction that recorded the rejection reason, if one was created.
     pub order_cancel_reject_transaction: Option<OrderCancelRejectTransaction>,
-    /// IDs of all transactions related to this request.
+    /// IDs of all transactions related to this request. `None` when OANDA
+    /// omits them.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Vec<TransactionID>,
-    /// ID of the most recent transaction on the account.
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-    /// Machine-readable error code returned by the OANDA API.
-    pub error_code: String,
+    pub last_transaction_id: Option<TransactionID>,
+    /// Machine-readable error code. `None` when OANDA omits it.
+    pub error_code: Option<String>,
     /// Human-readable description of why the cancellation was rejected.
     pub error_message: String,
 }
@@ -1461,20 +1469,26 @@ pub struct UpdateOrderClientExtensionsResponse {
 /// Returned when the modification is rejected — for example, if the order
 /// specifier does not match any order on the account.
 #[derive(Debug, Serialize, Deserialize, Error)]
-#[error("Order client extensions update error {error_code}: {error_message}")]
+#[error(
+    "Order client extensions update error{}: {error_message}",
+    crate::errors::code_suffix(.error_code.as_deref())
+)]
 #[serde(rename_all = "camelCase")]
 pub struct UpdateOrderClientExtensionsErrorResponse {
     /// The reject transaction that recorded why the modification was refused.
+    /// `None` when OANDA omits it.
     pub order_client_extensions_modify_reject_transaction:
-        OrderClientExtensionsModifyRejectTransaction,
-    /// ID of the most recent transaction on the account.
+        Option<OrderClientExtensionsModifyRejectTransaction>,
+    /// ID of the most recent transaction on the account. `None` when OANDA
+    /// omits it.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-    /// IDs of all transactions related to this (failed) request.
+    pub last_transaction_id: Option<TransactionID>,
+    /// IDs of all transactions related to this (failed) request. `None` when
+    /// OANDA omits them.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Vec<TransactionID>,
-    /// Machine-readable error code returned by the OANDA API.
-    pub error_code: String,
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    /// Machine-readable error code. `None` when OANDA omits it.
+    pub error_code: Option<String>,
     /// Human-readable description of the error.
     pub error_message: String,
 }
