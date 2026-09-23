@@ -29,3 +29,8 @@ target
 .idea/workspace.xml
 .idea/modules.xml
 *.iml
+
+# Local environment files (API credentials)
+.env
+.env.*
+!.env.example
