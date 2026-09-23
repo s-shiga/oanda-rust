@@ -27,24 +27,11 @@ pub enum Direction {
     Short,
 }
 
-/// Format in which the API should return datetime strings.
-///
-/// Passed as the `Accept-Datetime-Format` request header. Defaults to `RFC3339`
-/// if omitted.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(rename_all = "UPPERCASE")]
-pub enum AcceptDatetimeFormat {
-    /// Unix epoch seconds as a decimal string (e.g. `"1737100800.000000000"`).
-    Unix,
-    /// RFC 3339 / ISO 8601 format (e.g. `"2025-01-17T12:00:00.000000000Z"`).
-    #[serde(rename = "RFC3339")]
-    Rfc3339,
-}
-
 /// Serde deserializer for optional OANDA datetime fields.
 ///
 /// OANDA represents "no datetime" as the string `"0"` rather than JSON `null`.
 /// This helper maps `"0"` to `None` and any valid RFC 3339 timestamp to `Some`.
+/// Pair it with `#[serde(default)]` so that a missing field is also `None`.
 pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
 where
     D: serde::Deserializer<'de>,

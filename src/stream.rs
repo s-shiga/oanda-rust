@@ -165,8 +165,13 @@ impl StreamClient {
     }
 }
 
+/// Largest single stream message accepted. OANDA's pricing and transaction
+/// messages are a few kilobytes; the limit bounds memory if a line never ends.
+const MAX_MESSAGE_BYTES: usize = 1 << 20;
+
 /// Frames messages independently of HTTP chunk boundaries, including a final
-/// message without a newline. Incomplete JSON at EOF is reported as an error.
+/// message without a newline. Incomplete JSON at EOF, or a message longer than
+/// [`MAX_MESSAGE_BYTES`], is reported as an error.
 async fn consume_ndjson<T, S, B, F>(stream: S, mut handler: F) -> Result<(), APIError>
 where
     T: DeserializeOwned,
@@ -180,6 +185,13 @@ where
         let chunk = chunk?;
         for part in chunk.as_ref().split_inclusive(|byte| *byte == b'\n') {
             buffer.extend_from_slice(part);
+            if buffer.len() > MAX_MESSAGE_BYTES {
+                return Err(APIError::JSONError(
+                    <serde_json::Error as serde::de::Error>::custom(format!(
+                        "stream message exceeds {MAX_MESSAGE_BYTES} bytes"
+                    )),
+                ));
+            }
             if part.last() == Some(&b'\n') {
                 let line = buffer.trim_ascii();
                 if !line.is_empty() {
@@ -235,6 +247,23 @@ mod framing_tests {
                 consume_ndjson::<Value, _, _, _>(stream::iter([Ok(wire)]), |_| Ok(())).await;
             assert!(matches!(result, Err(APIError::JSONError(_))));
         }
+    }
+
+    #[tokio::test]
+    async fn oversized_message_is_an_error_before_dispatch() {
+        // A valid JSON string, so only the size limit can reject it.
+        let wire = [b"\"".as_slice(), &vec![b'a'; MAX_MESSAGE_BYTES], b"\""].concat();
+        let chunks = stream::iter(wire.chunks(64 * 1024).map(Ok::<_, APIError>));
+        let mut count = 0;
+        let result = consume_ndjson::<Value, _, _, _>(chunks, |_| {
+            count += 1;
+            Ok(())
+        })
+        .await;
+        assert_eq!(count, 0);
+        assert!(
+            matches!(result, Err(APIError::JSONError(error)) if error.to_string().contains("exceeds"))
+        );
     }
 
     #[tokio::test]

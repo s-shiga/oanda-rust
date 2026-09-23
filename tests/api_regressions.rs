@@ -1,3 +1,4 @@
+use oanda_rust::account::{Account, AccountSummary};
 use oanda_rust::instrument::{DayOfWeek, InstrumentFinancing};
 use oanda_rust::order::*;
 use oanda_rust::position::ListPositionsResponse;
@@ -258,6 +259,26 @@ fn regression_instrument_financing_keeps_financing_days() {
     let financing: InstrumentFinancing =
         serde_json::from_value(json!({"longRate":"-0.0147", "shortRate":"-0.0053"})).unwrap();
     assert!(financing.financing_days_of_week.is_none());
+}
+
+#[test]
+fn regression_accounts_decode_with_resettable_pl_time_absent_zero_or_set() {
+    let base = json!({"id":"001", "currency":"USD", "createdByUserID":1,
+        "createdTime":"2026-01-01T00:00:00Z"});
+    let summary: AccountSummary = serde_json::from_value(base.clone()).unwrap();
+    assert!(summary.resettable_pl_time.is_none());
+    let account: Account = serde_json::from_value(base.clone()).unwrap();
+    assert!(account.resettable_pl_time.is_none());
+
+    let mut zero = base.clone();
+    zero["resettablePLTime"] = json!("0");
+    let account: Account = serde_json::from_value(zero).unwrap();
+    assert!(account.resettable_pl_time.is_none());
+
+    let mut set = base;
+    set["resettablePLTime"] = json!("2026-02-01T00:00:00Z");
+    let account: Account = serde_json::from_value(set).unwrap();
+    assert!(account.resettable_pl_time.is_some());
 }
 
 #[test]

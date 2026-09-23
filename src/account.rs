@@ -49,7 +49,11 @@ pub struct Account {
     /// The mutability setting for GSLOs on this account (deprecated field).
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
-    #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
+    #[serde(
+        rename = "resettablePLTime",
+        default,
+        deserialize_with = "deserialize_datetime"
+    )]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
     pub margin_rate: Option<DecimalNumber>,
@@ -169,7 +173,11 @@ pub struct AccountSummary {
     /// The mutability setting for GSLOs on this account (deprecated field).
     pub guaranteed_stop_loss_order_mutability: Option<GuaranteedStopLossOrderMutability>,
     /// Timestamp of the last P&L reset, if one has occurred.
-    #[serde(rename = "resettablePLTime", deserialize_with = "deserialize_datetime")]
+    #[serde(
+        rename = "resettablePLTime",
+        default,
+        deserialize_with = "deserialize_datetime"
+    )]
     pub resettable_pl_time: Option<DateTime<Utc>>,
     /// Margin rate expressed as a decimal (e.g. `0.05` for 5 % margin / 20:1 leverage).
     pub margin_rate: Option<DecimalNumber>,

@@ -58,7 +58,8 @@ pub(crate) fn account_url(
     suffix: &str,
 ) -> Result<Url, APIError> {
     let id = account
-        .filter(|id| !id.trim().is_empty())
+        .map(|id| id.trim())
+        .filter(|id| !id.is_empty())
         .ok_or_else(|| APIError::InvalidRequest("Missing account_id".into()))?;
     let path = if suffix.is_empty() {
         format!("v3/accounts/{id}")
@@ -126,4 +127,20 @@ pub(crate) async fn decode_response<T: DeserializeOwned>(
             source,
         }))
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn account_url_trims_account_id() {
+        let base = Url::parse("https://example.com/").unwrap();
+        let url = account_url(&base, Some(&" 001-001-1234567-001\n".into()), "orders").unwrap();
+        assert_eq!(url.path(), "/v3/accounts/001-001-1234567-001/orders");
+        assert!(matches!(
+            account_url(&base, Some(&"  ".into()), ""),
+            Err(APIError::InvalidRequest(_))
+        ));
+    }
 }
