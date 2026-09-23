@@ -298,7 +298,10 @@ pub struct CloseTradeResponse {
 /// Error response body for a failed
 /// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close` (HTTP 400 or 404).
 #[derive(Debug, Error, Serialize, Deserialize)]
-#[error("Trade close was rejected {error_code}: {error_message}")]
+#[error(
+    "Trade close was rejected {code}: {error_message}",
+    code = .error_code.as_deref().unwrap_or("UNKNOWN")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct CloseTradeErrorResponse {
     /// The transaction that recorded why the closing market order was rejected.
@@ -309,8 +312,8 @@ pub struct CloseTradeErrorResponse {
     /// ID of the most recent transaction on the account (HTTP 404 only).
     #[serde(rename = "lastTransactionID")]
     pub last_transaction_id: Option<TransactionID>,
-    /// Machine-readable error code returned by the OANDA API.
-    pub error_code: String,
+    /// Machine-readable error code, when supplied by OANDA.
+    pub error_code: Option<String>,
     /// Human-readable description of why the close was rejected.
     pub error_message: String,
 }

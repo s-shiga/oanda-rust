@@ -1355,19 +1355,22 @@ pub struct ReplaceOrderResponse {
 ///
 /// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
-#[error("Order creation was rejected {error_code}: {error_message}")]
+#[error(
+    "Order creation was rejected {code}: {error_message}",
+    code = .error_code.as_deref().unwrap_or("UNKNOWN")
+)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderCreateErrorResponse {
-    /// The transaction that recorded the rejection reason.
-    pub order_reject_transaction: OrderCreateRejectTransaction,
-    /// IDs of all transactions related to this request.
+    /// The transaction that recorded the rejection reason, if the account exists.
+    pub order_reject_transaction: Option<OrderCreateRejectTransaction>,
+    /// IDs of transactions related to this request, if the account exists.
     #[serde(rename = "relatedTransactionIDs")]
-    pub related_transaction_ids: Vec<TransactionID>,
-    /// ID of the most recent transaction on the account.
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    /// ID of the most recent transaction, if the account exists.
     #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-    /// Machine-readable error code returned by the OANDA API.
-    pub error_code: String,
+    pub last_transaction_id: Option<TransactionID>,
+    /// Machine-readable error code, when supplied by OANDA.
+    pub error_code: Option<String>,
     /// Human-readable description of why the order was rejected.
     pub error_message: String,
 }

@@ -184,7 +184,7 @@ async fn endpoint_rejections_keep_reject_transactions() {
         error,
         ErrorResponse::OrderCreateError(ref e) if matches!(
             e.order_reject_transaction,
-            OrderCreateRejectTransaction::MarketOrderRejectTransaction(_)
+            Some(OrderCreateRejectTransaction::MarketOrderRejectTransaction(_))
         )
     ));
     request.await.unwrap();
@@ -264,6 +264,97 @@ async fn endpoint_rejections_keep_reject_transactions() {
         ErrorResponse::ClosePositionError(ref e)
             if e.long_order_reject_transaction.is_some()
                 && e.short_order_reject_transaction.is_none()
+    ));
+    request.await.unwrap();
+}
+
+#[tokio::test]
+async fn documented_optional_error_fields_can_be_absent() {
+    let market_reject = reject_transaction(json!({
+        "type":"MARKET_ORDER_REJECT", "instrument":"EUR_USD", "units":"-1",
+        "timeInForce":"FOK", "positionFill":"REDUCE_ONLY", "reason":"TRADE_CLOSE",
+        "rejectReason":"INSTRUMENT_NOT_TRADEABLE"
+    }));
+
+    let order_body = json!({
+        "orderRejectTransaction": market_reject,
+        "relatedTransactionIDs": ["3"], "lastTransactionID": "3",
+        "errorMessage": "order rejected"
+    });
+    let (url, request) = fixture("404 Not Found", &order_body.to_string()).await;
+    let order = OrderRequest::Market(MarketOrderRequest::new("EUR_USD".into(), "1".into()));
+    let error = structured_error(client(url).order().create(order).await.unwrap_err());
+    assert!(matches!(
+        error,
+        ErrorResponse::OrderCreateError(ref e)
+            if e.error_code.is_none() && e.order_reject_transaction.is_some()
+    ));
+    request.await.unwrap();
+
+    let (url, request) = fixture("404 Not Found", r#"{"errorMessage":"account missing"}"#).await;
+    let order = OrderRequest::Market(MarketOrderRequest::new("EUR_USD".into(), "1".into()));
+    let error = structured_error(client(url).order().create(order).await.unwrap_err());
+    assert!(matches!(
+        error,
+        ErrorResponse::OrderCreateError(ref e)
+            if e.order_reject_transaction.is_none()
+                && e.related_transaction_ids.is_none()
+                && e.last_transaction_id.is_none()
+    ));
+    request.await.unwrap();
+
+    let trade_body = json!({
+        "orderRejectTransaction": market_reject, "errorMessage": "trade rejected"
+    });
+    let (url, request) = fixture("400 Bad Request", &trade_body.to_string()).await;
+    let error = structured_error(
+        client(url)
+            .trade()
+            .close("7".into(), CloseTradeRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::CloseTradeError(ref e)
+            if e.error_code.is_none() && e.order_reject_transaction.is_some()
+    ));
+    request.await.unwrap();
+
+    let position_body = json!({
+        "longOrderRejectTransaction": market_reject,
+        "relatedTransactionIDs": ["3"], "lastTransactionID": "3",
+        "errorMessage": "position rejected"
+    });
+    let (url, request) = fixture("400 Bad Request", &position_body.to_string()).await;
+    let error = structured_error(
+        client(url)
+            .position()
+            .close("EUR_USD".into(), ClosePositionRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::ClosePositionError(ref e)
+            if e.error_code.is_none() && e.long_order_reject_transaction.is_some()
+    ));
+    request.await.unwrap();
+
+    let (url, request) = fixture("404 Not Found", r#"{"errorMessage":"account missing"}"#).await;
+    let error = structured_error(
+        client(url)
+            .position()
+            .close("EUR_USD".into(), ClosePositionRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::ClosePositionError(ref e)
+            if e.related_transaction_ids.is_none()
+                && e.last_transaction_id.is_none()
+                && e.error_code.is_none()
     ));
     request.await.unwrap();
 }
