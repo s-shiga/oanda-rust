@@ -37,16 +37,20 @@ pub struct Position {
     pub resettable_pl: AccountUnits,
     /// Cumulative financing (swap/rollover) charges or credits applied to all
     /// trades on this instrument, in home currency units.
-    pub financing: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub financing: Option<AccountUnits>,
     /// Cumulative commission paid on trades for this instrument, in home
     /// currency units.
-    pub commission: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub commission: Option<AccountUnits>,
     /// Cumulative dividend adjustment applied to this position (for CFDs that
     /// pay dividends), in home currency units.
-    pub dividend_adjustment: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub dividend_adjustment: Option<AccountUnits>,
     /// Cumulative fees paid for guaranteed stop-loss execution on this
     /// instrument, in home currency units.
-    pub guaranteed_execution_fees: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub guaranteed_execution_fees: Option<AccountUnits>,
     /// Aggregated state of all long (buy) trades on this instrument.
     pub long: PositionSide,
     /// Aggregated state of all short (sell) trades on this instrument.
@@ -81,12 +85,15 @@ pub struct PositionSide {
     pub resettable_pl: AccountUnits,
     /// Cumulative financing charges or credits on this side, in home currency
     /// units.
-    pub financing: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub financing: Option<AccountUnits>,
     /// Cumulative dividend adjustment on this side, in home currency units.
-    pub dividend_adjustment: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub dividend_adjustment: Option<AccountUnits>,
     /// Cumulative guaranteed execution fees on this side, in home currency
     /// units.
-    pub guaranteed_execution_fees: AccountUnits,
+    /// `None` when OANDA omits the field from the response.
+    pub guaranteed_execution_fees: Option<AccountUnits>,
 }
 
 /// The price-dependent (dynamic) state of a position, returned as part of

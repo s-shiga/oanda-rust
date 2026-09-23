@@ -1308,6 +1308,7 @@ pub enum TransactionType {
     DelayedTradeClosure,
     DailyFinancing,
     DividendAdjustment,
+    #[serde(rename = "RESET_RESETTABLE_PL")]
     ResetResettablePL,
 }
 
@@ -1473,6 +1474,7 @@ pub enum OrderCancelReason {
     FifoViolation,
     BoundsViolation,
     ClientRequestReplaced,
+    DividendAdjustmentReplaced,
     InsufficientLiquidity,
     TakeProfitOnFillGtdTimestampInPast,
     TakeProfitOnFillLoss,
@@ -1488,6 +1490,17 @@ pub enum OrderCancelReason {
     StopLossOnFillGuaranteedHedgingNotAllowed,
     StopLossOnFillTimeInForceInvalid,
     StopLossOnFillTriggerConditionInvalid,
+    GuaranteedStopLossOnFillGtdTimestampInPast,
+    GuaranteedStopLossOnFillLoss,
+    GuaranteedStopLossOnFillPriceDistanceMaximumExceeded,
+    GuaranteedStopLossOnFillRequired,
+    GuaranteedStopLossOnFillNotAllowed,
+    GuaranteedStopLossOnFillMinimumDistanceNotMet,
+    GuaranteedStopLossOnFillLevelRestrictionVolumeExceeded,
+    GuaranteedStopLossOnFillLevelRestrictionPriceRangeExceeded,
+    GuaranteedStopLossOnFillHedgingNotAllowed,
+    GuaranteedStopLossOnFillTimeInForceInvalid,
+    GuaranteedStopLossOnFillTriggerConditionInvalid,
     TakeProfitOnFillPriceDistanceMaximumExceeded,
     TrailingStopLossOnFillGtdTimestampInPast,
     ClientTradeIdAlreadyExists,
@@ -1496,6 +1509,7 @@ pub enum OrderCancelReason {
     PendingOrdersAllowedExceeded,
     TakeProfitOnFillClientOrderIdAlreadyExists,
     StopLossOnFillClientOrderIdAlreadyExists,
+    GuaranteedStopLossOnFillClientOrderIdAlreadyExists,
     TrailingStopLossOnFillClientOrderIdAlreadyExists,
     PositionSizeExceeded,
     HedgingGsloViolation,
@@ -1506,6 +1520,15 @@ pub enum OrderCancelReason {
     InstrumentAskHalted,
     StopLossOnFillGuaranteedBidHalted,
     StopLossOnFillGuaranteedAskHalted,
+    GuaranteedStopLossOnFillBidHalted,
+    GuaranteedStopLossOnFillAskHalted,
+    FifoViolationSafeguardViolation,
+    FifoViolationSafeguardPartialCloseViolation,
+    OrdersOnFillRmoMutualExclusivityMutuallyExclusiveViolation,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// How financing (swap/rollover) is applied to open positions on an account.
@@ -1522,9 +1545,10 @@ pub enum AccountFinancingMode {
 
 /// A coarser filter for querying transactions by category.
 ///
-/// Used with [`GetTransactionsByIDRangeRequest`] and [`GetTransactionsBySinceIDRequest`]
-/// to narrow results to a subset of transaction types. Variants like [`Order`](Self::Order)
-/// and [`Funding`](Self::Funding) aggregate multiple [`TransactionType`] values.
+/// Used with [`ListTransactionsRequest`], [`GetTransactionsByIDRangeRequest`], and
+/// [`GetTransactionsBySinceIDRequest`] to narrow results to a subset of transaction
+/// types. Variants like [`Order`](Self::Order) and [`Funding`](Self::Funding)
+/// aggregate multiple [`TransactionType`] values.
 #[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 #[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
@@ -1551,6 +1575,8 @@ pub enum TransactionFilter {
     TakeProfitOrderReject,
     StopLossOrder,
     StopLossOrderReject,
+    GuaranteedStopLossOrder,
+    GuaranteedStopLossOrderReject,
     TrailingStopLossOrder,
     TrailingStopLossOrderReject,
     OneCancelsAllOrder,
@@ -1568,6 +1594,7 @@ pub enum TransactionFilter {
     MarginCallExit,
     DelayedTradeClosure,
     DailyFinancing,
+    #[serde(rename = "RESET_RESETTABLE_PL")]
     ResetResettablePL,
 }
 
@@ -1635,7 +1662,10 @@ pub enum TransactionRejectReason {
     OrderPartialFillOptionMissing,
     OrderPartialFillOptionInvalid,
     InvalidReissueImmediatePartialFill,
+    OrdersOnFillRmoMutualExclusivityMutuallyExclusiveViolation,
+    OrdersOnFillRmoMutualExclusivityGsloExcludesOthersViolation,
     TakeProfitOrderAlreadyExists,
+    TakeProfitOrderWouldViolateFifoViolationSafeguard,
     TakeProfitOnFillPriceMissing,
     TakeProfitOnFillPriceInvalid,
     TakeProfitOnFillPricePrecisionExceeded,
@@ -1661,6 +1691,9 @@ pub enum TransactionRejectReason {
     StopLossOrderGuaranteedLevelRestrictionExceeded,
     StopLossOrderPriceAndDistanceBothSpecified,
     StopLossOrderPriceAndDistanceBothMissing,
+    StopLossOrderWouldViolateFifoViolationSafeguard,
+    StopLossOrderRmoMutualExclusivityMutuallyExclusiveViolation,
+    StopLossOrderRmoMutualExclusivityGsloExcludesOthersViolation,
     StopLossOnFillRequiredForPendingOrder,
     StopLossOnFillGuaranteedNotAllowed,
     StopLossOnFillGuaranteedRequired,
@@ -1683,7 +1716,54 @@ pub enum TransactionRejectReason {
     StopLossOnFillClientOrderCommentInvalid,
     StopLossOnFillTriggerConditionMissing,
     StopLossOnFillTriggerConditionInvalid,
+    GuaranteedStopLossOrderAlreadyExists,
+    GuaranteedStopLossOrderRequired,
+    GuaranteedStopLossOrderPriceWithinSpread,
+    GuaranteedStopLossOrderNotAllowed,
+    GuaranteedStopLossOrderHaltedCreateViolation,
+    GuaranteedStopLossOrderCreateViolation,
+    GuaranteedStopLossOrderHaltedTightenViolation,
+    GuaranteedStopLossOrderTightenViolation,
+    GuaranteedStopLossOrderHedgingNotAllowed,
+    GuaranteedStopLossOrderMinimumDistanceNotMet,
+    GuaranteedStopLossOrderNotCancelable,
+    GuaranteedStopLossOrderHaltedNotCancelable,
+    GuaranteedStopLossOrderNotReplaceable,
+    GuaranteedStopLossOrderHaltedNotReplaceable,
+    GuaranteedStopLossOrderLevelRestrictionVolumeExceeded,
+    GuaranteedStopLossOrderLevelRestrictionPriceRangeExceeded,
+    GuaranteedStopLossOrderPriceAndDistanceBothSpecified,
+    GuaranteedStopLossOrderPriceAndDistanceBothMissing,
+    GuaranteedStopLossOrderWouldViolateFifoViolationSafeguard,
+    GuaranteedStopLossOrderRmoMutualExclusivityMutuallyExclusiveViolation,
+    GuaranteedStopLossOrderRmoMutualExclusivityGsloExcludesOthersViolation,
+    GuaranteedStopLossOnFillRequiredForPendingOrder,
+    GuaranteedStopLossOnFillNotAllowed,
+    GuaranteedStopLossOnFillRequired,
+    GuaranteedStopLossOnFillPriceMissing,
+    GuaranteedStopLossOnFillPriceInvalid,
+    GuaranteedStopLossOnFillPricePrecisionExceeded,
+    GuaranteedStopLossOnFillMinimumDistanceNotMet,
+    GuaranteedStopLossOnFillLevelRestrictionVolumeExceeded,
+    GuaranteedStopLossOnFillLevelRestrictionPriceRangeExceeded,
+    GuaranteedStopLossOnFillDistanceInvalid,
+    GuaranteedStopLossOnFillPriceDistanceMaximumExceeded,
+    GuaranteedStopLossOnFillDistancePrecisionExceeded,
+    GuaranteedStopLossOnFillPriceAndDistanceBothSpecified,
+    GuaranteedStopLossOnFillPriceAndDistanceBothMissing,
+    GuaranteedStopLossOnFillTimeInForceMissing,
+    GuaranteedStopLossOnFillTimeInForceInvalid,
+    GuaranteedStopLossOnFillGtdTimestampMissing,
+    GuaranteedStopLossOnFillGtdTimestampInPast,
+    GuaranteedStopLossOnFillClientOrderIdInvalid,
+    GuaranteedStopLossOnFillClientOrderTagInvalid,
+    GuaranteedStopLossOnFillClientOrderCommentInvalid,
+    GuaranteedStopLossOnFillTriggerConditionMissing,
+    GuaranteedStopLossOnFillTriggerConditionInvalid,
     TrailingStopLossOrderAlreadyExists,
+    TrailingStopLossOrderWouldViolateFifoViolationSafeguard,
+    TrailingStopLossOrderRmoMutualExclusivityMutuallyExclusiveViolation,
+    TrailingStopLossOrderRmoMutualExclusivityGsloExcludesOthersViolation,
     TrailingStopLossOnFillPriceDistanceMissing,
     TrailingStopLossOnFillPriceDistanceInvalid,
     TrailingStopLossOnFillPriceDistancePrecisionExceeded,
@@ -1719,9 +1799,15 @@ pub enum TransactionRejectReason {
     InsufficientFunds,
     AmountMissing,
     FundingReasonMissing,
+    OcaOrderIdsStopLossNotAllowed,
     ClientExtensionsDataMissing,
     ReplacingOrderInvalid,
     ReplacingTradeIdInvalid,
+    OrderCancelWouldTriggerCloseout,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Details of the trade that a market order was intended to close.
@@ -2007,8 +2093,8 @@ pub struct ListTransactionsRequest {
     pub to: Option<DateTime<Utc>>,
     /// Maximum number of transactions per page (server default applies when `None`).
     pub page_size: Option<u16>,
-    /// Restrict results to these transaction types. Empty = all types.
-    pub transaction_type: Vec<TransactionType>,
+    /// Restrict results to these transaction filters. Empty = all types.
+    pub transaction_type: Vec<TransactionFilter>,
 }
 
 impl ListTransactionsRequest {
@@ -2033,7 +2119,7 @@ impl ListTransactionsRequest {
         self
     }
 
-    pub fn transaction_type(mut self, transaction_type: TransactionType) -> Self {
+    pub fn transaction_type(mut self, transaction_type: TransactionFilter) -> Self {
         self.transaction_type.push(transaction_type);
         self
     }
@@ -2296,12 +2382,16 @@ mod tests {
         use std::collections::BTreeMap;
         let mut url = Url::parse("https://example.com/transactions").unwrap();
         ListTransactionsRequest::new()
-            .transaction_type(TransactionType::OrderFill)
-            .transaction_type(TransactionType::MarketOrder)
+            .transaction_type(TransactionFilter::Order)
+            .transaction_type(TransactionFilter::GuaranteedStopLossOrder)
+            .transaction_type(TransactionFilter::ResetResettablePL)
             .set_params(&mut url);
         let params: BTreeMap<_, _> = url.query_pairs().into_owned().collect();
         assert_eq!(params.len(), 1);
-        assert_eq!(params["type"], "ORDER_FILL,MARKET_ORDER");
+        assert_eq!(
+            params["type"],
+            "ORDER,GUARANTEED_STOP_LOSS_ORDER,RESET_RESETTABLE_PL"
+        );
 
         let mut url = Url::parse("https://example.com/transactions/idrange").unwrap();
         GetTransactionsByIDRangeRequest::new("1".into(), "5".into())

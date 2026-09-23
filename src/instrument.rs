@@ -509,11 +509,10 @@ impl<'a> InstrumentService<'a> {
         &self,
         req: CandlesticksRequest,
     ) -> Result<CandlesticksResponse, APIError> {
-        let mut url = self
-            .client
-            .base_url
-            .join(format!("/v3/instruments/{}/candles", req.instrument).as_str())
-            .unwrap();
+        let mut url = crate::http::api_url(
+            &self.client.base_url,
+            &format!("v3/instruments/{}/candles", req.instrument),
+        )?;
         req.set_params(&mut url);
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;

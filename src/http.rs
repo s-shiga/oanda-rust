@@ -61,12 +61,22 @@ pub(crate) fn account_url(
         .filter(|id| !id.trim().is_empty())
         .ok_or_else(|| APIError::InvalidRequest("Missing account_id".into()))?;
     let path = if suffix.is_empty() {
-        format!("/v3/accounts/{id}")
+        format!("v3/accounts/{id}")
     } else {
-        format!("/v3/accounts/{id}/{suffix}")
+        format!("v3/accounts/{id}/{suffix}")
     };
-    base.join(&path)
-        .map_err(|error| APIError::InvalidRequest(error.to_string()))
+    api_url(base, &path)
+}
+
+/// Appends the `/`-separated `path` to `base`, keeping any path prefix already
+/// on `base` (for example a gateway mounted at `https://host/oanda/`).
+pub(crate) fn api_url(base: &Url, path: &str) -> Result<Url, APIError> {
+    let mut url = base.clone();
+    url.path_segments_mut()
+        .map_err(|_| APIError::InvalidRequest("Base URL cannot have a path".into()))?
+        .pop_if_empty()
+        .extend(path.split('/'));
+    Ok(url)
 }
 
 pub(crate) fn validate_base_url(url: &Url) -> Result<(), APIError> {

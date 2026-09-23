@@ -1,5 +1,6 @@
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
+use oanda_rust::instrument::CandlesticksRequest;
 use oanda_rust::order::{MarketOrderRequest, OrderRequest};
 use oanda_rust::stream::StreamClient;
 use std::time::Duration;
@@ -194,6 +195,65 @@ async fn streams_accept_captured_handlers_and_custom_transport() {
             assert!(request.starts_with("get /v3/accounts/account/transactions/stream "));
         }
     }
+}
+
+#[tokio::test]
+async fn base_url_path_prefix_is_kept() {
+    for prefix in ["gateway/oanda", "gateway/oanda/"] {
+        let (url, request) = fixture("200 OK", r#"{"accounts":[]}"#).await;
+        client(url.join(prefix).unwrap())
+            .account()
+            .list()
+            .await
+            .unwrap();
+        assert!(request
+            .await
+            .unwrap()
+            .starts_with("GET /gateway/oanda/v3/accounts HTTP/1.1"));
+    }
+
+    let (url, request) = fixture("200 OK", r#"{"positions":[],"lastTransactionID":"1"}"#).await;
+    client(url.join("gateway/").unwrap())
+        .position()
+        .list()
+        .await
+        .unwrap();
+    assert!(request
+        .await
+        .unwrap()
+        .starts_with("GET /gateway/v3/accounts/account/positions HTTP/1.1"));
+
+    let (url, request) = fixture(
+        "200 OK",
+        r#"{"instrument":"EUR_USD","granularity":"D","candles":[]}"#,
+    )
+    .await;
+    client(url.join("gateway/").unwrap())
+        .instrument()
+        .candlesticks(CandlesticksRequest::new("EUR_USD".into()))
+        .await
+        .unwrap();
+    assert!(request
+        .await
+        .unwrap()
+        .starts_with("GET /gateway/v3/instruments/EUR_USD/candles"));
+
+    let body =
+        "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:00Z\",\"lastTransactionID\":\"1\"}\n";
+    let (url, request) = fixture("200 OK", body).await;
+    StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_http_client(custom_http_client())
+        .with_base_url(url.join("gateway/").unwrap())
+        .unwrap()
+        .with_account_id("account".into())
+        .transactions(|_| Ok(()))
+        .await
+        .unwrap();
+    assert!(request
+        .await
+        .unwrap()
+        .starts_with("GET /gateway/v3/accounts/account/transactions/stream HTTP/1.1"));
 }
 
 #[tokio::test]

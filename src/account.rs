@@ -577,7 +577,7 @@ impl<'a> AccountService<'a> {
     /// Calls `GET /v3/accounts` and returns the parsed response on success,
     /// or an [`APIError`] if the server returns a non-200 status.
     pub async fn list(&self) -> Result<ListAccountsResponse, APIError> {
-        let url = self.client.base_url.join("/v3/accounts").unwrap();
+        let url = crate::http::api_url(&self.client.base_url, "v3/accounts")?;
         let http_req = Request::new(reqwest::Method::GET, url);
         let http_resp = self.client.http_client.execute(http_req).await?;
         decode_response::<ListAccountsResponse>(http_resp, StatusCode::OK, None).await

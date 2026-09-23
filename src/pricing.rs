@@ -73,7 +73,7 @@ where
     }
 
     match Liquidity::deserialize(deserializer)? {
-        Liquidity::String(s) => Ok(s.parse::<i64>().unwrap()),
+        Liquidity::String(s) => s.parse::<i64>().map_err(serde::de::Error::custom),
         Liquidity::Integer(i) => Ok(i),
     }
 }
