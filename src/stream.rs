@@ -1,7 +1,7 @@
 use crate::account::AccountID;
 use crate::errors::APIError;
 use crate::http::{self, Connection};
-use crate::pricing::PricingStreamItem;
+use crate::pricing::{instruments_query, PricingStreamItem};
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
 use futures_util::Stream;
@@ -120,14 +120,15 @@ impl StreamClient {
     /// returns a non-2xx status, a chunk cannot be read, a message cannot be
     /// deserialised, or `handler` itself returns an error.
     ///
-    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured or
+    /// the instrument list is empty or contains a blank name.
     pub async fn pricing<F>(&self, instruments: &[&str], handler: F) -> Result<(), APIError>
     where
         F: FnMut(PricingStreamItem) -> Result<(), APIError>,
     {
         let mut url = self.connection.account_url(&["pricing", "stream"])?;
         url.query_pairs_mut()
-            .append_pair("instruments", &instruments.join(","));
+            .append_pair("instruments", &instruments_query(instruments)?);
         self.consume(url, handler).await
     }
 

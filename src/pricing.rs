@@ -252,6 +252,24 @@ pub struct PricingService<'a> {
     connection: &'a Connection,
 }
 
+/// Encodes the instrument list shared by REST and streaming pricing requests.
+pub(crate) fn instruments_query<T: AsRef<str>>(instruments: &[T]) -> Result<String, APIError> {
+    if instruments.is_empty()
+        || instruments
+            .iter()
+            .any(|name| name.as_ref().trim().is_empty())
+    {
+        return Err(APIError::InvalidRequest(
+            "At least one nonempty instrument is required".into(),
+        ));
+    }
+    Ok(instruments
+        .iter()
+        .map(AsRef::as_ref)
+        .collect::<Vec<_>>()
+        .join(","))
+}
+
 impl<'a> PricingService<'a> {
     /// Creates a new `PricingService` bound to the given client.
     pub(crate) fn new(connection: &'a Connection) -> Self {
@@ -263,11 +281,12 @@ impl<'a> PricingService<'a> {
     /// Calls `GET /v3/accounts/{accountID}/pricing` with the given
     /// `instruments` list as a comma-separated query parameter.
     ///
-    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured or
+    /// the instrument list is empty or contains a blank name.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
         let mut url = self.connection.account_url(&["pricing"])?;
         url.query_pairs_mut()
-            .append_pair("instruments", instruments.join(",").as_str());
+            .append_pair("instruments", &instruments_query(&instruments)?);
         self.connection.http_client.get_json(url).await
     }
 }

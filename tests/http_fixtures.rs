@@ -69,6 +69,33 @@ fn client(url: Url) -> Client {
 }
 
 #[tokio::test]
+async fn pricing_rejects_empty_instrument_lists_before_dispatch() {
+    let rest = Client::new_practice("fixture-token")
+        .unwrap()
+        .with_account_id("account".into());
+    assert!(matches!(
+        rest.pricing().get(vec![]).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        rest.pricing().get(vec!["  ".into()]).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+
+    let stream = StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_account_id("account".into());
+    assert!(matches!(
+        stream.pricing(&[], |_| Ok(())).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        stream.pricing(&[""], |_| Ok(())).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+}
+
+#[tokio::test]
 async fn get_uses_custom_transport_and_preserves_authentication() {
     let (url, request) = fixture("200 OK", r#"{"accounts":[]}"#).await;
     assert!(client(url)
