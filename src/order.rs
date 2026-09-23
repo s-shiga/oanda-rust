@@ -14,7 +14,7 @@ use crate::transaction::{
 };
 use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
-use reqwest::{Request, StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
 use thiserror::Error;
@@ -1810,9 +1810,7 @@ impl<'a> OrderService<'a> {
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
         let mut url = self.client.account_url("orders")?;
         req.set_params(&mut url);
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListOrdersResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns all pending (not yet filled or cancelled) orders on the account.
@@ -1822,9 +1820,7 @@ impl<'a> OrderService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
         let url = self.client.account_url("pendingOrders")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListOrdersResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns the details of a single order identified by `specifier`.
@@ -1837,9 +1833,7 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
     ) -> Result<GetOrderDetailsResponse, APIError> {
         let url = self.client.account_url(&format!("orders/{}", specifier))?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetOrderDetailsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Replaces the order identified by `specifier` with a new `order`.

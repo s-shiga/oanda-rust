@@ -5,7 +5,6 @@ use crate::pricing::PricingStreamItem;
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
 use futures_util::Stream;
-use reqwest::Request;
 use serde::de::DeserializeOwned;
 use url::Url;
 
@@ -148,10 +147,7 @@ impl StreamClient {
         T: DeserializeOwned,
         F: FnMut(T) -> Result<(), APIError>,
     {
-        let response = self
-            .http_client
-            .execute(Request::new(reqwest::Method::GET, url))
-            .await?;
+        let response = self.http_client.get(url).send().await?;
         if response.status() != reqwest::StatusCode::OK {
             return http::decode_response::<()>(response, reqwest::StatusCode::OK, None).await;
         }

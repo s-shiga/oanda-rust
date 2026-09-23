@@ -15,7 +15,7 @@ use crate::transaction::{
     TransactionID,
 };
 use chrono::{DateTime, Utc};
-use reqwest::{Request, StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -402,9 +402,7 @@ impl<'a> TradeService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
         let url = self.client.account_url("trades")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListTradesResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Lists all currently open trades on the account.
@@ -414,9 +412,7 @@ impl<'a> TradeService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
         let url = self.client.account_url("openTrades")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListTradesResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns the details of the trade identified by `specifier`.
@@ -429,9 +425,7 @@ impl<'a> TradeService<'a> {
         specifier: TradeSpecifier,
     ) -> Result<GetTradeDetailsResponse, APIError> {
         let url = self.client.account_url(&format!("trades/{}", specifier))?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetTradeDetailsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Fully closes the trade identified by `specifier`.

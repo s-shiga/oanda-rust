@@ -1,11 +1,9 @@
 use crate::client::Client;
 use crate::errors::APIError;
-use crate::http::decode_response;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
 use chrono::{DateTime, Local};
-use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use url::Url;
@@ -499,9 +497,7 @@ impl<'a> InstrumentService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
         let url = self.client.account_url("instruments")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListInstrumentsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Fetches historical candlestick (OHLCV) data for an instrument.
@@ -517,9 +513,7 @@ impl<'a> InstrumentService<'a> {
             &format!("v3/instruments/{}/candles", req.instrument),
         )?;
         req.set_params(&mut url);
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<CandlesticksResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 }
 

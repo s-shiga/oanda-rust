@@ -8,7 +8,7 @@ use crate::transaction::{
     AccountUnits, ClientExtensions, MarketOrderRejectTransaction, MarketOrderTransaction,
     OrderCancelTransaction, OrderFillTransaction, TradeID, TransactionID,
 };
-use reqwest::{Method, Request, StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -260,9 +260,7 @@ impl<'a> PositionService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
         let url = self.client.account_url("positions")?;
-        let http_req = Request::new(Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListPositionsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Lists all currently open positions on the account.
@@ -272,9 +270,7 @@ impl<'a> PositionService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
         let url = self.client.account_url("openPositions")?;
-        let http_req = Request::new(Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListPositionsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns the details of the position for the given `instrument`.
@@ -289,9 +285,7 @@ impl<'a> PositionService<'a> {
         let url = self
             .client
             .account_url(&format!("positions/{}", instrument))?;
-        let http_req = Request::new(Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetPositionDetailsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Closes all or part of an open position for the given `instrument`.

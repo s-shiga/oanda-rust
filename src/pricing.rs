@@ -1,10 +1,8 @@
 use crate::client::Client;
 use crate::errors::APIError;
-use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
-use reqwest::{Request, StatusCode};
 use serde::{Deserialize, Deserializer, Serialize};
 
 /// A price expressed as a decimal string (e.g. `"1.08523"`).
@@ -268,8 +266,6 @@ impl<'a> PricingService<'a> {
         let mut url = self.client.account_url("pricing")?;
         url.query_pairs_mut()
             .append_pair("instruments", instruments.join(",").as_str());
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<PricesResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 }

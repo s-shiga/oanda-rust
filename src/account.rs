@@ -12,7 +12,7 @@ use crate::transaction::{
     TransactionID,
 };
 use chrono::{DateTime, Utc};
-use reqwest::{Request, StatusCode};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -591,9 +591,7 @@ impl<'a> AccountService<'a> {
     /// or an [`APIError`] if the server returns a non-200 status.
     pub async fn list(&self) -> Result<ListAccountsResponse, APIError> {
         let url = crate::http::api_url(&self.client.base_url, "v3/accounts")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<ListAccountsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns the full details of the specified account, including all open
@@ -605,9 +603,7 @@ impl<'a> AccountService<'a> {
         account_id: &AccountID,
     ) -> Result<GetAccountDetailsResponse, APIError> {
         let url = crate::http::account_url(&self.client.base_url, Some(account_id), "")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetAccountDetailsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns a condensed snapshot of the specified account's state.
@@ -619,9 +615,7 @@ impl<'a> AccountService<'a> {
         account_id: &AccountID,
     ) -> Result<GetAccountSummaryResponse, APIError> {
         let url = crate::http::account_url(&self.client.base_url, Some(account_id), "summary")?;
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetAccountSummaryResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Returns the list of tradeable instruments for the given account.
@@ -640,9 +634,7 @@ impl<'a> AccountService<'a> {
             url.query_pairs_mut()
                 .append_pair("instruments", &names.join(","));
         }
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetInstrumentsResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 
     /// Updates the account's alias and/or margin rate.
@@ -685,8 +677,6 @@ impl<'a> AccountService<'a> {
         let mut url = crate::http::account_url(&self.client.base_url, Some(account_id), "changes")?;
         url.query_pairs_mut()
             .append_pair("sinceTransactionID", &since_transaction_id);
-        let http_req = Request::new(reqwest::Method::GET, url);
-        let http_resp = self.client.http_client.execute(http_req).await?;
-        decode_response::<GetAccountChangesResponse>(http_resp, StatusCode::OK, None).await
+        self.client.http_client.get_json(url).await
     }
 }

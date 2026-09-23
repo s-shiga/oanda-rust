@@ -2,7 +2,7 @@
 use crate::account::AccountID;
 use crate::errors::{APIError, CommonErrorResponse, ErrorResponse, HttpResponseError};
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
-use reqwest::{Request, RequestBuilder, Response, StatusCode};
+use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
 use url::Url;
 
@@ -34,9 +34,13 @@ impl HttpClient {
         })
     }
 
-    pub(crate) async fn execute(&self, mut request: Request) -> Result<Response, reqwest::Error> {
-        request.headers_mut().extend(self.headers.clone());
-        self.client.execute(request).await
+    pub(crate) fn get(&self, url: Url) -> RequestBuilder {
+        self.client.get(url).headers(self.headers.clone())
+    }
+
+    /// Sends a GET request and decodes a `200 OK` JSON response.
+    pub(crate) async fn get_json<T: DeserializeOwned>(&self, url: Url) -> Result<T, APIError> {
+        decode_response(self.get(url).send().await?, StatusCode::OK, None).await
     }
 
     pub(crate) fn post(&self, url: Url) -> RequestBuilder {
