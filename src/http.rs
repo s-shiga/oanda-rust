@@ -89,11 +89,11 @@ impl Connection {
         Ok(())
     }
 
-    /// Builds a URL rooted at `/v3/accounts/{accountID}/{suffix}` for the
-    /// default account. Pass an empty `suffix` to target the account root.
+    /// Builds a URL rooted at `/v3/accounts/{accountID}` for the default
+    /// account, appending each suffix element as a distinct path segment.
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
-    pub(crate) fn account_url(&self, suffix: &str) -> Result<Url, APIError> {
+    pub(crate) fn account_url(&self, suffix: &[&str]) -> Result<Url, APIError> {
         account_url(&self.base_url, self.account_id.as_ref(), suffix)
     }
 }
@@ -101,28 +101,25 @@ impl Connection {
 pub(crate) fn account_url(
     base: &Url,
     account: Option<&AccountID>,
-    suffix: &str,
+    suffix: &[&str],
 ) -> Result<Url, APIError> {
     let id = account
         .map(|id| id.trim())
         .filter(|id| !id.is_empty())
         .ok_or_else(|| APIError::InvalidRequest("Missing account_id".into()))?;
-    let path = if suffix.is_empty() {
-        format!("v3/accounts/{id}")
-    } else {
-        format!("v3/accounts/{id}/{suffix}")
-    };
-    api_url(base, &path)
+    let mut segments = vec!["v3", "accounts", id];
+    segments.extend_from_slice(suffix);
+    api_url(base, &segments)
 }
 
-/// Appends the `/`-separated `path` to `base`, keeping any path prefix already
-/// on `base` (for example a gateway mounted at `https://host/oanda/`).
-pub(crate) fn api_url(base: &Url, path: &str) -> Result<Url, APIError> {
+/// Appends path segments to `base`, keeping any path prefix already on `base`
+/// (for example a gateway mounted at `https://host/oanda/`).
+pub(crate) fn api_url(base: &Url, segments: &[&str]) -> Result<Url, APIError> {
     let mut url = base.clone();
     url.path_segments_mut()
         .map_err(|_| APIError::InvalidRequest("Base URL cannot have a path".into()))?
         .pop_if_empty()
-        .extend(path.split('/'));
+        .extend(segments.iter().copied());
     Ok(url)
 }
 
@@ -191,11 +188,26 @@ mod tests {
     #[test]
     fn account_url_trims_account_id() {
         let base = Url::parse("https://example.com/").unwrap();
-        let url = account_url(&base, Some(&" 001-001-1234567-001\n".into()), "orders").unwrap();
+        let url = account_url(&base, Some(&" 001-001-1234567-001\n".into()), &["orders"]).unwrap();
         assert_eq!(url.path(), "/v3/accounts/001-001-1234567-001/orders");
         assert!(matches!(
-            account_url(&base, Some(&"  ".into()), ""),
+            account_url(&base, Some(&"  ".into()), &[]),
             Err(APIError::InvalidRequest(_))
         ));
+    }
+
+    #[test]
+    fn dynamic_path_segments_are_encoded_individually() {
+        let base = Url::parse("https://example.com/gateway/").unwrap();
+        let url = account_url(
+            &base,
+            Some(&"account/one".into()),
+            &["orders", "@client/one", "cancel"],
+        )
+        .unwrap();
+        assert_eq!(
+            url.path(),
+            "/gateway/v3/accounts/account%2Fone/orders/@client%2Fone/cancel"
+        );
     }
 }

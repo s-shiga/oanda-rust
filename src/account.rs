@@ -589,7 +589,7 @@ impl<'a> AccountService<'a> {
     /// Calls `GET /v3/accounts` and returns the parsed response on success,
     /// or an [`APIError`] if the server returns a non-200 status.
     pub async fn list(&self) -> Result<ListAccountsResponse, APIError> {
-        let url = crate::http::api_url(&self.connection.base_url, "v3/accounts")?;
+        let url = crate::http::api_url(&self.connection.base_url, &["v3", "accounts"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -601,7 +601,7 @@ impl<'a> AccountService<'a> {
         &self,
         account_id: &AccountID,
     ) -> Result<GetAccountDetailsResponse, APIError> {
-        let url = crate::http::account_url(&self.connection.base_url, Some(account_id), "")?;
+        let url = crate::http::account_url(&self.connection.base_url, Some(account_id), &[])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -613,7 +613,8 @@ impl<'a> AccountService<'a> {
         &self,
         account_id: &AccountID,
     ) -> Result<GetAccountSummaryResponse, APIError> {
-        let url = crate::http::account_url(&self.connection.base_url, Some(account_id), "summary")?;
+        let url =
+            crate::http::account_url(&self.connection.base_url, Some(account_id), &["summary"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -627,8 +628,11 @@ impl<'a> AccountService<'a> {
         account_id: &AccountID,
         instruments: Option<Vec<String>>,
     ) -> Result<GetInstrumentsResponse, APIError> {
-        let mut url =
-            crate::http::account_url(&self.connection.base_url, Some(account_id), "instruments")?;
+        let mut url = crate::http::account_url(
+            &self.connection.base_url,
+            Some(account_id),
+            &["instruments"],
+        )?;
         if let Some(names) = instruments {
             url.query_pairs_mut()
                 .append_pair("instruments", &names.join(","));
@@ -646,8 +650,11 @@ impl<'a> AccountService<'a> {
         account_id: &AccountID,
         req: ConfigureAccountRequest,
     ) -> Result<ConfigureAccountResponse, APIError> {
-        let url =
-            crate::http::account_url(&self.connection.base_url, Some(account_id), "configuration")?;
+        let url = crate::http::account_url(
+            &self.connection.base_url,
+            Some(account_id),
+            &["configuration"],
+        )?;
         let http_resp = self
             .connection
             .http_client
@@ -678,7 +685,7 @@ impl<'a> AccountService<'a> {
         since_transaction_id: TransactionID,
     ) -> Result<GetAccountChangesResponse, APIError> {
         let mut url =
-            crate::http::account_url(&self.connection.base_url, Some(account_id), "changes")?;
+            crate::http::account_url(&self.connection.base_url, Some(account_id), &["changes"])?;
         url.query_pairs_mut()
             .append_pair("sinceTransactionID", &since_transaction_id);
         self.connection.http_client.get_json(url).await

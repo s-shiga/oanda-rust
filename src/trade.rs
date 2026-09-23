@@ -400,7 +400,7 @@ impl<'a> TradeService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.connection.account_url("trades")?;
+        let url = self.connection.account_url(&["trades"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -410,7 +410,7 @@ impl<'a> TradeService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.connection.account_url("openTrades")?;
+        let url = self.connection.account_url(&["openTrades"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -423,9 +423,7 @@ impl<'a> TradeService<'a> {
         &self,
         specifier: TradeSpecifier,
     ) -> Result<GetTradeDetailsResponse, APIError> {
-        let url = self
-            .connection
-            .account_url(&format!("trades/{}", specifier))?;
+        let url = self.connection.account_url(&["trades", &specifier])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -448,7 +446,7 @@ impl<'a> TradeService<'a> {
     ) -> Result<CloseTradeResponse, APIError> {
         let url = self
             .connection
-            .account_url(&format!("trades/{}/close", specifier))?;
+            .account_url(&["trades", &specifier, "close"])?;
         let http_resp = self
             .connection
             .http_client
@@ -491,7 +489,7 @@ impl<'a> TradeService<'a> {
     ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
         let url = self
             .connection
-            .account_url(&format!("trades/{}/clientExtensions", specifier))?;
+            .account_url(&["trades", &specifier, "clientExtensions"])?;
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
         let http_resp = self
             .connection

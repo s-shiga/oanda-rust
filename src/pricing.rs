@@ -265,7 +265,7 @@ impl<'a> PricingService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
-        let mut url = self.connection.account_url("pricing")?;
+        let mut url = self.connection.account_url(&["pricing"])?;
         url.query_pairs_mut()
             .append_pair("instruments", instruments.join(",").as_str());
         self.connection.http_client.get_json(url).await

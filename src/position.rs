@@ -258,7 +258,7 @@ impl<'a> PositionService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.connection.account_url("positions")?;
+        let url = self.connection.account_url(&["positions"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -268,7 +268,7 @@ impl<'a> PositionService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.connection.account_url("openPositions")?;
+        let url = self.connection.account_url(&["openPositions"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -281,9 +281,7 @@ impl<'a> PositionService<'a> {
         &self,
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
-        let url = self
-            .connection
-            .account_url(&format!("positions/{}", instrument))?;
+        let url = self.connection.account_url(&["positions", &instrument])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -307,7 +305,7 @@ impl<'a> PositionService<'a> {
     ) -> Result<ClosePositionResponse, APIError> {
         let url = self
             .connection
-            .account_url(&format!("positions/{}/close", instrument))?;
+            .account_url(&["positions", &instrument, "close"])?;
         let http_resp = self
             .connection
             .http_client

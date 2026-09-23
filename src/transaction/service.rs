@@ -25,7 +25,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: ListTransactionsRequest,
     ) -> Result<ListTransactionsResponse, APIError> {
-        let mut url = self.connection.account_url("transactions")?;
+        let mut url = self.connection.account_url(&["transactions"])?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
     }
@@ -39,9 +39,7 @@ impl<'a> TransactionService<'a> {
         &self,
         id: TransactionID,
     ) -> Result<GetTransactionDetailsResponse, APIError> {
-        let url = self
-            .connection
-            .account_url(&format!("transactions/{}", id))?;
+        let url = self.connection.account_url(&["transactions", &id])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -54,7 +52,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsByIDRangeRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.connection.account_url("transactions/idrange")?;
+        let mut url = self.connection.account_url(&["transactions", "idrange"])?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
     }
@@ -68,7 +66,7 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsBySinceIDRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.connection.account_url("transactions/sinceid")?;
+        let mut url = self.connection.account_url(&["transactions", "sinceid"])?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
     }

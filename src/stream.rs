@@ -101,7 +101,7 @@ impl StreamClient {
     where
         F: FnMut(TransactionStreamItem) -> Result<(), APIError>,
     {
-        let url = self.connection.account_url("transactions/stream")?;
+        let url = self.connection.account_url(&["transactions", "stream"])?;
         self.consume(url, handler).await
     }
 
@@ -125,7 +125,7 @@ impl StreamClient {
     where
         F: FnMut(PricingStreamItem) -> Result<(), APIError>,
     {
-        let mut url = self.connection.account_url("pricing/stream")?;
+        let mut url = self.connection.account_url(&["pricing", "stream"])?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments.join(","));
         self.consume(url, handler).await

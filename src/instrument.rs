@@ -496,7 +496,7 @@ impl<'a> InstrumentService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
-        let url = self.connection.account_url("instruments")?;
+        let url = self.connection.account_url(&["instruments"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -510,7 +510,7 @@ impl<'a> InstrumentService<'a> {
     ) -> Result<CandlesticksResponse, APIError> {
         let mut url = crate::http::api_url(
             &self.connection.base_url,
-            &format!("v3/instruments/{}/candles", req.instrument),
+            &["v3", "instruments", &req.instrument, "candles"],
         )?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await

@@ -20,7 +20,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
-        let url = self.connection.account_url("orders")?;
+        let url = self.connection.account_url(&["orders"])?;
         let body = CreateOrderRequest { order };
         let http_resp = self
             .connection
@@ -48,7 +48,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
-        let mut url = self.connection.account_url("orders")?;
+        let mut url = self.connection.account_url(&["orders"])?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
     }
@@ -59,7 +59,7 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
-        let url = self.connection.account_url("pendingOrders")?;
+        let url = self.connection.account_url(&["pendingOrders"])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -72,9 +72,7 @@ impl<'a> OrderService<'a> {
         &self,
         specifier: OrderSpecifier,
     ) -> Result<GetOrderDetailsResponse, APIError> {
-        let url = self
-            .connection
-            .account_url(&format!("orders/{}", specifier))?;
+        let url = self.connection.account_url(&["orders", &specifier])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -89,9 +87,7 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
         req: OrderRequest,
     ) -> Result<ReplaceOrderResponse, APIError> {
-        let url = self
-            .connection
-            .account_url(&format!("orders/{}", specifier))?;
+        let url = self.connection.account_url(&["orders", &specifier])?;
         let body = CreateOrderRequest { order: req };
         let http_resp = self
             .connection
@@ -120,7 +116,7 @@ impl<'a> OrderService<'a> {
     pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
         let url = self
             .connection
-            .account_url(&format!("orders/{}/cancel", specifier))?;
+            .account_url(&["orders", &specifier, "cancel"])?;
         let http_resp = self.connection.http_client.put(url).send().await?;
         decode_response::<CancelOrderResponse>(
             http_resp,
@@ -145,7 +141,7 @@ impl<'a> OrderService<'a> {
     ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
         let url = self
             .connection
-            .account_url(&format!("orders/{}/clientExtensions", specifier))?;
+            .account_url(&["orders", &specifier, "clientExtensions"])?;
         let http_resp = self
             .connection
             .http_client
