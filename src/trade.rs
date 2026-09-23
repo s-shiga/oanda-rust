@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::decode_response;
+use crate::http::{decode_reject, decode_response};
 use crate::instrument::InstrumentName;
 use crate::order::{
     GuaranteedStopLossOrder, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
@@ -454,9 +454,7 @@ impl<'a> TradeService<'a> {
             StatusCode::OK,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                    serde_json::from_slice::<CloseTradeErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::CloseTradeError)
+                    decode_reject(body, ErrorResponse::CloseTradeError)
                 }
                 _ => None,
             }),
@@ -494,9 +492,7 @@ impl<'a> TradeService<'a> {
             StatusCode::OK,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                    serde_json::from_slice::<UpdateTradeClientExtensionsErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::UpdateTradeClientExtensionsError)
+                    decode_reject(body, ErrorResponse::UpdateTradeClientExtensionsError)
                 }
                 _ => None,
             }),

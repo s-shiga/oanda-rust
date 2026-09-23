@@ -101,6 +101,15 @@ pub(crate) fn validate_base_url(url: &Url) -> Result<(), APIError> {
 
 type ErrorDecoder = fn(StatusCode, &[u8]) -> Option<ErrorResponse>;
 
+/// Decodes an endpoint's documented reject body and wraps it with `wrap`, or
+/// returns `None` so the caller falls back to [`CommonErrorResponse`].
+pub(crate) fn decode_reject<E: DeserializeOwned>(
+    body: &[u8],
+    wrap: impl FnOnce(E) -> ErrorResponse,
+) -> Option<ErrorResponse> {
+    serde_json::from_slice(body).ok().map(wrap)
+}
+
 pub(crate) async fn decode_response<T: DeserializeOwned>(
     response: Response,
     success: StatusCode,

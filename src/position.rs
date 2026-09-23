@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::decode_response;
+use crate::http::{decode_reject, decode_response};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
 use crate::request_option_setter;
@@ -315,9 +315,7 @@ impl<'a> PositionService<'a> {
             StatusCode::OK,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                    serde_json::from_slice::<ClosePositionErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::ClosePositionError)
+                    decode_reject(body, ErrorResponse::ClosePositionError)
                 }
                 _ => None,
             }),

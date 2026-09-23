@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::decode_response;
+use crate::http::{decode_reject, decode_response};
 use crate::instrument::Instrument;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
@@ -655,9 +655,7 @@ impl<'a> AccountService<'a> {
             StatusCode::OK,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::FORBIDDEN => {
-                    serde_json::from_slice::<ConfigureAccountErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::ConfigureAccountError)
+                    decode_reject(body, ErrorResponse::ConfigureAccountError)
                 }
                 _ => None,
             }),

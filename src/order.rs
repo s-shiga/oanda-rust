@@ -1,6 +1,6 @@
 use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::decode_response;
+use crate::http::{decode_reject, decode_response};
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
@@ -1792,9 +1792,7 @@ impl<'a> OrderService<'a> {
             StatusCode::CREATED,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                    serde_json::from_slice::<OrderCreateErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::OrderCreateError)
+                    decode_reject(body, ErrorResponse::OrderCreateError)
                 }
                 _ => None,
             }),
@@ -1854,12 +1852,8 @@ impl<'a> OrderService<'a> {
             http_resp,
             StatusCode::CREATED,
             Some(|status, body| match status {
-                StatusCode::BAD_REQUEST => serde_json::from_slice::<OrderCreateErrorResponse>(body)
-                    .ok()
-                    .map(ErrorResponse::OrderCreateError),
-                StatusCode::NOT_FOUND => serde_json::from_slice::<OrderCancelErrorResponse>(body)
-                    .ok()
-                    .map(ErrorResponse::OrderCancelError),
+                StatusCode::BAD_REQUEST => decode_reject(body, ErrorResponse::OrderCreateError),
+                StatusCode::NOT_FOUND => decode_reject(body, ErrorResponse::OrderCancelError),
                 _ => None,
             }),
         )
@@ -1880,9 +1874,7 @@ impl<'a> OrderService<'a> {
             http_resp,
             StatusCode::OK,
             Some(|status, body| match status {
-                StatusCode::NOT_FOUND => serde_json::from_slice::<OrderCancelErrorResponse>(body)
-                    .ok()
-                    .map(ErrorResponse::OrderCancelError),
+                StatusCode::NOT_FOUND => decode_reject(body, ErrorResponse::OrderCancelError),
                 _ => None,
             }),
         )
@@ -1908,9 +1900,7 @@ impl<'a> OrderService<'a> {
             StatusCode::OK,
             Some(|status, body| match status {
                 StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
-                    serde_json::from_slice::<UpdateOrderClientExtensionsErrorResponse>(body)
-                        .ok()
-                        .map(ErrorResponse::UpdateOrderClientExtensionsError)
+                    decode_reject(body, ErrorResponse::UpdateOrderClientExtensionsError)
                 }
                 _ => None,
             }),
