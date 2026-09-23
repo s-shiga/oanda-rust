@@ -1,6 +1,6 @@
 use crate::account::AccountID;
 use crate::errors::APIError;
-use crate::http::{self, HttpClient};
+use crate::http::{self, Connection};
 use crate::pricing::PricingStreamItem;
 use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
@@ -31,13 +31,12 @@ use url::Url;
 /// # }
 /// ```
 pub struct StreamClient {
-    pub(crate) base_url: Url,
-    pub(crate) http_client: HttpClient,
-    pub(crate) account_id: Option<AccountID>,
+    connection: Connection,
 }
 
 const FX_TRADE_PRACTICE_STREAMING_URL: &str = "https://stream-fxpractice.oanda.com";
 const FX_TRADE_STREAMING_URL: &str = "https://stream-fxtrade.oanda.com";
+const STREAM_ACCEPT: &str = "application/octet-stream";
 
 impl StreamClient {
     /// Creates a `StreamClient` targeting the live trading streaming API.
@@ -48,9 +47,7 @@ impl StreamClient {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new(api_key: &str) -> Result<Self, APIError> {
         Ok(StreamClient {
-            base_url: Url::parse(FX_TRADE_STREAMING_URL).unwrap(),
-            http_client: HttpClient::new(api_key, "application/octet-stream")?,
-            account_id: None,
+            connection: Connection::new(api_key, STREAM_ACCEPT, FX_TRADE_STREAMING_URL)?,
         })
     }
 
@@ -62,29 +59,26 @@ impl StreamClient {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new_practice(api_key: &str) -> Result<Self, APIError> {
         Ok(StreamClient {
-            base_url: Url::parse(FX_TRADE_PRACTICE_STREAMING_URL).unwrap(),
-            http_client: HttpClient::new(api_key, "application/octet-stream")?,
-            account_id: None,
+            connection: Connection::new(api_key, STREAM_ACCEPT, FX_TRADE_PRACTICE_STREAMING_URL)?,
         })
     }
 
     /// Uses a custom HTTP client while preserving OANDA authentication headers.
     pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
-        self.http_client.client = client;
+        self.connection.set_http_client(client);
         self
     }
 
     /// Overrides the streaming endpoint, for example for a local fixture server.
     /// Requests to this endpoint include the configured API token.
     pub fn with_base_url(mut self, url: Url) -> Result<Self, APIError> {
-        http::validate_base_url(&url)?;
-        self.base_url = url;
+        self.connection.set_base_url(url)?;
         Ok(self)
     }
 
     /// Sets the account ID used for streaming endpoints and returns `self`.
     pub fn with_account_id(mut self, account_id: AccountID) -> Self {
-        self.account_id = Some(account_id);
+        self.connection.account_id = Some(account_id);
         self
     }
 
@@ -107,11 +101,7 @@ impl StreamClient {
     where
         F: FnMut(TransactionStreamItem) -> Result<(), APIError>,
     {
-        let url = http::account_url(
-            &self.base_url,
-            self.account_id.as_ref(),
-            "transactions/stream",
-        )?;
+        let url = self.connection.account_url("transactions/stream")?;
         self.consume(url, handler).await
     }
 
@@ -135,8 +125,7 @@ impl StreamClient {
     where
         F: FnMut(PricingStreamItem) -> Result<(), APIError>,
     {
-        let mut url =
-            http::account_url(&self.base_url, self.account_id.as_ref(), "pricing/stream")?;
+        let mut url = self.connection.account_url("pricing/stream")?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments.join(","));
         self.consume(url, handler).await
@@ -147,7 +136,7 @@ impl StreamClient {
         T: DeserializeOwned,
         F: FnMut(T) -> Result<(), APIError>,
     {
-        let response = self.http_client.get(url).send().await?;
+        let response = self.connection.http_client.get(url).send().await?;
         if response.status() != reqwest::StatusCode::OK {
             return http::decode_response::<()>(response, reqwest::StatusCode::OK, None).await;
         }

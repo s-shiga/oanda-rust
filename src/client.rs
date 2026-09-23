@@ -1,6 +1,6 @@
 use crate::account::{AccountID, AccountService};
 use crate::errors::APIError;
-use crate::http::{self, HttpClient};
+use crate::http::Connection;
 use crate::instrument::InstrumentService;
 use crate::order::OrderService;
 use crate::position::PositionService;
@@ -33,12 +33,10 @@ const FX_TRADE_PRACTICE_URL: &str = "https://api-fxpractice.oanda.com";
 /// let account_service = client.account();
 /// ```
 pub struct Client {
-    pub(crate) base_url: Url,
-    pub(crate) http_client: HttpClient,
-    pub(crate) account_id: Option<AccountID>,
+    connection: Connection,
 }
 
-impl<'a> Client {
+impl Client {
     /// Creates a client targeting the **live** OANDA trading environment.
     ///
     /// Use [`Client::new_practice`] instead if you want to test against the
@@ -51,9 +49,7 @@ impl<'a> Client {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new(api_key: &str) -> Result<Client, APIError> {
         Ok(Client {
-            base_url: Url::parse(FX_TRADE_URL).unwrap(),
-            http_client: HttpClient::new(api_key, "application/json")?,
-            account_id: None,
+            connection: Connection::new(api_key, "application/json", FX_TRADE_URL)?,
         })
     }
 
@@ -66,23 +62,20 @@ impl<'a> Client {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new_practice(api_key: &str) -> Result<Client, APIError> {
         Ok(Client {
-            base_url: Url::parse(FX_TRADE_PRACTICE_URL).unwrap(),
-            http_client: HttpClient::new(api_key, "application/json")?,
-            account_id: None,
+            connection: Connection::new(api_key, "application/json", FX_TRADE_PRACTICE_URL)?,
         })
     }
 
     /// Uses a custom HTTP client while preserving OANDA authentication headers.
     pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
-        self.http_client.client = client;
+        self.connection.set_http_client(client);
         self
     }
 
     /// Overrides the API endpoint, for example for a local fixture server.
     /// Requests to this endpoint include the configured API token.
     pub fn with_base_url(mut self, url: Url) -> Result<Self, APIError> {
-        http::validate_base_url(&url)?;
-        self.base_url = url;
+        self.connection.set_base_url(url)?;
         Ok(self)
     }
 
@@ -91,53 +84,43 @@ impl<'a> Client {
     /// Returns `self` so that this method can be chained directly after
     /// [`Client::new`] or [`Client::new_practice`].
     pub fn with_account_id(mut self, account_id: AccountID) -> Self {
-        self.account_id = Some(account_id);
+        self.connection.account_id = Some(account_id);
         self
     }
 
     /// Returns an [`AccountService`] for account-related API operations.
-    pub fn account(&'a self) -> AccountService<'a> {
-        AccountService::new(self)
+    pub fn account(&self) -> AccountService<'_> {
+        AccountService::new(&self.connection)
     }
 
     /// Returns an [`InstrumentService`] for instrument/candlestick API operations.
-    pub fn instrument(&'a self) -> InstrumentService<'a> {
-        InstrumentService::new(self)
+    pub fn instrument(&self) -> InstrumentService<'_> {
+        InstrumentService::new(&self.connection)
     }
 
     /// Returns an [`OrderService`] for order management API operations.
-    pub fn order(&'a self) -> OrderService<'a> {
-        OrderService::new(self)
+    pub fn order(&self) -> OrderService<'_> {
+        OrderService::new(&self.connection)
     }
 
     /// Returns a [`TransactionService`] for transaction history API operations.
-    pub fn transaction(&'a self) -> TransactionService<'a> {
-        TransactionService::new(self)
+    pub fn transaction(&self) -> TransactionService<'_> {
+        TransactionService::new(&self.connection)
     }
 
     /// Returns a [`PositionService`] for position management API operations.
-    pub fn position(&'a self) -> PositionService<'a> {
-        PositionService::new(self)
+    pub fn position(&self) -> PositionService<'_> {
+        PositionService::new(&self.connection)
     }
 
     /// Returns a [`TradeService`] for trade management API operations.
-    pub fn trade(&'a self) -> TradeService<'a> {
-        TradeService::new(self)
+    pub fn trade(&self) -> TradeService<'_> {
+        TradeService::new(&self.connection)
     }
 
     /// Returns a [`PricingService`] for real-time pricing API operations.
-    pub fn pricing(&'a self) -> PricingService<'a> {
-        PricingService::new(self)
-    }
-
-    /// Builds a URL rooted at `/v3/accounts/{accountID}/{suffix}`.
-    ///
-    /// `suffix` is the path segment(s) after the account ID (e.g. `"positions"`,
-    /// `"orders/123/cancel"`). Pass an empty string to target the account root.
-    ///
-    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
-    pub(crate) fn account_url(&self, suffix: &str) -> Result<Url, APIError> {
-        http::account_url(&self.base_url, self.account_id.as_ref(), suffix)
+    pub fn pricing(&self) -> PricingService<'_> {
+        PricingService::new(&self.connection)
     }
 }
 

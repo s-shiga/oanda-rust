@@ -1,5 +1,5 @@
-use crate::client::Client;
 use crate::errors::APIError;
+use crate::http::Connection;
 use crate::instrument::InstrumentName;
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
@@ -247,13 +247,13 @@ pub struct PricesResponse {
 ///
 /// Obtain an instance via [`Client::pricing`](crate::client::Client::pricing).
 pub struct PricingService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> PricingService<'a> {
     /// Creates a new `PricingService` bound to the given client.
-    pub(crate) fn new(client: &'a Client) -> Self {
-        Self { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        Self { connection }
     }
 
     /// Fetches the current bid/ask prices for one or more instruments.
@@ -263,9 +263,9 @@ impl<'a> PricingService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
-        let mut url = self.client.account_url("pricing")?;
+        let mut url = self.connection.account_url("pricing")?;
         url.query_pairs_mut()
             .append_pair("instruments", instruments.join(",").as_str());
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 }

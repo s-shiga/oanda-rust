@@ -7,7 +7,7 @@ use serde::de::DeserializeOwned;
 use url::Url;
 
 pub(crate) struct HttpClient {
-    pub(crate) client: reqwest::Client,
+    client: reqwest::Client,
     headers: HeaderMap,
 }
 
@@ -56,6 +56,48 @@ impl HttpClient {
     }
 }
 
+/// The authenticated transport, endpoint, and default account shared by
+/// [`Client`](crate::client::Client) and [`StreamClient`](crate::stream::StreamClient).
+pub(crate) struct Connection {
+    pub(crate) http_client: HttpClient,
+    pub(crate) base_url: Url,
+    pub(crate) account_id: Option<AccountID>,
+}
+
+impl Connection {
+    /// `base_url` is one of the crate's OANDA host constants.
+    pub(crate) fn new(
+        api_key: &str,
+        accept: &'static str,
+        base_url: &str,
+    ) -> Result<Self, APIError> {
+        Ok(Self {
+            http_client: HttpClient::new(api_key, accept)?,
+            base_url: Url::parse(base_url).expect("OANDA host constants are valid URLs"),
+            account_id: None,
+        })
+    }
+
+    /// Replaces the transport while keeping the authentication headers.
+    pub(crate) fn set_http_client(&mut self, client: reqwest::Client) {
+        self.http_client.client = client;
+    }
+
+    pub(crate) fn set_base_url(&mut self, url: Url) -> Result<(), APIError> {
+        validate_base_url(&url)?;
+        self.base_url = url;
+        Ok(())
+    }
+
+    /// Builds a URL rooted at `/v3/accounts/{accountID}/{suffix}` for the
+    /// default account. Pass an empty `suffix` to target the account root.
+    ///
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
+    pub(crate) fn account_url(&self, suffix: &str) -> Result<Url, APIError> {
+        account_url(&self.base_url, self.account_id.as_ref(), suffix)
+    }
+}
+
 pub(crate) fn account_url(
     base: &Url,
     account: Option<&AccountID>,
@@ -84,7 +126,7 @@ pub(crate) fn api_url(base: &Url, path: &str) -> Result<Url, APIError> {
     Ok(url)
 }
 
-pub(crate) fn validate_base_url(url: &Url) -> Result<(), APIError> {
+fn validate_base_url(url: &Url) -> Result<(), APIError> {
     if !matches!(url.scheme(), "http" | "https")
         || url.host_str().is_none()
         || !url.username().is_empty()

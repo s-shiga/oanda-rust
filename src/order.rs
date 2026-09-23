@@ -1,6 +1,5 @@
-use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::{decode_reject, decode_response};
+use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
@@ -1768,13 +1767,13 @@ pub struct GetOrderDetailsResponse {
 ///
 /// Obtain an instance via [`Client::order`](crate::client::Client::order).
 pub struct OrderService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> OrderService<'a> {
     /// Creates a new `OrderService` bound to the given client.
-    pub(crate) fn new(client: &'a Client) -> Self {
-        OrderService { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        OrderService { connection }
     }
 
     /// Creates a new order on the account.
@@ -1784,9 +1783,15 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn create(&self, order: OrderRequest) -> Result<CreateOrderResponse, APIError> {
-        let url = self.client.account_url("orders")?;
+        let url = self.connection.account_url("orders")?;
         let body = CreateOrderRequest { order };
-        let http_resp = self.client.http_client.post(url).json(&body).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .post(url)
+            .json(&body)
+            .send()
+            .await?;
         decode_response::<CreateOrderResponse>(
             http_resp,
             StatusCode::CREATED,
@@ -1806,9 +1811,9 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
-        let mut url = self.client.account_url("orders")?;
+        let mut url = self.connection.account_url("orders")?;
         req.set_params(&mut url);
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns all pending (not yet filled or cancelled) orders on the account.
@@ -1817,8 +1822,8 @@ impl<'a> OrderService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_pending(&self) -> Result<ListOrdersResponse, APIError> {
-        let url = self.client.account_url("pendingOrders")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("pendingOrders")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns the details of a single order identified by `specifier`.
@@ -1830,8 +1835,10 @@ impl<'a> OrderService<'a> {
         &self,
         specifier: OrderSpecifier,
     ) -> Result<GetOrderDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}", specifier))?;
-        self.client.http_client.get_json(url).await
+        let url = self
+            .connection
+            .account_url(&format!("orders/{}", specifier))?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Replaces the order identified by `specifier` with a new `order`.
@@ -1845,9 +1852,17 @@ impl<'a> OrderService<'a> {
         specifier: OrderSpecifier,
         req: OrderRequest,
     ) -> Result<ReplaceOrderResponse, APIError> {
-        let url = self.client.account_url(&format!("orders/{}", specifier))?;
+        let url = self
+            .connection
+            .account_url(&format!("orders/{}", specifier))?;
         let body = CreateOrderRequest { order: req };
-        let http_resp = self.client.http_client.put(url).json(&body).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&body)
+            .send()
+            .await?;
         decode_response::<ReplaceOrderResponse>(
             http_resp,
             StatusCode::CREATED,
@@ -1867,9 +1882,9 @@ impl<'a> OrderService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn cancel(&self, specifier: OrderSpecifier) -> Result<CancelOrderResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("orders/{}/cancel", specifier))?;
-        let http_resp = self.client.http_client.put(url).send().await?;
+        let http_resp = self.connection.http_client.put(url).send().await?;
         decode_response::<CancelOrderResponse>(
             http_resp,
             StatusCode::OK,
@@ -1892,9 +1907,15 @@ impl<'a> OrderService<'a> {
         req: UpdateOrderClientExtensionsRequest,
     ) -> Result<UpdateOrderClientExtensionsResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("orders/{}/clientExtensions", specifier))?;
-        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&req)
+            .send()
+            .await?;
         decode_response::<UpdateOrderClientExtensionsResponse>(
             http_resp,
             StatusCode::OK,

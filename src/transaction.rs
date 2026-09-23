@@ -1,6 +1,6 @@
 use crate::account::AccountID;
-use crate::client::Client;
 use crate::errors::APIError;
+use crate::http::Connection;
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
@@ -2296,12 +2296,12 @@ pub enum TransactionStreamItem {
 ///
 /// Obtain an instance via [`Client::transaction`](crate::client::Client::transaction).
 pub struct TransactionService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> TransactionService<'a> {
-    pub(crate) fn new(client: &'a Client) -> Self {
-        TransactionService { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        TransactionService { connection }
     }
 
     /// Lists transactions on the account, optionally filtered by time range or type.
@@ -2316,9 +2316,9 @@ impl<'a> TransactionService<'a> {
         &self,
         req: ListTransactionsRequest,
     ) -> Result<ListTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions")?;
+        let mut url = self.connection.account_url("transactions")?;
         req.set_params(&mut url);
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns the details of the transaction identified by `id`.
@@ -2330,8 +2330,10 @@ impl<'a> TransactionService<'a> {
         &self,
         id: TransactionID,
     ) -> Result<GetTransactionDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("transactions/{}", id))?;
-        self.client.http_client.get_json(url).await
+        let url = self
+            .connection
+            .account_url(&format!("transactions/{}", id))?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns all transactions with IDs in the inclusive range specified by `req`.
@@ -2343,9 +2345,9 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsByIDRangeRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions/idrange")?;
+        let mut url = self.connection.account_url("transactions/idrange")?;
         req.set_params(&mut url);
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns all transactions with IDs greater than the one specified in `req`.
@@ -2357,9 +2359,9 @@ impl<'a> TransactionService<'a> {
         &self,
         req: GetTransactionsBySinceIDRequest,
     ) -> Result<GetTransactionsResponse, APIError> {
-        let mut url = self.client.account_url("transactions/sinceid")?;
+        let mut url = self.connection.account_url("transactions/sinceid")?;
         req.set_params(&mut url);
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 }
 

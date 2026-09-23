@@ -1,5 +1,5 @@
-use crate::client::Client;
 use crate::errors::APIError;
+use crate::http::Connection;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
@@ -481,13 +481,13 @@ pub struct CandlesticksResponse {
 ///
 /// Obtain an instance via [`Client::instrument`](crate::client::Client::instrument).
 pub struct InstrumentService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> InstrumentService<'a> {
     /// Creates a new `InstrumentService` bound to the given client.
-    pub(crate) fn new(client: &'a Client) -> Self {
-        InstrumentService { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        InstrumentService { connection }
     }
 
     /// Lists all instruments available to the configured account.
@@ -496,8 +496,8 @@ impl<'a> InstrumentService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListInstrumentsResponse, APIError> {
-        let url = self.client.account_url("instruments")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("instruments")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Fetches historical candlestick (OHLCV) data for an instrument.
@@ -509,11 +509,11 @@ impl<'a> InstrumentService<'a> {
         req: CandlesticksRequest,
     ) -> Result<CandlesticksResponse, APIError> {
         let mut url = crate::http::api_url(
-            &self.client.base_url,
+            &self.connection.base_url,
             &format!("v3/instruments/{}/candles", req.instrument),
         )?;
         req.set_params(&mut url);
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 }
 

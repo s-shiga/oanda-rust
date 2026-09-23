@@ -1,6 +1,5 @@
-use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::{decode_reject, decode_response};
+use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
 use crate::request_option_setter;
@@ -244,13 +243,13 @@ pub struct ClosePositionErrorResponse {
 ///
 /// Obtain an instance via [`Client::position`](crate::client::Client::position).
 pub struct PositionService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> PositionService<'a> {
     /// Creates a new `PositionService` bound to the given client.
-    pub(crate) fn new(client: &'a Client) -> Self {
-        Self { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        Self { connection }
     }
 
     /// Lists all positions on the account (open and closed).
@@ -259,8 +258,8 @@ impl<'a> PositionService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.client.account_url("positions")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("positions")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Lists all currently open positions on the account.
@@ -269,8 +268,8 @@ impl<'a> PositionService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListPositionsResponse, APIError> {
-        let url = self.client.account_url("openPositions")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("openPositions")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns the details of the position for the given `instrument`.
@@ -283,9 +282,9 @@ impl<'a> PositionService<'a> {
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("positions/{}", instrument))?;
-        self.client.http_client.get_json(url).await
+        self.connection.http_client.get_json(url).await
     }
 
     /// Closes all or part of an open position for the given `instrument`.
@@ -307,9 +306,15 @@ impl<'a> PositionService<'a> {
         req: ClosePositionRequest,
     ) -> Result<ClosePositionResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("positions/{}/close", instrument))?;
-        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&req)
+            .send()
+            .await?;
         decode_response::<ClosePositionResponse>(
             http_resp,
             StatusCode::OK,

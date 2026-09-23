@@ -1,6 +1,5 @@
-use crate::client::Client;
 use crate::errors::{APIError, ErrorResponse};
-use crate::http::{decode_reject, decode_response};
+use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
 use crate::order::{
     GuaranteedStopLossOrder, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
@@ -386,13 +385,13 @@ pub struct UpdateTradeClientExtensionsErrorResponse {
 ///
 /// Obtain an instance via [`Client::trade`](crate::client::Client::trade).
 pub struct TradeService<'a> {
-    client: &'a Client,
+    connection: &'a Connection,
 }
 
 impl<'a> TradeService<'a> {
     /// Creates a new `TradeService` bound to the given client.
-    pub(crate) fn new(client: &'a Client) -> Self {
-        Self { client }
+    pub(crate) fn new(connection: &'a Connection) -> Self {
+        Self { connection }
     }
 
     /// Lists all trades on the account (open and closed).
@@ -401,8 +400,8 @@ impl<'a> TradeService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.client.account_url("trades")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("trades")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Lists all currently open trades on the account.
@@ -411,8 +410,8 @@ impl<'a> TradeService<'a> {
     ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn list_open(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.client.account_url("openTrades")?;
-        self.client.http_client.get_json(url).await
+        let url = self.connection.account_url("openTrades")?;
+        self.connection.http_client.get_json(url).await
     }
 
     /// Returns the details of the trade identified by `specifier`.
@@ -424,15 +423,17 @@ impl<'a> TradeService<'a> {
         &self,
         specifier: TradeSpecifier,
     ) -> Result<GetTradeDetailsResponse, APIError> {
-        let url = self.client.account_url(&format!("trades/{}", specifier))?;
-        self.client.http_client.get_json(url).await
+        let url = self
+            .connection
+            .account_url(&format!("trades/{}", specifier))?;
+        self.connection.http_client.get_json(url).await
     }
 
-    /// Fully closes the trade identified by `specifier`.
+    /// Closes the trade identified by `specifier`, fully or partially.
     ///
     /// Calls `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close`.
-    /// To partially close a trade (reduce units), use the OANDA API directly
-    /// with a units parameter — partial-close is not yet exposed here.
+    /// [`CloseTradeRequest::new`] closes all open units; set
+    /// [`units`](CloseTradeRequest::units) to close only part of the trade.
     ///
     /// # Errors
     ///
@@ -446,9 +447,15 @@ impl<'a> TradeService<'a> {
         req: CloseTradeRequest,
     ) -> Result<CloseTradeResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("trades/{}/close", specifier))?;
-        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&req)
+            .send()
+            .await?;
         decode_response::<CloseTradeResponse>(
             http_resp,
             StatusCode::OK,
@@ -483,10 +490,16 @@ impl<'a> TradeService<'a> {
         client_extensions: ClientExtensions,
     ) -> Result<UpdateTradeClientExtensionsResponse, APIError> {
         let url = self
-            .client
+            .connection
             .account_url(&format!("trades/{}/clientExtensions", specifier))?;
         let req = UpdateTradeClientExtensionsRequest { client_extensions };
-        let http_resp = self.client.http_client.put(url).json(&req).send().await?;
+        let http_resp = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&req)
+            .send()
+            .await?;
         decode_response::<UpdateTradeClientExtensionsResponse>(
             http_resp,
             StatusCode::OK,
