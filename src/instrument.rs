@@ -96,6 +96,9 @@ pub struct InstrumentFinancing {
     pub long_rate: DecimalNumber,
     /// Daily financing rate applied to short positions (expressed as a decimal fraction).
     pub short_rate: DecimalNumber,
+    /// The days of the week on which financing is charged, and how many days'
+    /// worth is charged on each. `None` when OANDA omits the field.
+    pub financing_days_of_week: Option<Vec<FinancingDayOfWeek>>,
 }
 
 /// Full specification of a tradeable instrument, including margin, precision,

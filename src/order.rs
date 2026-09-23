@@ -1325,8 +1325,7 @@ pub struct CreateOrderResponse {
 }
 
 /// Response body for a successful `PUT /v3/accounts/{accountID}/orders/{orderSpecifier}`
-/// (HTTP 201). Fields are raw JSON values because the response contains a
-/// polymorphic union of transaction types.
+/// (HTTP 201).
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReplaceOrderResponse {
@@ -1340,6 +1339,9 @@ pub struct ReplaceOrderResponse {
     pub order_reissue_transaction: Option<OrderCreateTransaction>,
     /// The transaction that rejected the re-issue, if applicable.
     pub order_reissue_reject_transaction: Option<OrderCreateRejectTransaction>,
+    /// The transaction that cancelled the replacement order, present only when
+    /// the replacement was cancelled immediately.
+    pub replacing_order_cancel_transaction: Option<OrderCancelTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Option<Vec<TransactionID>>,

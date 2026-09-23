@@ -1,3 +1,4 @@
+use oanda_rust::instrument::{DayOfWeek, InstrumentFinancing};
 use oanda_rust::order::*;
 use oanda_rust::position::ListPositionsResponse;
 use oanda_rust::pricing::{ClientPrice, PriceBucket, PricingStreamItem};
@@ -220,6 +221,43 @@ fn regression_positions_decode_documented_response_without_fee_fields() {
     assert!(response.positions[0].financing.is_none());
     assert!(response.positions[0].long.financing.is_none());
     assert_eq!(response.positions[1].short.units, "-600");
+}
+
+#[test]
+fn regression_replace_response_keeps_replacing_order_cancel_transaction() {
+    let response: ReplaceOrderResponse = serde_json::from_value(json!({
+        "replacingOrderCancelTransaction": {
+            "type":"ORDER_CANCEL", "id":"5", "time":"2026-09-12T00:00:00Z", "userID":1,
+            "accountID":"account", "batchID":"4", "orderID":"4", "reason":"INSUFFICIENT_MARGIN"
+        },
+        "relatedTransactionIDs":["4", "5"], "lastTransactionID":"5"
+    }))
+    .unwrap();
+    let cancel = response.replacing_order_cancel_transaction.unwrap();
+    assert_eq!(cancel.order_id, "4");
+    assert!(matches!(
+        cancel.reason,
+        OrderCancelReason::InsufficientMargin
+    ));
+}
+
+#[test]
+fn regression_instrument_financing_keeps_financing_days() {
+    let financing: InstrumentFinancing = serde_json::from_value(json!({
+        "longRate":"-0.0147", "shortRate":"-0.0053",
+        "financingDaysOfWeek":[
+            {"dayOfWeek":"MONDAY", "daysCharged":1},
+            {"dayOfWeek":"WEDNESDAY", "daysCharged":3}
+        ]
+    }))
+    .unwrap();
+    let days = financing.financing_days_of_week.unwrap();
+    assert!(matches!(days[1].day_of_week, DayOfWeek::Wednesday));
+    assert_eq!(days[1].days_charged, 3);
+
+    let financing: InstrumentFinancing =
+        serde_json::from_value(json!({"longRate":"-0.0147", "shortRate":"-0.0053"})).unwrap();
+    assert!(financing.financing_days_of_week.is_none());
 }
 
 #[test]
