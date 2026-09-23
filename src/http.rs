@@ -115,6 +115,13 @@ pub(crate) fn account_url(
 /// Appends path segments to `base`, keeping any path prefix already on `base`
 /// (for example a gateway mounted at `https://host/oanda/`).
 pub(crate) fn api_url(base: &Url, segments: &[&str]) -> Result<Url, APIError> {
+    // `PathSegmentsMut::extend` silently skips "." and "..", which would drop
+    // an ID with either value from the path; an empty ID would leave `//`.
+    if let Some(segment) = segments.iter().find(|s| matches!(**s, "" | "." | "..")) {
+        return Err(APIError::InvalidRequest(format!(
+            "Invalid URL path segment {segment:?}"
+        )));
+    }
     let mut url = base.clone();
     url.path_segments_mut()
         .map_err(|_| APIError::InvalidRequest("Base URL cannot have a path".into()))?
@@ -209,5 +216,24 @@ mod tests {
             url.path(),
             "/gateway/v3/accounts/account%2Fone/orders/@client%2Fone/cancel"
         );
+    }
+
+    #[test]
+    fn dot_and_empty_path_segments_are_rejected() {
+        let base = Url::parse("https://example.com/").unwrap();
+        for specifier in ["", ".", ".."] {
+            assert!(matches!(
+                account_url(
+                    &base,
+                    Some(&"account".into()),
+                    &["orders", specifier, "cancel"]
+                ),
+                Err(APIError::InvalidRequest(_))
+            ));
+        }
+        assert!(matches!(
+            account_url(&base, Some(&"..".into()), &["orders"]),
+            Err(APIError::InvalidRequest(_))
+        ));
     }
 }

@@ -254,20 +254,16 @@ pub struct PricingService<'a> {
 
 /// Encodes the instrument list shared by REST and streaming pricing requests.
 pub(crate) fn instruments_query<T: AsRef<str>>(instruments: &[T]) -> Result<String, APIError> {
-    if instruments.is_empty()
-        || instruments
-            .iter()
-            .any(|name| name.as_ref().trim().is_empty())
-    {
+    let names: Vec<&str> = instruments
+        .iter()
+        .map(|name| name.as_ref().trim())
+        .collect();
+    if names.is_empty() || names.iter().any(|name| name.is_empty()) {
         return Err(APIError::InvalidRequest(
             "At least one nonempty instrument is required".into(),
         ));
     }
-    Ok(instruments
-        .iter()
-        .map(AsRef::as_ref)
-        .collect::<Vec<_>>()
-        .join(","))
+    Ok(names.join(","))
 }
 
 impl<'a> PricingService<'a> {
@@ -288,5 +284,22 @@ impl<'a> PricingService<'a> {
         url.query_pairs_mut()
             .append_pair("instruments", &instruments_query(&instruments)?);
         self.connection.http_client.get_json(url).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn instrument_names_are_trimmed() {
+        assert_eq!(
+            instruments_query(&[" EUR_USD", "USD_JPY\n"]).unwrap(),
+            "EUR_USD,USD_JPY"
+        );
+        assert!(matches!(
+            instruments_query(&["EUR_USD", " "]),
+            Err(APIError::InvalidRequest(_))
+        ));
     }
 }
