@@ -1,15 +1,16 @@
 use crate::client::Client;
-use crate::errors::APIError;
+use crate::errors::{APIError, ErrorResponse};
 use crate::http::decode_response;
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
 use crate::request_option_setter;
 use crate::transaction::{
-    AccountUnits, ClientExtensions, MarketOrderTransaction, OrderCancelTransaction,
-    OrderFillTransaction, TradeID, TransactionID,
+    AccountUnits, ClientExtensions, MarketOrderRejectTransaction, MarketOrderTransaction,
+    OrderCancelTransaction, OrderFillTransaction, TradeID, TransactionID,
 };
 use reqwest::{Method, Request, StatusCode};
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 /// The net exposure an account holds on a single instrument, aggregating all
 /// open trades on both the long and short side.
@@ -211,6 +212,28 @@ pub struct ClosePositionResponse {
     pub last_transaction_id: TransactionID,
 }
 
+/// Error response body for a failed
+/// `PUT /v3/accounts/{accountID}/positions/{instrument}/close` (HTTP 400 or 404).
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Position close was rejected {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
+pub struct ClosePositionErrorResponse {
+    /// Why the market order closing the long side was rejected, if it was.
+    pub long_order_reject_transaction: Option<Box<MarketOrderRejectTransaction>>,
+    /// Why the market order closing the short side was rejected, if it was.
+    pub short_order_reject_transaction: Option<Box<MarketOrderRejectTransaction>>,
+    /// IDs of all transactions related to this request.
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    /// ID of the most recent transaction on the account.
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+    /// Machine-readable error code returned by the OANDA API.
+    pub error_code: String,
+    /// Human-readable description of why the close was rejected.
+    pub error_message: String,
+}
+
 /// Provides access to the OANDA Position endpoints
 /// (`/v3/accounts/{id}/positions/...`).
 ///
@@ -273,6 +296,11 @@ impl<'a> PositionService<'a> {
     /// Use [`ClosePositionRequest`] to control how many long/short units to
     /// close. Omitting both sides defaults to closing all open units.
     ///
+    /// # Errors
+    ///
+    /// Returns [`APIError`] wrapping [`ClosePositionErrorResponse`] on HTTP 400
+    /// (close rejected) or 404 (position not found).
+    ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn close(
         &self,
@@ -283,6 +311,18 @@ impl<'a> PositionService<'a> {
             .client
             .account_url(&format!("positions/{}/close", instrument))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        decode_response::<ClosePositionResponse>(http_resp, StatusCode::OK, None).await
+        decode_response::<ClosePositionResponse>(
+            http_resp,
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                    serde_json::from_slice::<ClosePositionErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::ClosePositionError)
+                }
+                _ => None,
+            }),
+        )
+        .await
     }
 }

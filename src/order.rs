@@ -7,10 +7,10 @@ use crate::primitives::DecimalNumber;
 use crate::transaction::{
     ClientExtensions, ClientID, GuaranteedStopLossDetails, MarketOrderDelayedTradeClose,
     MarketOrderMarginCloseout, MarketOrderPositionCloseout, MarketOrderTradeClose,
-    OrderCancelTransaction, OrderClientExtensionsModifyRejectTransaction,
-    OrderClientExtensionsModifyTransaction, OrderCreateRejectTransaction, OrderCreateTransaction,
-    OrderFillTransaction, OrderID, StopLossDetails, TakeProfitDetails, TradeID,
-    TrailingStopLossDetails, TransactionID,
+    OrderCancelRejectTransaction, OrderCancelTransaction,
+    OrderClientExtensionsModifyRejectTransaction, OrderClientExtensionsModifyTransaction,
+    OrderCreateRejectTransaction, OrderCreateTransaction, OrderFillTransaction, OrderID,
+    StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, TransactionID,
 };
 use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
@@ -1348,7 +1348,8 @@ pub struct ReplaceOrderResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
-/// Error response body for `POST /v3/accounts/{accountID}/orders` (HTTP 400).
+/// Error response body for `POST /v3/accounts/{accountID}/orders` (HTTP 400 or
+/// 404) and for a rejected order replacement (HTTP 400).
 ///
 /// Returned when an order creation request is rejected by OANDA.
 #[derive(Debug, Error, Serialize, Deserialize)]
@@ -1378,7 +1379,7 @@ pub struct OrderCreateErrorResponse {
 #[serde(rename_all = "camelCase")]
 pub struct OrderCancelErrorResponse {
     /// The transaction that recorded the rejection reason, if one was created.
-    pub order_cancel_reject_transaction: Option<OrderCreateRejectTransaction>,
+    pub order_cancel_reject_transaction: Option<OrderCancelRejectTransaction>,
     /// IDs of all transactions related to this request.
     #[serde(rename = "relatedTransactionIDs")]
     pub related_transaction_ids: Vec<TransactionID>,
@@ -1771,9 +1772,11 @@ impl<'a> OrderService<'a> {
             http_resp,
             StatusCode::CREATED,
             Some(|status, body| match status {
-                StatusCode::BAD_REQUEST => serde_json::from_slice::<OrderCreateErrorResponse>(body)
-                    .ok()
-                    .map(ErrorResponse::OrderCreateError),
+                StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                    serde_json::from_slice::<OrderCreateErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::OrderCreateError)
+                }
                 _ => None,
             }),
         )

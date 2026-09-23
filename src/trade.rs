@@ -9,9 +9,10 @@ use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::request_option_setter;
 use crate::transaction::{
-    AccountUnits, ClientExtensions, MarketOrderTransaction, OrderCancelTransaction,
-    OrderFillTransaction, OrderID, TradeClientExtensionsModifyRejectTransaction,
-    TradeClientExtensionsModifyTransaction, TradeID, TransactionID,
+    AccountUnits, ClientExtensions, MarketOrderRejectTransaction, MarketOrderTransaction,
+    OrderCancelTransaction, OrderFillTransaction, OrderID,
+    TradeClientExtensionsModifyRejectTransaction, TradeClientExtensionsModifyTransaction, TradeID,
+    TransactionID,
 };
 use chrono::{DateTime, Utc};
 use reqwest::{Request, StatusCode};
@@ -294,6 +295,26 @@ pub struct CloseTradeResponse {
     pub last_transaction_id: Option<TransactionID>,
 }
 
+/// Error response body for a failed
+/// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close` (HTTP 400 or 404).
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Trade close was rejected {error_code}: {error_message}")]
+#[serde(rename_all = "camelCase")]
+pub struct CloseTradeErrorResponse {
+    /// The transaction that recorded why the closing market order was rejected.
+    pub order_reject_transaction: Option<MarketOrderRejectTransaction>,
+    /// IDs of all transactions related to this request (HTTP 404 only).
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    /// ID of the most recent transaction on the account (HTTP 404 only).
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: Option<TransactionID>,
+    /// Machine-readable error code returned by the OANDA API.
+    pub error_code: String,
+    /// Human-readable description of why the close was rejected.
+    pub error_message: String,
+}
+
 /// Request body for
 /// `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/clientExtensions`.
 ///
@@ -333,7 +354,6 @@ pub struct UpdateTradeClientExtensionsResponse {
 #[serde(rename_all = "camelCase")]
 pub struct UpdateTradeClientExtensionsErrorResponse {
     /// The reject transaction that recorded why the modification was refused.
-    #[serde(rename = "TradeClientExtensionsModifyRejectTransaction")]
     pub trade_client_extensions_modify_reject_transaction:
         TradeClientExtensionsModifyRejectTransaction,
     /// ID of the most recent transaction on the account.
@@ -410,6 +430,11 @@ impl<'a> TradeService<'a> {
     /// To partially close a trade (reduce units), use the OANDA API directly
     /// with a units parameter — partial-close is not yet exposed here.
     ///
+    /// # Errors
+    ///
+    /// Returns [`APIError`] wrapping [`CloseTradeErrorResponse`] on HTTP 400
+    /// (close rejected) or 404 (trade not found).
+    ///
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
     pub async fn close(
         &self,
@@ -420,7 +445,19 @@ impl<'a> TradeService<'a> {
             .client
             .account_url(&format!("trades/{}/close", specifier))?;
         let http_resp = self.client.http_client.put(url).json(&req).send().await?;
-        decode_response::<CloseTradeResponse>(http_resp, StatusCode::OK, None).await
+        decode_response::<CloseTradeResponse>(
+            http_resp,
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST | StatusCode::NOT_FOUND => {
+                    serde_json::from_slice::<CloseTradeErrorResponse>(body)
+                        .ok()
+                        .map(ErrorResponse::CloseTradeError)
+                }
+                _ => None,
+            }),
+        )
+        .await
     }
 
     /// Replaces the client extensions on the trade identified by `specifier`.

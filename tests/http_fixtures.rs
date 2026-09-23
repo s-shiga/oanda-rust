@@ -2,7 +2,11 @@ use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
 use oanda_rust::instrument::CandlesticksRequest;
 use oanda_rust::order::{MarketOrderRequest, OrderRequest};
+use oanda_rust::position::ClosePositionRequest;
 use oanda_rust::stream::StreamClient;
+use oanda_rust::trade::CloseTradeRequest;
+use oanda_rust::transaction::{ClientExtensions, OrderCreateRejectTransaction};
+use serde_json::json;
 use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener;
@@ -132,6 +136,136 @@ async fn structured_rejections_and_common_fallback_keep_http_context() {
         }
         assert!(request.await.unwrap().starts_with("PUT "));
     }
+}
+
+fn structured_error(error: APIError) -> ErrorResponse {
+    let APIError::Response(context) = error else {
+        panic!("missing HTTP context")
+    };
+    let APIError::ErrorResponse(error) = context.source else {
+        panic!("expected structured error, got {:?}", context.source)
+    };
+    *error
+}
+
+fn reject_transaction(fields: serde_json::Value) -> serde_json::Value {
+    let mut transaction = json!({"id":"3", "time":"2026-09-12T00:00:00Z", "userID":1,
+        "accountID":"account", "batchID":"3"});
+    transaction
+        .as_object_mut()
+        .unwrap()
+        .extend(fields.as_object().unwrap().clone());
+    transaction
+}
+
+#[tokio::test]
+async fn endpoint_rejections_keep_reject_transactions() {
+    let market_reject = reject_transaction(json!({"type":"MARKET_ORDER_REJECT",
+        "instrument":"EUR_USD", "units":"-1", "timeInForce":"FOK", "positionFill":"REDUCE_ONLY",
+        "reason":"TRADE_CLOSE", "rejectReason":"INSTRUMENT_NOT_TRADEABLE"}));
+    let ids = json!({"relatedTransactionIDs":["3"], "lastTransactionID":"3"});
+    let body = |fields: serde_json::Value| {
+        let mut body = json!({"errorCode":"REJECTED", "errorMessage":"rejected"});
+        body.as_object_mut()
+            .unwrap()
+            .extend(fields.as_object().unwrap().clone());
+        body.to_string()
+    };
+
+    let mut fields = json!({"orderRejectTransaction": market_reject});
+    fields
+        .as_object_mut()
+        .unwrap()
+        .extend(ids.as_object().unwrap().clone());
+    let (url, request) = fixture("404 Not Found", &body(fields)).await;
+    let order = OrderRequest::Market(MarketOrderRequest::new("EUR_USD".into(), "1".into()));
+    let error = structured_error(client(url).order().create(order).await.unwrap_err());
+    assert!(matches!(
+        error,
+        ErrorResponse::OrderCreateError(ref e) if matches!(
+            e.order_reject_transaction,
+            OrderCreateRejectTransaction::MarketOrderRejectTransaction(_)
+        )
+    ));
+    request.await.unwrap();
+
+    let mut fields = json!({"orderCancelRejectTransaction": reject_transaction(json!({
+        "type":"ORDER_CANCEL_REJECT", "orderID":"1", "rejectReason":"ORDER_DOESNT_EXIST"}))});
+    fields
+        .as_object_mut()
+        .unwrap()
+        .extend(ids.as_object().unwrap().clone());
+    let (url, request) = fixture("404 Not Found", &body(fields)).await;
+    let error = structured_error(client(url).order().cancel("1".into()).await.unwrap_err());
+    assert!(matches!(
+        error,
+        ErrorResponse::OrderCancelError(ref e)
+            if e.order_cancel_reject_transaction.as_ref().is_some_and(|t| t.order_id == "1")
+    ));
+    request.await.unwrap();
+
+    let mut fields = json!({"tradeClientExtensionsModifyRejectTransaction": reject_transaction(
+        json!({"type":"TRADE_CLIENT_EXTENSIONS_MODIFY_REJECT", "tradeID":"7",
+            "rejectReason":"TRADE_DOESNT_EXIST"}))});
+    fields
+        .as_object_mut()
+        .unwrap()
+        .extend(ids.as_object().unwrap().clone());
+    let (url, request) = fixture("404 Not Found", &body(fields)).await;
+    let error = structured_error(
+        client(url)
+            .trade()
+            .update_client_extensions("7".into(), ClientExtensions::default())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::UpdateTradeClientExtensionsError(ref e)
+            if e.trade_client_extensions_modify_reject_transaction.trade_id == "7"
+    ));
+    request.await.unwrap();
+
+    // The documented 400 body for closing a trade carries no transaction IDs.
+    let (url, request) = fixture(
+        "400 Bad Request",
+        &body(json!({"orderRejectTransaction": market_reject})),
+    )
+    .await;
+    let error = structured_error(
+        client(url)
+            .trade()
+            .close("7".into(), CloseTradeRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::CloseTradeError(ref e)
+            if e.order_reject_transaction.is_some() && e.last_transaction_id.is_none()
+    ));
+    request.await.unwrap();
+
+    let mut fields = json!({"longOrderRejectTransaction": market_reject});
+    fields
+        .as_object_mut()
+        .unwrap()
+        .extend(ids.as_object().unwrap().clone());
+    let (url, request) = fixture("400 Bad Request", &body(fields)).await;
+    let error = structured_error(
+        client(url)
+            .position()
+            .close("EUR_USD".into(), ClosePositionRequest::new())
+            .await
+            .unwrap_err(),
+    );
+    assert!(matches!(
+        error,
+        ErrorResponse::ClosePositionError(ref e)
+            if e.long_order_reject_transaction.is_some()
+                && e.short_order_reject_transaction.is_none()
+    ));
+    request.await.unwrap();
 }
 
 #[tokio::test]
