@@ -45,11 +45,7 @@ cargo test
 All tests use local data or localhost HTTP fixtures. No API credentials or
 connections to OANDA are required.
 
-## Migration notes
+## Changelog
 
-- Add `?` or handle the result from `Client::new`, `Client::new_practice`, and the
-  corresponding `StreamClient` constructors.
-- Match response failures through `APIError::Response(context)` and inspect
-  `context.source` for structured API errors or decoding failures.
-- The exported `handle_response!` macro has been replaced by internal typed
-  response helpers.
+See [CHANGELOG.md](CHANGELOG.md) for what changed in each release and how to
+upgrade between versions.
