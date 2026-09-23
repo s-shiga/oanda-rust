@@ -1,8 +1,8 @@
+use crate::client::request_option_setter;
 use crate::errors::{APIError, ErrorResponse};
 use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
 use crate::primitives::DecimalNumber;
-use crate::request_option_setter;
 use crate::transaction::{
     AccountUnits, ClientExtensions, MarketOrderRejectTransaction, MarketOrderTransaction,
     OrderCancelTransaction, OrderFillTransaction, TradeID, TransactionID,

@@ -1,11 +1,11 @@
 use crate::account::AccountID;
+use crate::client::request_option_setter;
 use crate::errors::APIError;
 use crate::http::Connection;
 use crate::instrument::InstrumentName;
 use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
 use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
-use crate::request_option_setter;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::Display;
@@ -2024,7 +2024,7 @@ pub struct OpenTradeDividendAdjustment {
 /// A keepalive message emitted on the transaction stream when no transactions
 /// have occurred recently.
 ///
-/// Consumed as part of [`TransactionStreamItem::HEARTBEAT`].
+/// Consumed as part of [`TransactionStreamItem::Heartbeat`].
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TransactionHeartbeat {
     /// Timestamp of the heartbeat.
@@ -2285,7 +2285,9 @@ impl GetTransactionsBySinceIDRequest {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum TransactionStreamItem {
-    HEARTBEAT(TransactionHeartbeat),
+    /// A periodic keepalive sent while the account is idle.
+    #[serde(rename = "HEARTBEAT")]
+    Heartbeat(TransactionHeartbeat),
     /// Boxed because `Transaction` is much larger than a heartbeat.
     #[serde(untagged)]
     Transaction(Box<Transaction>),

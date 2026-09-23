@@ -1,10 +1,10 @@
+use crate::client::request_option_setter;
 use crate::errors::{APIError, ErrorResponse};
 use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::Instrument;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
 use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
-use crate::request_option_setter;
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{
     AccountUnits, ClientConfigureRejectTransaction, ClientConfigureTransaction, Transaction,

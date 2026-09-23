@@ -1,3 +1,4 @@
+use crate::client::{request_option_setter, request_setter};
 use crate::errors::{APIError, ErrorResponse};
 use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
@@ -11,7 +12,6 @@ use crate::transaction::{
     OrderCreateRejectTransaction, OrderCreateTransaction, OrderFillTransaction, OrderID,
     StopLossDetails, TakeProfitDetails, TradeID, TrailingStopLossDetails, TransactionID,
 };
-use crate::{request_option_setter, request_setter};
 use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -1307,7 +1307,7 @@ pub struct CreateOrderResponse {
     pub order_create_transaction: Option<OrderCreateTransaction>,
     /// The transaction that filled the order, if it was immediately filled
     /// (e.g. a market order).
-    pub order_fill_transaction: Option<OrderFillTransaction>,
+    pub order_fill_transaction: Option<Box<OrderFillTransaction>>,
     /// The transaction that cancelled the order, if it was immediately cancelled
     /// (e.g. a FOK order that could not be filled).
     pub order_cancel_transaction: Option<OrderCancelTransaction>,
@@ -1333,7 +1333,7 @@ pub struct ReplaceOrderResponse {
     /// The transaction that created the replacement order.
     pub order_create_transaction: Option<OrderCreateTransaction>,
     /// The transaction that filled the replacement order, if immediately filled.
-    pub order_fill_transaction: Option<OrderFillTransaction>,
+    pub order_fill_transaction: Option<Box<OrderFillTransaction>>,
     /// The transaction that re-issued the order, if applicable.
     pub order_reissue_transaction: Option<OrderCreateTransaction>,
     /// The transaction that rejected the re-issue, if applicable.

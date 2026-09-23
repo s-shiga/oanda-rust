@@ -128,7 +128,6 @@ impl Client {
 ///
 /// Expands to a method `pub fn $attr(mut self, $attr: $ty) -> Self` that
 /// assigns the provided value and returns `self` for chaining.
-#[macro_export]
 macro_rules! request_setter {
     ($attr:ident, $ty:ty) => {
         pub fn $attr(mut self, $attr: $ty) -> Self {
@@ -137,12 +136,12 @@ macro_rules! request_setter {
         }
     };
 }
+pub(crate) use request_setter;
 
 /// Generates a builder-style setter method for an optional (`Option<T>`) field.
 ///
 /// Expands to a method `pub fn $attr(mut self, $attr: $ty) -> Self` that
 /// wraps the value in `Some(...)`, assigns it, and returns `self` for chaining.
-#[macro_export]
 macro_rules! request_option_setter {
     ($attr:ident, $ty:ty) => {
         pub fn $attr(mut self, $attr: $ty) -> Self {
@@ -151,3 +150,4 @@ macro_rules! request_option_setter {
         }
     };
 }
+pub(crate) use request_option_setter;

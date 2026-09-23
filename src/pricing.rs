@@ -215,9 +215,11 @@ pub enum PricingStreamItem {
     /// A live price update for an instrument.
     ///
     /// Boxed because `ClientPrice` is much larger than a heartbeat.
-    PRICE(Box<ClientPrice>),
+    #[serde(rename = "PRICE")]
+    Price(Box<ClientPrice>),
     /// A periodic keepalive message confirming the stream is active.
-    HEARTBEAT(PricingHeartbeat),
+    #[serde(rename = "HEARTBEAT")]
+    Heartbeat(PricingHeartbeat),
 }
 
 // ---------------------------------------------------------------------------

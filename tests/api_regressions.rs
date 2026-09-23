@@ -21,7 +21,7 @@ fn regression_prices_accept_rest_stream_and_full_price_timestamps() {
     );
     fixture["type"] = json!("PRICE");
     let stream: PricingStreamItem = serde_json::from_value(fixture.clone()).unwrap();
-    let PricingStreamItem::PRICE(price) = stream else {
+    let PricingStreamItem::Price(price) = stream else {
         panic!("expected price")
     };
     assert!(price.timestamp.is_some());
