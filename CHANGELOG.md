@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- `OrderFillTransaction` fields that older OANDA payloads omit are now `Option`:
+  `home_conversion_factors`, `full_vwap`, `full_price`, `base_financing`,
+  `commission`, `guaranteed_execution_fee`, `quote_guaranteed_execution_fee`, and
+  `half_spread_cost`. Callers must handle `None` for unavailable values.
+- `TradeOpen::price`, `guaranteed_execution_fee`, `half_spread_cost`, and
+  `initial_margin_required` are also now `Option` for older fills.
+
+### Added
+
+- Optional legacy `price`, `gain_quote_home_conversion_factor`, and
+  `loss_quote_home_conversion_factor` fields on `OrderFillTransaction` preserve
+  values supplied by older payloads.
+
+### Fixed
+
+- Successful order responses, transaction history, and transaction stream items
+  decode when fills omit price snapshots, conversion factors, or cost details.
+  Missing values remain `None` instead of being replaced with zero or inferred.
+
 ## [0.3.0] - 2026-09-23
 
 ### Upgrading from 0.2.0

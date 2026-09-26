@@ -933,6 +933,8 @@ pub struct TrailingStopLossOrderRejectTransaction {
 ///
 /// This is the primary transaction for all trade activity. Fields such as `trade_opened`,
 /// `trades_closed`, and `trade_reduced` describe what changed as a result of the fill.
+/// Price, conversion, and cost details omitted by older OANDA payloads are `None`.
+/// Missing values are not inferred from other fields or replaced with zero.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderFillTransaction {
@@ -952,19 +954,28 @@ pub struct OrderFillTransaction {
     pub client_order_id: Option<ClientID>,
     pub instrument: InstrumentName,
     pub units: DecimalNumber,
-    pub home_conversion_factors: HomeConversionFactors,
+    /// Conversion factors reported with the fill, if available.
+    pub home_conversion_factors: Option<HomeConversionFactors>,
+    /// Legacy quote-to-home gain factor, retained when OANDA sends it.
+    pub gain_quote_home_conversion_factor: Option<DecimalNumber>,
+    /// Legacy quote-to-home loss factor, retained when OANDA sends it.
+    pub loss_quote_home_conversion_factor: Option<DecimalNumber>,
+    /// Legacy fill price. Prefer per-trade prices when they are available.
+    pub price: Option<PriceValue>,
+    /// Volume-weighted fill price before guaranteed-price adjustments, if reported.
     #[serde(rename = "fullVWAP")]
-    pub full_vwap: PriceValue,
-    pub full_price: ClientPrice,
+    pub full_vwap: Option<PriceValue>,
+    /// Market price snapshot at the time of the fill, if reported.
+    pub full_price: Option<ClientPrice>,
     pub reason: OrderFillReason,
     pub pl: AccountUnits,
     pub financing: AccountUnits,
-    pub base_financing: AccountUnits,
+    pub base_financing: Option<AccountUnits>,
     pub quote_financing: Option<AccountUnits>,
-    pub commission: AccountUnits,
-    pub guaranteed_execution_fee: AccountUnits,
-    pub quote_guaranteed_execution_fee: AccountUnits,
-    pub half_spread_cost: AccountUnits,
+    pub commission: Option<AccountUnits>,
+    pub guaranteed_execution_fee: Option<AccountUnits>,
+    pub quote_guaranteed_execution_fee: Option<AccountUnits>,
+    pub half_spread_cost: Option<AccountUnits>,
     pub account_balance: AccountUnits,
     pub trade_opened: Option<TradeOpen>,
     pub trades_closed: Option<Vec<TradeReduce>>,

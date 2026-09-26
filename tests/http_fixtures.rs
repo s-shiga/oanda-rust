@@ -114,28 +114,42 @@ async fn get_uses_custom_transport_and_preserves_authentication() {
 
 #[tokio::test]
 async fn post_keeps_json_body_and_accepts_created_status() {
-    let (url, request) = fixture(
-        "201 Created",
-        r#"{"relatedTransactionIDs":[],"lastTransactionID":"1"}"#,
-    )
-    .await;
-    let result = client(url)
-        .order()
-        .create(OrderRequest::Market(MarketOrderRequest::new(
-            "EUR_USD".into(),
-            "1".into(),
-        )))
-        .await
-        .unwrap();
-    assert_eq!(result.last_transaction_id, "1");
-    let request = request.await.unwrap();
-    assert!(request.starts_with("POST /v3/accounts/account/orders HTTP/1.1"));
-    assert!(request
-        .to_ascii_lowercase()
-        .contains("authorization: bearer fixture-token\r\n"));
-    let body: serde_json::Value =
-        serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap();
-    assert_eq!(body["order"]["type"], "MARKET");
+    for (wire, units, fill_id) in [
+        (
+            include_str!("fixtures/order_create_market_buy.json"),
+            "100",
+            "6368",
+        ),
+        (
+            include_str!("fixtures/order_create_market_sell.json"),
+            "-100",
+            "647",
+        ),
+    ] {
+        let (url, request) = fixture("201 Created", wire).await;
+        let result = client(url)
+            .order()
+            .create(OrderRequest::Market(MarketOrderRequest::new(
+                "EUR_USD".into(),
+                units.into(),
+            )))
+            .await
+            .unwrap();
+        assert_eq!(result.last_transaction_id, fill_id);
+        let fill = result.order_fill_transaction.unwrap();
+        assert_eq!(fill.id, fill_id);
+        assert_eq!(fill.units, units);
+        assert_eq!(fill.trade_opened.unwrap().trade_id, fill_id);
+        let request = request.await.unwrap();
+        assert!(request.starts_with("POST /v3/accounts/account/orders HTTP/1.1"));
+        assert!(request
+            .to_ascii_lowercase()
+            .contains("authorization: bearer fixture-token\r\n"));
+        let body: serde_json::Value =
+            serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap();
+        assert_eq!(body["order"]["type"], "MARKET");
+        assert_eq!(body["order"]["units"], units);
+    }
 }
 
 #[tokio::test]

@@ -133,6 +133,7 @@ pub struct GuaranteedStopLossDetails {
 /// Details of a trade that was opened as a result of an order fill.
 ///
 /// Present in [`OrderFillTransaction::trade_opened`] when the fill created a new trade.
+/// Older payloads may provide only `trade_id` and `units`; omitted details are `None`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TradeOpen {
@@ -142,15 +143,15 @@ pub struct TradeOpen {
     /// Number of units opened. Positive = long, negative = short.
     pub units: DecimalNumber,
     /// The price at which the trade was opened.
-    pub price: PriceValue,
+    pub price: Option<PriceValue>,
     /// Fee charged for guaranteed execution, in home currency units.
-    pub guaranteed_execution_fee: AccountUnits,
+    pub guaranteed_execution_fee: Option<AccountUnits>,
     /// Optional client extensions attached to the trade at open time.
     pub client_extensions: Option<ClientExtensions>,
     /// Half of the bid-ask spread cost at the time of opening, in home currency units.
-    pub half_spread_cost: AccountUnits,
+    pub half_spread_cost: Option<AccountUnits>,
     /// Margin required to hold the newly opened units, in home currency units.
-    pub initial_margin_required: AccountUnits,
+    pub initial_margin_required: Option<AccountUnits>,
 }
 
 /// Details of a trade that was fully or partially closed as a result of an order fill.

@@ -1,0 +1,55 @@
+{
+  "lastTransactionID": "647",
+  "orderCreateTransaction": {
+    "accountID": "account",
+    "batchID": "646",
+    "id": "646",
+    "instrument": "EUR_USD",
+    "positionFill": "DEFAULT",
+    "reason": "CLIENT_ORDER",
+    "requestID": "24396243026631135",
+    "time": "2018-03-20T12:51:41.781355167Z",
+    "timeInForce": "FOK",
+    "type": "MARKET_ORDER",
+    "units": "-100",
+    "userID": 1
+  },
+  "orderFillTransaction": {
+    "accountBalance": "4999.7608",
+    "accountID": "account",
+    "batchID": "646",
+    "commission": "0.0000",
+    "financing": "0.0000",
+    "fullPrice": {
+      "asks": [{"liquidity": "10000000", "price": "1.22821"}],
+      "bids": [{"liquidity": "10000000", "price": "1.22809"}],
+      "closeoutAsk": "1.22836",
+      "closeoutBid": "1.22794",
+      "timestamp": "2018-03-20T12:51:39.665618101Z"
+    },
+    "gainQuoteHomeConversionFactor": "1.30568",
+    "guaranteedExecutionFee": "0.0000",
+    "halfSpreadCost": "0.0078",
+    "id": "647",
+    "instrument": "EUR_USD",
+    "lossQuoteHomeConversionFactor": "1.30588",
+    "orderID": "646",
+    "pl": "0.0000",
+    "price": "1.22809",
+    "reason": "MARKET_ORDER",
+    "requestID": "24396243026631135",
+    "time": "2018-03-20T12:51:41.781355167Z",
+    "tradeOpened": {
+      "guaranteedExecutionFee": "0.0000",
+      "halfSpreadCost": "0.0078",
+      "initialMarginRequired": "8.3391",
+      "price": "1.22809",
+      "tradeID": "647",
+      "units": "-100"
+    },
+    "type": "ORDER_FILL",
+    "units": "-100",
+    "userID": 1
+  },
+  "relatedTransactionIDs": ["646", "647"]
+}
