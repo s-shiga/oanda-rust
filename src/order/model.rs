@@ -1,5 +1,38 @@
 use super::*;
 
+/// A stop-loss threshold expressed as either an absolute price or a distance.
+///
+/// Flattens to exactly one of `"price"` and `"distance"` in request and on-fill
+/// JSON. Deserialization rejects payloads with both values or neither value.
+#[derive(Debug, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum StopLossPrice {
+    Price(PriceValue),
+    Distance(DecimalNumber),
+}
+
+impl<'de> Deserialize<'de> for StopLossPrice {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Fields {
+            price: Option<PriceValue>,
+            distance: Option<DecimalNumber>,
+        }
+
+        let fields = Fields::deserialize(deserializer)?;
+        match (fields.price, fields.distance) {
+            (Some(price), None) => Ok(Self::Price(price)),
+            (None, Some(distance)) => Ok(Self::Distance(distance)),
+            _ => Err(serde::de::Error::custom(
+                "exactly one of price and distance must be specified",
+            )),
+        }
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Order enum (tagged union)
 // ---------------------------------------------------------------------------

@@ -3,7 +3,7 @@ use crate::client::request_option_setter;
 use crate::errors::APIError;
 use crate::http::Connection;
 use crate::instrument::InstrumentName;
-use crate::order::{OrderPositionFill, OrderTriggerCondition, TimeInForce};
+use crate::order::{OrderPositionFill, OrderTriggerCondition, StopLossPrice, TimeInForce};
 use crate::pricing::{ClientPrice, PriceValue};
 use crate::primitives::{Currency, DecimalNumber, HomeConversionFactors};
 use chrono::{DateTime, Utc};

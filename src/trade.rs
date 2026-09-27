@@ -16,7 +16,9 @@ use crate::transaction::{
 use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use strum_macros::Display;
 use thiserror::Error;
+use url::Url;
 
 /// A string that uniquely identifies a trade within an account.
 ///
@@ -43,8 +45,9 @@ pub enum TradeState {
 
 /// Extends [`TradeState`] with an `All` variant for use as a filter when
 /// listing trades.
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[strum(serialize_all = "SCREAMING_SNAKE_CASE")]
 pub enum TradeStateFilter {
     /// Return only open trades.
     Open,
@@ -94,8 +97,8 @@ pub struct Trade {
     /// Positive = long, negative = short.
     pub initial_units: DecimalNumber,
     /// The margin required to open the trade at its initial size, in home
-    /// currency units.
-    pub initial_margin_required: AccountUnits,
+    /// currency units. `None` when omitted by OANDA.
+    pub initial_margin_required: Option<AccountUnits>,
     /// The number of units currently open. Decreases as partial closes occur.
     /// Zero once the trade is fully closed.
     pub current_units: DecimalNumber,
@@ -107,8 +110,8 @@ pub struct Trade {
     /// in home currency units.
     #[serde(rename = "unrealizedPL")]
     pub unrealized_pl: AccountUnits,
-    /// Margin currently consumed by this trade's open units, in home currency units.
-    pub margin_used: AccountUnits,
+    /// Margin currently consumed by this trade's open units, in home currency, if reported.
+    pub margin_used: Option<AccountUnits>,
     /// The average price at which units have been closed. `None` if no units
     /// have been closed yet.
     pub average_close_price: Option<PriceValue>,
@@ -119,8 +122,8 @@ pub struct Trade {
     /// this trade, in home currency units.
     pub financing: AccountUnits,
     /// Cumulative dividend adjustment applied to this trade (for CFDs that
-    /// pay dividends), in home currency units.
-    pub dividend_adjustment: AccountUnits,
+    /// pay dividends), in home currency units. `None` when omitted by OANDA.
+    pub dividend_adjustment: Option<AccountUnits>,
     /// Timestamp at which the trade was fully closed. `None` while open.
     pub close_time: Option<DateTime<Utc>>,
     /// Optional client-supplied metadata attached to this trade.
@@ -161,8 +164,8 @@ pub struct TradeSummary {
     /// Positive = long, negative = short.
     pub initial_units: DecimalNumber,
     /// The margin required to open the trade at its initial size, in home
-    /// currency units.
-    pub initial_margin_required: AccountUnits,
+    /// currency units. `None` when omitted by OANDA.
+    pub initial_margin_required: Option<AccountUnits>,
     /// The number of units currently open.
     pub current_units: DecimalNumber,
     /// Cumulative realised profit/loss from partial closes, in home currency units.
@@ -171,8 +174,8 @@ pub struct TradeSummary {
     /// Current unrealised profit/loss, in home currency units.
     #[serde(rename = "unrealizedPL")]
     pub unrealized_pl: AccountUnits,
-    /// Margin currently consumed by this trade's open units, in home currency units.
-    pub margin_used: AccountUnits,
+    /// Margin currently consumed by this trade's open units, in home currency, if reported.
+    pub margin_used: Option<AccountUnits>,
     /// Average price at which units have been closed. `None` if no units have
     /// been closed yet.
     pub average_close_price: Option<PriceValue>,
@@ -182,8 +185,8 @@ pub struct TradeSummary {
     /// Cumulative financing charges or credits applied to this trade, in home
     /// currency units.
     pub financing: AccountUnits,
-    /// Cumulative dividend adjustment applied to this trade, in home currency units.
-    pub dividend_adjustment: AccountUnits,
+    /// Cumulative dividend adjustment in home currency units, if reported.
+    pub dividend_adjustment: Option<AccountUnits>,
     /// Timestamp at which the trade was fully closed. `None` while open.
     pub close_time: Option<DateTime<Utc>>,
     /// Optional client-supplied metadata attached to this trade.
@@ -227,6 +230,80 @@ pub struct CalculatedTradeState {
 // ---------------------------------------------------------------------------
 // Request types
 // ---------------------------------------------------------------------------
+
+/// Filters for one page of `GET /v3/accounts/{accountID}/trades`.
+///
+/// By default OANDA returns up to 50 open trades. Set `state` to
+/// [`TradeStateFilter::All`] to include closed trades, and use `before_id` to
+/// retrieve older pages while keeping the same filters.
+///
+/// ```no_run
+/// use oanda_rust::{client::Client, errors::APIError};
+/// use oanda_rust::trade::{ListTradesRequest, TradeStateFilter};
+///
+/// async fn example(client: &Client) -> Result<(), APIError> {
+///     let page = client.trade().list(
+///         ListTradesRequest::new()
+///             .state(TradeStateFilter::All)
+///             .count(100)
+///             .before_id("6397".into())
+///     ).await?;
+///     println!("{:?}", page.trades);
+///     Ok(())
+/// }
+/// ```
+#[derive(Debug, Default)]
+pub struct ListTradesRequest {
+    ids: Vec<TradeID>,
+    state: Option<TradeStateFilter>,
+    instrument: Option<InstrumentName>,
+    count: Option<u16>,
+    before_id: Option<TradeID>,
+}
+
+impl ListTradesRequest {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Adds a trade ID to the requested selection.
+    pub fn ids(mut self, id: TradeID) -> Self {
+        self.ids.push(id);
+        self
+    }
+
+    request_option_setter!(state, TradeStateFilter);
+    request_option_setter!(instrument, InstrumentName);
+    request_option_setter!(count, u16);
+    request_option_setter!(before_id, TradeID);
+
+    pub(crate) fn set_params(&self, url: &mut Url) -> Result<(), APIError> {
+        if self.count.is_some_and(|count| !(1..=500).contains(&count)) {
+            return Err(APIError::InvalidRequest(
+                "count must be between 1 and 500".into(),
+            ));
+        }
+        if !self.ids.is_empty() {
+            url.query_pairs_mut()
+                .append_pair("ids", &self.ids.join(","));
+        }
+        if let Some(state) = &self.state {
+            url.query_pairs_mut()
+                .append_pair("state", &state.to_string());
+        }
+        if let Some(instrument) = &self.instrument {
+            url.query_pairs_mut().append_pair("instrument", instrument);
+        }
+        if let Some(count) = self.count {
+            url.query_pairs_mut()
+                .append_pair("count", &count.to_string());
+        }
+        if let Some(id) = &self.before_id {
+            url.query_pairs_mut().append_pair("beforeID", id);
+        }
+        Ok(())
+    }
+}
 
 /// Request body for `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/close`.
 ///
@@ -394,13 +471,18 @@ impl<'a> TradeService<'a> {
         Self { connection }
     }
 
-    /// Lists all trades on the account (open and closed).
+    /// Retrieves one page of trades matching `req`.
     ///
-    /// Calls `GET /v3/accounts/{accountID}/trades`.
+    /// Calls `GET /v3/accounts/{accountID}/trades`. The default request returns
+    /// up to 50 open trades. Use [`ListTradesRequest::state`] to include closed
+    /// trades and [`ListTradesRequest::before_id`] to retrieve older pages.
+    /// This method does not fetch subsequent pages automatically.
     ///
-    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
-    pub async fn list(&self) -> Result<ListTradesResponse, APIError> {
-        let url = self.connection.account_url(&["trades"])?;
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured or
+    /// `count` is outside `1..=500`.
+    pub async fn list(&self, req: ListTradesRequest) -> Result<ListTradesResponse, APIError> {
+        let mut url = self.connection.account_url(&["trades"])?;
+        req.set_params(&mut url)?;
         self.connection.http_client.get_json(url).await
     }
 

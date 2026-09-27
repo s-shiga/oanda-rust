@@ -3,6 +3,7 @@ use oanda_rust::instrument::{DayOfWeek, InstrumentFinancing};
 use oanda_rust::order::*;
 use oanda_rust::position::ListPositionsResponse;
 use oanda_rust::pricing::{ClientPrice, PriceBucket, PricingStreamItem};
+use oanda_rust::trade::{ListTradesResponse, Trade, TradeStateFilter, TradeSummary};
 use oanda_rust::transaction::{
     GetTransactionsResponse, OrderFillTransaction, Transaction, TransactionStreamItem,
 };
@@ -312,6 +313,18 @@ fn regression_new_and_unknown_reasons_do_not_break_transaction_decoding() {
 }
 
 #[test]
+fn unknown_transaction_type_does_not_break_history_or_stream() {
+    let event = json!({"type": "NEW_ACCOUNT_EVENT", "id": "123", "extra": true});
+    let transaction: Transaction = serde_json::from_value(event.clone()).unwrap();
+    assert!(matches!(transaction, Transaction::Unknown));
+    let item: TransactionStreamItem = serde_json::from_value(event).unwrap();
+    assert!(
+        matches!(item, TransactionStreamItem::Transaction(transaction)
+        if matches!(*transaction, Transaction::Unknown))
+    );
+}
+
+#[test]
 fn regression_positions_decode_documented_response_without_fee_fields() {
     // Example response for GET /v3/accounts/{accountID}/openPositions from
     // https://developer.oanda.com/rest-live-v20/position-ep/
@@ -393,23 +406,111 @@ fn regression_instrument_financing_keeps_financing_days() {
 }
 
 #[test]
-fn regression_accounts_decode_with_resettable_pl_time_absent_zero_or_set() {
+fn regression_documented_trades_decode_in_lists_and_accounts() {
+    let value: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/trades.json")).unwrap();
+    let response: ListTradesResponse = serde_json::from_value(value.clone()).unwrap();
+    assert_eq!(response.trades[0].id, "6397");
+    assert!(response.trades[0].initial_margin_required.is_none());
+    assert!(response.trades[0].margin_used.is_none());
+    assert!(response.trades[0].dividend_adjustment.is_none());
+    let summary: TradeSummary = serde_json::from_value(value["trades"][0].clone()).unwrap();
+    assert_eq!(summary.current_units, "-600");
+    assert!(summary.initial_margin_required.is_none());
+    assert!(summary.margin_used.is_none());
+    assert!(summary.dividend_adjustment.is_none());
+    let account: Account = serde_json::from_value(json!({
+        "id":"001", "currency":"USD", "createdByUserID":1,
+        "createdTime":"2026-01-01T00:00:00Z", "trades":value["trades"]
+    }))
+    .unwrap();
+    assert_eq!(account.trades.unwrap()[0].id, "6397");
+}
+
+#[test]
+fn regression_trade_optional_values_are_preserved_and_validated() {
+    let response: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/trades.json")).unwrap();
+    let mut value = response["trades"][0].clone();
+    value["initialMarginRequired"] = json!("42.01");
+    value["marginUsed"] = json!("41.25");
+    value["dividendAdjustment"] = json!("0.50");
+    let trade: Trade = serde_json::from_value(value.clone()).unwrap();
+    let summary: TradeSummary = serde_json::from_value(value.clone()).unwrap();
+    for (initial, used, dividend) in [
+        (
+            trade.initial_margin_required,
+            trade.margin_used,
+            trade.dividend_adjustment,
+        ),
+        (
+            summary.initial_margin_required,
+            summary.margin_used,
+            summary.dividend_adjustment,
+        ),
+    ] {
+        assert_eq!(initial.as_deref(), Some("42.01"));
+        assert_eq!(used.as_deref(), Some("41.25"));
+        assert_eq!(dividend.as_deref(), Some("0.50"));
+    }
+    let mut invalid = value.clone();
+    invalid["marginUsed"] = json!(false);
+    assert!(serde_json::from_value::<Trade>(invalid.clone()).is_err());
+    assert!(serde_json::from_value::<TradeSummary>(invalid).is_err());
+    value.as_object_mut().unwrap().remove("id");
+    assert!(serde_json::from_value::<Trade>(value.clone()).is_err());
+    assert!(serde_json::from_value::<TradeSummary>(value).is_err());
+}
+
+#[test]
+fn regression_trade_state_filters_use_wire_values() {
+    for (state, expected) in [
+        (TradeStateFilter::Open, "OPEN"),
+        (TradeStateFilter::Closed, "CLOSED"),
+        (TradeStateFilter::CloseWhenTradeable, "CLOSE_WHEN_TRADEABLE"),
+        (TradeStateFilter::All, "ALL"),
+    ] {
+        assert_eq!(state.to_string(), expected);
+        assert_eq!(serde_json::to_value(state).unwrap(), expected);
+    }
+}
+
+#[test]
+fn regression_accounts_round_trip_optional_resettable_pl_time() {
     let base = json!({"id":"001", "currency":"USD", "createdByUserID":1,
         "createdTime":"2026-01-01T00:00:00Z"});
-    let summary: AccountSummary = serde_json::from_value(base.clone()).unwrap();
-    assert!(summary.resettable_pl_time.is_none());
-    let account: Account = serde_json::from_value(base.clone()).unwrap();
-    assert!(account.resettable_pl_time.is_none());
-
-    let mut zero = base.clone();
-    zero["resettablePLTime"] = json!("0");
-    let account: Account = serde_json::from_value(zero).unwrap();
-    assert!(account.resettable_pl_time.is_none());
-
-    let mut set = base;
-    set["resettablePLTime"] = json!("2026-02-01T00:00:00Z");
-    let account: Account = serde_json::from_value(set).unwrap();
-    assert!(account.resettable_pl_time.is_some());
+    for time in [
+        None,
+        Some(json!(null)),
+        Some(json!("0")),
+        Some(json!("2026-02-01T00:00:00Z")),
+    ] {
+        let mut value = base.clone();
+        if let Some(time) = time {
+            value["resettablePLTime"] = time;
+        }
+        let expected = (value["resettablePLTime"] == "2026-02-01T00:00:00Z").then(|| {
+            "2026-02-01T00:00:00Z"
+                .parse::<chrono::DateTime<chrono::Utc>>()
+                .unwrap()
+        });
+        let account: Account = serde_json::from_value(value.clone()).unwrap();
+        let summary: AccountSummary = serde_json::from_value(value).unwrap();
+        assert_eq!(account.resettable_pl_time, expected);
+        assert_eq!(summary.resettable_pl_time, expected);
+        let account: Account =
+            serde_json::from_value(serde_json::to_value(account).unwrap()).unwrap();
+        let summary: AccountSummary =
+            serde_json::from_value(serde_json::to_value(summary).unwrap()).unwrap();
+        assert_eq!(account.resettable_pl_time, expected);
+        assert_eq!(summary.resettable_pl_time, expected);
+    }
+    for invalid in [json!("not-a-date"), json!(0), json!(false)] {
+        let mut value = base.clone();
+        value["resettablePLTime"] = invalid;
+        assert!(serde_json::from_value::<Account>(value.clone()).is_err());
+        assert!(serde_json::from_value::<AccountSummary>(value).is_err());
+    }
 }
 
 #[test]

@@ -88,6 +88,11 @@ pub enum Transaction {
     DividendAdjustmentTransaction(DividendAdjustmentTransaction),
     #[serde(rename = "RESET_RESETTABLE_PL")]
     ResetResettablePLTransaction(ResetResettablePLTransaction),
+    /// A transaction type introduced by OANDA after this crate was released.
+    /// Unknown transactions can be skipped while processing a stream; a later
+    /// heartbeat still supplies the latest transaction ID for gap detection.
+    #[serde(other)]
+    Unknown,
 }
 
 /// A tagged union covering only the transaction types that create a new order.

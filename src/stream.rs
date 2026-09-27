@@ -6,7 +6,25 @@ use crate::transaction::TransactionStreamItem;
 use futures_util::stream::StreamExt;
 use futures_util::Stream;
 use serde::de::DeserializeOwned;
+use std::pin::Pin;
 use url::Url;
+
+/// Optional parameters for the pricing stream. OANDA sends a current price on
+/// connection unless `snapshot` is disabled.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PricingStreamOptions {
+    pub snapshot: bool,
+    pub include_home_conversions: bool,
+}
+
+impl Default for PricingStreamOptions {
+    fn default() -> Self {
+        Self {
+            snapshot: true,
+            include_home_conversions: false,
+        }
+    }
+}
 
 /// HTTP client for OANDA's long-lived streaming endpoints.
 ///
@@ -101,8 +119,20 @@ impl StreamClient {
     where
         F: FnMut(TransactionStreamItem) -> Result<(), APIError>,
     {
+        consume_items(self.transactions_stream().await?, handler).await
+    }
+
+    /// Opens the transaction stream and returns its messages as a pull-based
+    /// stream. Dropping the returned stream closes the connection. A transport,
+    /// framing, or decoding failure is yielded as an error and ends the stream.
+    pub async fn transactions_stream(
+        &self,
+    ) -> Result<
+        impl Stream<Item = Result<TransactionStreamItem, APIError>> + Send + 'static,
+        APIError,
+    > {
         let url = self.connection.account_url(&["transactions", "stream"])?;
-        self.consume(url, handler).await
+        self.open(url).await
     }
 
     /// Opens a persistent connection to the pricing stream and invokes
@@ -126,29 +156,73 @@ impl StreamClient {
     where
         F: FnMut(PricingStreamItem) -> Result<(), APIError>,
     {
+        consume_items(self.pricing_stream(instruments).await?, handler).await
+    }
+
+    /// Opens a pricing stream with OANDA's default options.
+    pub async fn pricing_stream(
+        &self,
+        instruments: &[&str],
+    ) -> Result<impl Stream<Item = Result<PricingStreamItem, APIError>> + Send + 'static, APIError>
+    {
+        self.pricing_stream_with_options(instruments, PricingStreamOptions::default())
+            .await
+    }
+
+    /// Opens a pricing stream, optionally suppressing the connect snapshot or
+    /// requesting home-currency conversion factors.
+    pub async fn pricing_stream_with_options(
+        &self,
+        instruments: &[&str],
+        options: PricingStreamOptions,
+    ) -> Result<impl Stream<Item = Result<PricingStreamItem, APIError>> + Send + 'static, APIError>
+    {
         let mut url = self.connection.account_url(&["pricing", "stream"])?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments_query(instruments)?);
-        self.consume(url, handler).await
+        if !options.snapshot {
+            url.query_pairs_mut().append_pair("snapshot", "false");
+        }
+        if options.include_home_conversions {
+            url.query_pairs_mut()
+                .append_pair("includeHomeConversions", "true");
+        }
+        self.open(url).await
     }
 
-    async fn consume<T, F>(&self, url: Url, handler: F) -> Result<(), APIError>
+    async fn open<T>(
+        &self,
+        url: Url,
+    ) -> Result<impl Stream<Item = Result<T, APIError>> + Send + 'static, APIError>
     where
-        T: DeserializeOwned,
-        F: FnMut(T) -> Result<(), APIError>,
+        T: DeserializeOwned + Send + 'static,
     {
         let response = self.connection.http_client.get(url).send().await?;
         if response.status() != reqwest::StatusCode::OK {
-            return http::decode_response::<()>(response, reqwest::StatusCode::OK, None).await;
+            return Err(
+                http::decode_response::<()>(response, reqwest::StatusCode::OK, None)
+                    .await
+                    .unwrap_err(),
+            );
         }
-        consume_ndjson(
+        Ok(frame_ndjson(
             response
                 .bytes_stream()
                 .map(|chunk| chunk.map_err(APIError::from)),
-            handler,
-        )
-        .await
+        ))
     }
+}
+
+async fn consume_items<T, S, F>(stream: S, mut handler: F) -> Result<(), APIError>
+where
+    S: Stream<Item = Result<T, APIError>>,
+    F: FnMut(T) -> Result<(), APIError>,
+{
+    futures_util::pin_mut!(stream);
+    while let Some(item) = stream.next().await {
+        handler(item?)?;
+    }
+    Ok(())
 }
 
 /// Largest single stream message accepted. OANDA's pricing and transaction
@@ -158,40 +232,84 @@ const MAX_MESSAGE_BYTES: usize = 1 << 20;
 /// Frames messages independently of HTTP chunk boundaries, including a final
 /// message without a newline. Incomplete JSON at EOF, or a message longer than
 /// [`MAX_MESSAGE_BYTES`], is reported as an error.
-async fn consume_ndjson<T, S, B, F>(stream: S, mut handler: F) -> Result<(), APIError>
+struct FrameState<S> {
+    stream: Pin<Box<S>>,
+    buffer: Vec<u8>,
+    chunk: Vec<u8>,
+    offset: usize,
+}
+
+fn frame_ndjson<T, S, B>(stream: S) -> impl Stream<Item = Result<T, APIError>> + Send
 where
-    T: DeserializeOwned,
-    S: Stream<Item = Result<B, APIError>>,
-    B: AsRef<[u8]>,
+    T: DeserializeOwned + Send,
+    S: Stream<Item = Result<B, APIError>> + Send,
+    B: AsRef<[u8]> + Send,
+{
+    futures_util::stream::try_unfold(
+        FrameState {
+            stream: Box::pin(stream),
+            buffer: Vec::new(),
+            chunk: Vec::new(),
+            offset: 0,
+        },
+        |mut state| async move {
+            loop {
+                if state.offset == state.chunk.len() {
+                    match state.stream.next().await {
+                        Some(chunk) => {
+                            state.chunk = chunk?.as_ref().to_vec();
+                            state.offset = 0;
+                        }
+                        None => {
+                            let line = state.buffer.trim_ascii();
+                            return if line.is_empty() {
+                                Ok(None)
+                            } else {
+                                let item = serde_json::from_slice::<T>(line)?;
+                                state.buffer.clear();
+                                Ok(Some((item, state)))
+                            };
+                        }
+                    }
+                }
+                let remaining = &state.chunk[state.offset..];
+                let end = remaining.iter().position(|byte| *byte == b'\n');
+                let length = end.map_or(remaining.len(), |position| position + 1);
+                state.buffer.extend_from_slice(&remaining[..length]);
+                state.offset += length;
+                if state.buffer.len() > MAX_MESSAGE_BYTES {
+                    return Err(APIError::JSONError(
+                        <serde_json::Error as serde::de::Error>::custom(format!(
+                            "stream message exceeds {MAX_MESSAGE_BYTES} bytes"
+                        )),
+                    ));
+                }
+                if end.is_some() {
+                    let line = state.buffer.trim_ascii();
+                    let item = if line.is_empty() {
+                        None
+                    } else {
+                        Some(serde_json::from_slice::<T>(line)?)
+                    };
+                    state.buffer.clear();
+                    if let Some(item) = item {
+                        return Ok(Some((item, state)));
+                    }
+                }
+            }
+        },
+    )
+}
+
+#[cfg(test)]
+async fn consume_ndjson<T, S, B, F>(stream: S, handler: F) -> Result<(), APIError>
+where
+    T: DeserializeOwned + Send,
+    S: Stream<Item = Result<B, APIError>> + Send,
+    B: AsRef<[u8]> + Send,
     F: FnMut(T) -> Result<(), APIError>,
 {
-    futures_util::pin_mut!(stream);
-    let mut buffer = Vec::new();
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk?;
-        for part in chunk.as_ref().split_inclusive(|byte| *byte == b'\n') {
-            buffer.extend_from_slice(part);
-            if buffer.len() > MAX_MESSAGE_BYTES {
-                return Err(APIError::JSONError(
-                    <serde_json::Error as serde::de::Error>::custom(format!(
-                        "stream message exceeds {MAX_MESSAGE_BYTES} bytes"
-                    )),
-                ));
-            }
-            if part.last() == Some(&b'\n') {
-                let line = buffer.trim_ascii();
-                if !line.is_empty() {
-                    handler(serde_json::from_slice(line)?)?;
-                }
-                buffer.clear();
-            }
-        }
-    }
-    let line = buffer.trim_ascii();
-    if !line.is_empty() {
-        handler(serde_json::from_slice(line)?)?;
-    }
-    Ok(())
+    consume_items(frame_ndjson(stream), handler).await
 }
 
 #[cfg(test)]

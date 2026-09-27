@@ -83,17 +83,38 @@ pub struct TakeProfitDetails {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StopLossDetails {
-    /// Absolute price level at which the stop-loss triggers. Mutually exclusive with `distance`.
-    pub price: PriceValue,
-    /// Distance in price units from the trade price at which the stop-loss triggers.
-    /// Mutually exclusive with `price`.
-    pub distance: Option<DecimalNumber>,
+    /// Absolute stop price or distance from the trade's open price.
+    #[serde(flatten)]
+    pub price: StopLossPrice,
     /// How long the order remains active.
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created stop-loss order.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl StopLossDetails {
+    /// Creates an on-fill stop loss at an absolute price, with GTC time in force.
+    pub fn new(price: PriceValue) -> Self {
+        Self::with_price(StopLossPrice::Price(price))
+    }
+
+    /// Creates an on-fill stop loss at a distance from the trade's open price.
+    pub fn from_distance(distance: DecimalNumber) -> Self {
+        Self::with_price(StopLossPrice::Distance(distance))
+    }
+
+    fn with_price(price: StopLossPrice) -> Self {
+        Self {
+            price,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            client_extensions: None,
+        }
+    }
 }
 
 /// Parameters for a trailing stop-loss order to be created when a trade opens.
@@ -118,16 +139,38 @@ pub struct TrailingStopLossDetails {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GuaranteedStopLossDetails {
-    /// Absolute price level at which the guaranteed stop triggers. Mutually exclusive with `distance`.
-    pub price: PriceValue,
-    /// Distance in price units from the trade price. Mutually exclusive with `price`.
-    pub distance: Option<DecimalNumber>,
+    /// Absolute guaranteed stop price or distance from the trade's open price.
+    #[serde(flatten)]
+    pub price: StopLossPrice,
     /// How long the order remains active.
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created guaranteed stop-loss order.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl GuaranteedStopLossDetails {
+    /// Creates an on-fill guaranteed stop loss at an absolute price, with GTC time in force.
+    pub fn new(price: PriceValue) -> Self {
+        Self::with_price(StopLossPrice::Price(price))
+    }
+
+    /// Creates an on-fill guaranteed stop loss at a distance from the trade's open price.
+    pub fn from_distance(distance: DecimalNumber) -> Self {
+        Self::with_price(StopLossPrice::Distance(distance))
+    }
+
+    fn with_price(price: StopLossPrice) -> Self {
+        Self {
+            price,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            client_extensions: None,
+        }
+    }
 }
 
 /// Details of a trade that was opened as a result of an order fill.

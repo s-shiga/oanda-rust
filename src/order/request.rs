@@ -464,12 +464,9 @@ pub struct StopLossOrderRequest {
     /// Client-provided trade ID, if any. Omitted if `None`.
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
-    /// Absolute stop price. Mutually exclusive with `distance`.
-    pub price: PriceValue,
-    /// Distance from current price for the stop. Mutually exclusive with `price`.
-    /// Omitted if `None`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub distance: Option<DecimalNumber>,
+    /// Absolute stop price or distance from the current price.
+    #[serde(flatten)]
+    pub price: StopLossPrice,
     /// Whether to request guaranteed execution at the stop price. Omitted if `None`.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub guaranteed: Option<bool>,
@@ -490,11 +487,19 @@ impl StopLossOrderRequest {
     ///
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
+        Self::with_price(trade_id, StopLossPrice::Price(price))
+    }
+
+    /// Creates a stop-loss request using a distance from the current price.
+    pub fn from_distance(trade_id: TradeID, distance: DecimalNumber) -> Self {
+        Self::with_price(trade_id, StopLossPrice::Distance(distance))
+    }
+
+    fn with_price(trade_id: TradeID, price: StopLossPrice) -> Self {
         StopLossOrderRequest {
             trade_id,
             client_trade_id: None,
             price,
-            distance: None,
             guaranteed: None,
             time_in_force: TimeInForce::GTC,
             gtd_time: None,
@@ -517,7 +522,13 @@ impl StopLossOrderRequest {
     }
 
     request_option_setter!(client_trade_id, TradeID);
-    request_option_setter!(distance, PriceValue);
+
+    /// Uses a distance from the current price, replacing any absolute price.
+    pub fn distance(mut self, distance: DecimalNumber) -> Self {
+        self.price = StopLossPrice::Distance(distance);
+        self
+    }
+
     request_setter!(trigger_condition, OrderTriggerCondition);
     request_option_setter!(client_extensions, ClientExtensions);
 }
@@ -537,12 +548,9 @@ pub struct GuaranteedStopLossOrderRequest {
     /// Client-provided trade ID, if any. Omitted if `None`.
     #[serde(rename = "clientTradeID", skip_serializing_if = "Option::is_none")]
     pub client_trade_id: Option<ClientID>,
-    /// The guaranteed stop price.
-    pub price: PriceValue,
-    /// Distance from current price; converted to an absolute price by the server.
-    /// Omitted if `None`.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub distance: Option<DecimalNumber>,
+    /// Absolute guaranteed stop price or distance from the current price.
+    #[serde(flatten)]
+    pub price: StopLossPrice,
     /// How long the order remains active.
     pub time_in_force: TimeInForce,
     /// Expiry timestamp used when `time_in_force` is `GTD`.
@@ -560,11 +568,19 @@ impl GuaranteedStopLossOrderRequest {
     ///
     /// Defaults: `time_in_force = GTC`, `trigger_condition = Default`.
     pub fn new(trade_id: TradeID, price: PriceValue) -> Self {
+        Self::with_price(trade_id, StopLossPrice::Price(price))
+    }
+
+    /// Creates a guaranteed stop-loss request using a distance from the current price.
+    pub fn from_distance(trade_id: TradeID, distance: DecimalNumber) -> Self {
+        Self::with_price(trade_id, StopLossPrice::Distance(distance))
+    }
+
+    fn with_price(trade_id: TradeID, price: StopLossPrice) -> Self {
         GuaranteedStopLossOrderRequest {
             trade_id,
             client_trade_id: None,
             price,
-            distance: None,
             time_in_force: TimeInForce::GTC,
             gtd_time: None,
             trigger_condition: OrderTriggerCondition::Default,
@@ -586,7 +602,13 @@ impl GuaranteedStopLossOrderRequest {
     }
 
     request_option_setter!(client_trade_id, ClientID);
-    request_option_setter!(distance, PriceValue);
+
+    /// Uses a distance from the current price, replacing any absolute price.
+    pub fn distance(mut self, distance: DecimalNumber) -> Self {
+        self.price = StopLossPrice::Distance(distance);
+        self
+    }
+
     request_setter!(trigger_condition, OrderTriggerCondition);
     request_option_setter!(client_extensions, ClientExtensions);
 }

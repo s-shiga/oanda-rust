@@ -30,7 +30,8 @@ pub enum Direction {
 /// Serde deserializer for optional OANDA datetime fields.
 ///
 /// OANDA represents "no datetime" as the string `"0"` rather than JSON `null`.
-/// This helper maps `"0"` to `None` and any valid RFC 3339 timestamp to `Some`.
+/// This helper maps `"0"` and JSON `null` to `None`, and any valid RFC 3339 timestamp
+/// to `Some`. Accepting `null` allows values serialized from `None` to round-trip.
 /// Pair it with `#[serde(default)]` so that a missing field is also `None`.
 pub fn deserialize_datetime<'de, D>(deserializer: D) -> Result<Option<DateTime<Utc>>, D::Error>
 where
@@ -43,9 +44,10 @@ where
         None(String),
     }
 
-    match Value::deserialize(deserializer)? {
-        Value::DateTime(dt) => Ok(Some(dt)),
-        Value::None(s) if s == "0" => Ok(None),
+    match Option::<Value>::deserialize(deserializer)? {
+        None => Ok(None),
+        Some(Value::DateTime(dt)) => Ok(Some(dt)),
+        Some(Value::None(s)) if s == "0" => Ok(None),
         _ => Err(serde::de::Error::custom("unexpected datetime")),
     }
 }

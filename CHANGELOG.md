@@ -15,18 +15,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `half_spread_cost`. Callers must handle `None` for unavailable values.
 - `TradeOpen::price`, `guaranteed_execution_fee`, `half_spread_cost`, and
   `initial_margin_required` are also now `Option` for older fills.
+- `Trade::initial_margin_required`, `margin_used`, and `dividend_adjustment`, and
+  the same fields on `TradeSummary`, are now `Option<AccountUnits>` because
+  documented responses omit them. Callers must handle unavailable values.
+- `TradeService::list` now takes a `ListTradesRequest`. Use
+  `.list(ListTradesRequest::new())` for the previous default of one page of up to
+  50 open trades. Set `.state(TradeStateFilter::All)` to include closed trades,
+  and `.before_id(id)` to request an older page with the same filters.
+- `StopLossOrderRequest`, `GuaranteedStopLossOrderRequest`, `StopLossDetails`, and
+  `GuaranteedStopLossDetails` now use `price: StopLossPrice` instead of separate
+  `price` and `distance` fields. For struct literals, use
+  `StopLossPrice::Price(value)` or `StopLossPrice::Distance(value)` and remove the
+  old `distance` field. Existing request `new(trade_id, price)` constructors
+  still accept an absolute price string.
 
 ### Added
 
+- Pull-based `StreamClient::pricing_stream`, `pricing_stream_with_options`, and
+  `transactions_stream` methods for async consumers. Pricing options expose
+  `snapshot` and `includeHomeConversions`; the callback methods remain.
+- `Transaction::Unknown` so a new transaction type does not terminate a stream
+  or history response.
 - Optional legacy `price`, `gain_quote_home_conversion_factor`, and
   `loss_quote_home_conversion_factor` fields on `OrderFillTransaction` preserve
   values supplied by older payloads.
+- `ListTradesRequest` supports trade IDs, state, instrument, count (1–500), and
+  the `beforeID` pagination cursor.
+- `from_distance` constructors for regular and guaranteed stop-loss requests
+  and on-fill details. Both on-fill detail types also have `new(price)`
+  constructors that default to GTC.
 
 ### Fixed
 
 - Successful order responses, transaction history, and transaction stream items
   decode when fills omit price snapshots, conversion factors, or cost details.
   Missing values remain `None` instead of being replaced with zero or inferred.
+- Stop-loss distance setters replace the absolute price. Requests and on-fill
+  details serialize exactly one of `price` and `distance`; decoding rejects
+  both or neither and accepts distance-only on-fill responses.
+- Trade lists and account responses containing trades decode without margin or
+  dividend fields, while preserving those fields when provided.
+- Trade listings expose state filters and pagination instead of documenting a
+  single default page as all open and closed trades.
+- `Account` and `AccountSummary` round-trip through JSON when `resettablePLTime`
+  is absent or `"0"`. Their datetime deserializer now accepts JSON `null` as
+  `None` and continues to reject malformed timestamps.
 
 ## [0.3.0] - 2026-09-23
 

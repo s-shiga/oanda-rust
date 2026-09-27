@@ -23,11 +23,16 @@ transport options. Authentication and Accept headers are retained when replacing
 the HTTP client. `with_base_url(url)?` overrides the endpoint for local fixtures
 or a custom gateway; requests to that endpoint include the configured token.
 
-Streaming handlers accept `FnMut`, so they can capture counters, channels, or
-other application state. Both endpoints use the same newline-delimited JSON
-parser. A complete final message without a newline is delivered; truncated JSON
-at EOF returns an error. Handlers run synchronously and returning an error stops
-dispatch immediately.
+`StreamClient::pricing_stream` and `transactions_stream` return pull-based
+streams. Use `futures_util::StreamExt::next` to await each item, and drop the
+stream to close the connection. `pricing_stream_with_options` can disable the
+connect snapshot or request home-currency conversion factors. The caller owns
+stall detection, reconnection, and transaction catch-up through the REST API.
+
+The callback methods `pricing` and `transactions` remain available. They
+accept `FnMut` and use the same newline-delimited JSON parser. A complete final
+message without a newline is delivered; truncated JSON at EOF returns an error.
+Returning an error from a handler stops dispatch immediately.
 
 HTTP response failures are wrapped in `APIError::Response`. The contained
 `HttpResponseError` exposes `status`, `request_id`, and `source`; structured OANDA

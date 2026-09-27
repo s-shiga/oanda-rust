@@ -1,11 +1,12 @@
+use futures_util::StreamExt;
 use oanda_rust::account::ConfigureAccountRequest;
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
 use oanda_rust::instrument::CandlesticksRequest;
 use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
-use oanda_rust::stream::StreamClient;
-use oanda_rust::trade::CloseTradeRequest;
+use oanda_rust::stream::{PricingStreamOptions, StreamClient};
+use oanda_rust::trade::{CloseTradeRequest, ListTradesRequest, TradeState, TradeStateFilter};
 use oanda_rust::transaction::{ClientExtensions, OrderCreateRejectTransaction};
 use serde_json::json;
 use std::time::Duration;
@@ -110,6 +111,93 @@ async fn get_uses_custom_transport_and_preserves_authentication() {
     assert!(request.contains("authorization: bearer fixture-token\r\n"));
     assert!(request.contains("accept: application/json\r\n"));
     assert!(request.contains("x-fixture: injected\r\n"));
+}
+
+#[tokio::test]
+async fn trade_list_defaults_and_id_selection_are_sent() {
+    let (url, request) = fixture("200 OK", include_str!("fixtures/trades.json")).await;
+    let response = client(url)
+        .trade()
+        .list(ListTradesRequest::new())
+        .await
+        .unwrap();
+    assert_eq!(response.trades[0].id, "6397");
+    assert!(request
+        .await
+        .unwrap()
+        .starts_with("GET /v3/accounts/account/trades HTTP/1.1"));
+
+    let (url, request) = fixture("200 OK", include_str!("fixtures/trades.json")).await;
+    client(url)
+        .trade()
+        .list(
+            ListTradesRequest::new()
+                .ids("6397".into())
+                .ids("6387".into())
+                .state(TradeStateFilter::All)
+                .count(500),
+        )
+        .await
+        .unwrap();
+    assert!(request.await.unwrap().starts_with(
+        "GET /v3/accounts/account/trades?ids=6397%2C6387&state=ALL&count=500 HTTP/1.1"
+    ));
+}
+
+#[tokio::test]
+async fn trade_list_can_retrieve_closed_trades_on_later_pages() {
+    let mut before_id: Option<String> = None;
+    for id in [Some("6397"), Some("6387"), None] {
+        let mut body: serde_json::Value =
+            serde_json::from_str(include_str!("fixtures/trades.json")).unwrap();
+        if let Some(id) = id {
+            body["trades"][0]["id"] = json!(id);
+            body["trades"][0]["state"] = json!("CLOSED");
+            body["trades"][0]["currentUnits"] = json!("0");
+        } else {
+            body["trades"] = json!([]);
+        }
+        let (url, request) = fixture("200 OK", &body.to_string()).await;
+        let mut query = ListTradesRequest::new()
+            .state(TradeStateFilter::Closed)
+            .instrument("USD_CAD".into())
+            .count(1);
+        if let Some(id) = &before_id {
+            query = query.before_id(id.clone());
+        }
+        let page = client(url).trade().list(query).await.unwrap();
+        let request = request.await.unwrap();
+        let target = request.split_whitespace().nth(1).unwrap();
+        let url = Url::parse(&format!("http://fixture{target}")).unwrap();
+        let params: std::collections::BTreeMap<_, _> = url.query_pairs().into_owned().collect();
+        assert_eq!(params["state"], "CLOSED");
+        assert_eq!(params["instrument"], "USD_CAD");
+        assert_eq!(params["count"], "1");
+        assert_eq!(params.get("beforeID"), before_id.as_ref());
+        if let Some(id) = id {
+            assert_eq!(page.trades[0].id, id);
+            assert!(matches!(page.trades[0].state, TradeState::Closed));
+            before_id = Some(page.trades[0].id.clone());
+        } else {
+            assert!(page.trades.is_empty());
+        }
+    }
+}
+
+#[tokio::test]
+async fn trade_list_rejects_invalid_page_sizes_before_dispatch() {
+    let client = Client::new_practice("fixture-token")
+        .unwrap()
+        .with_account_id("account".into());
+    for count in [0, 501] {
+        assert!(matches!(
+            client
+                .trade()
+                .list(ListTradesRequest::new().count(count))
+                .await,
+            Err(APIError::InvalidRequest(_))
+        ));
+    }
 }
 
 #[tokio::test]
@@ -532,6 +620,53 @@ async fn streams_accept_captured_handlers_and_custom_transport() {
             assert!(request.starts_with("get /v3/accounts/account/transactions/stream "));
         }
     }
+}
+
+#[tokio::test]
+async fn pull_streams_decode_messages_and_send_pricing_options() {
+    let body = "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:00Z\"}\n";
+    let (url, request) = fixture("200 OK", body).await;
+    let client = StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_http_client(custom_http_client())
+        .with_base_url(url)
+        .unwrap()
+        .with_account_id("account".into());
+    let options = PricingStreamOptions {
+        snapshot: false,
+        include_home_conversions: true,
+    };
+    let stream = client
+        .pricing_stream_with_options(&["USD_JPY"], options)
+        .await
+        .unwrap();
+    futures_util::pin_mut!(stream);
+    assert!(matches!(
+        stream.next().await.unwrap().unwrap(),
+        oanda_rust::pricing::PricingStreamItem::Heartbeat(_)
+    ));
+    assert!(stream.next().await.is_none());
+    let request = request.await.unwrap().to_ascii_lowercase();
+    assert!(request.contains("snapshot=false"));
+    assert!(request.contains("includehomeconversions=true"));
+
+    let body =
+        "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:00Z\",\"lastTransactionID\":\"1\"}\n";
+    let (url, request) = fixture("200 OK", body).await;
+    let client = StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_http_client(custom_http_client())
+        .with_base_url(url)
+        .unwrap()
+        .with_account_id("account".into());
+    let stream = client.transactions_stream().await.unwrap();
+    futures_util::pin_mut!(stream);
+    assert!(matches!(
+        stream.next().await.unwrap().unwrap(),
+        oanda_rust::transaction::TransactionStreamItem::Heartbeat(_)
+    ));
+    assert!(stream.next().await.is_none());
+    request.await.unwrap();
 }
 
 #[tokio::test]
