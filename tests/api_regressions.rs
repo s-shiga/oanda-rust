@@ -164,6 +164,20 @@ fn regression_prices_accept_rest_stream_and_full_price_timestamps() {
 }
 
 #[test]
+fn pricing_stream_accepts_untagged_home_conversions() {
+    let wire = json!({"homeConversions":[{
+        "currency":"USD", "accountGain":"150.1", "accountLoss":"150.2",
+        "positionValue":"150.15"
+    }]});
+    let item: PricingStreamItem = serde_json::from_value(wire.clone()).unwrap();
+    let PricingStreamItem::HomeConversions(ref update) = item else {
+        panic!("expected home conversions")
+    };
+    assert_eq!(update.home_conversions[0].currency, "USD");
+    assert_eq!(serde_json::to_value(item).unwrap(), wire);
+}
+
+#[test]
 fn regression_order_requests_have_one_discriminator_and_round_trip() {
     let orders = [
         (
@@ -316,11 +330,22 @@ fn regression_new_and_unknown_reasons_do_not_break_transaction_decoding() {
 fn unknown_transaction_type_does_not_break_history_or_stream() {
     let event = json!({"type": "NEW_ACCOUNT_EVENT", "id": "123", "extra": true});
     let transaction: Transaction = serde_json::from_value(event.clone()).unwrap();
-    assert!(matches!(transaction, Transaction::Unknown));
-    let item: TransactionStreamItem = serde_json::from_value(event).unwrap();
+    let Transaction::Unknown(ref unknown) = transaction else {
+        panic!("expected unknown transaction")
+    };
+    assert_eq!(unknown.id, "123");
+    assert_eq!(unknown.transaction_type, "NEW_ACCOUNT_EVENT");
+    assert_eq!(unknown.fields["extra"], true);
+    assert_eq!(serde_json::to_value(transaction).unwrap(), event);
+    let item: TransactionStreamItem = serde_json::from_value(event.clone()).unwrap();
+    assert_eq!(serde_json::to_value(&item).unwrap(), event);
     assert!(
         matches!(item, TransactionStreamItem::Transaction(transaction)
-        if matches!(*transaction, Transaction::Unknown))
+        if matches!(*transaction, Transaction::Unknown(ref unknown) if unknown.id == "123"))
+    );
+    assert!(serde_json::from_value::<Transaction>(json!({"type":"NEW_ACCOUNT_EVENT"})).is_err());
+    assert!(
+        serde_json::from_value::<Transaction>(json!({"type":"ORDER_CANCEL", "id":"123"})).is_err()
     );
 }
 

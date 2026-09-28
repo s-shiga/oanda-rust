@@ -206,9 +206,10 @@ pub struct PricingHeartbeat {
 // ---------------------------------------------------------------------------
 
 /// A single item in the pricing stream, which is either a live price update
-/// or a heartbeat.
+/// a home-currency conversion update, or a heartbeat.
 ///
-/// Deserialised from newline-delimited JSON using the `"type"` field as a tag.
+/// Price and heartbeat messages use the `"type"` field as a tag. Home
+/// conversions arrive as a standalone object without a `"type"` field.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum PricingStreamItem {
@@ -220,6 +221,16 @@ pub enum PricingStreamItem {
     /// A periodic keepalive message confirming the stream is active.
     #[serde(rename = "HEARTBEAT")]
     Heartbeat(PricingHeartbeat),
+    /// Conversion factors delivered as a standalone, untagged stream message.
+    #[serde(untagged)]
+    HomeConversions(PricingHomeConversions),
+}
+
+/// A standalone conversion update sent when `includeHomeConversions=true`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PricingHomeConversions {
+    pub home_conversions: Vec<HomeConversions>,
 }
 
 // ---------------------------------------------------------------------------

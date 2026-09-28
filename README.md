@@ -26,7 +26,8 @@ or a custom gateway; requests to that endpoint include the configured token.
 `StreamClient::pricing_stream` and `transactions_stream` return pull-based
 streams. Use `futures_util::StreamExt::next` to await each item, and drop the
 stream to close the connection. `pricing_stream_with_options` can disable the
-connect snapshot or request home-currency conversion factors. The caller owns
+connect snapshot or request home-currency conversion factors, delivered as
+`PricingStreamItem::HomeConversions`. The caller owns
 stall detection, reconnection, and transaction catch-up through the REST API.
 
 The callback methods `pricing` and `transactions` remain available. They

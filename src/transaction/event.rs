@@ -89,10 +89,40 @@ pub enum Transaction {
     #[serde(rename = "RESET_RESETTABLE_PL")]
     ResetResettablePLTransaction(ResetResettablePLTransaction),
     /// A transaction type introduced by OANDA after this crate was released.
-    /// Unknown transactions can be skipped while processing a stream; a later
-    /// heartbeat still supplies the latest transaction ID for gap detection.
-    #[serde(other)]
-    Unknown,
+    #[serde(untagged)]
+    Unknown(UnknownTransaction),
+}
+
+/// A transaction whose type is not yet modeled by this crate. Retaining the
+/// original fields lets stream consumers advance their cursor and decide when
+/// to reconcile account state.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct UnknownTransaction {
+    pub id: TransactionID,
+    #[serde(
+        rename = "type",
+        deserialize_with = "deserialize_unknown_transaction_type"
+    )]
+    pub transaction_type: String,
+    #[serde(flatten)]
+    pub fields: serde_json::Map<String, serde_json::Value>,
+}
+
+fn deserialize_unknown_transaction_type<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let transaction_type = String::deserialize(deserializer)?;
+    if serde_json::from_value::<TransactionType>(serde_json::Value::String(
+        transaction_type.clone(),
+    ))
+    .is_ok()
+    {
+        return Err(serde::de::Error::custom(
+            "known transaction type has invalid fields",
+        ));
+    }
+    Ok(transaction_type)
 }
 
 /// A tagged union covering only the transaction types that create a new order.

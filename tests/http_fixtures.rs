@@ -624,7 +624,11 @@ async fn streams_accept_captured_handlers_and_custom_transport() {
 
 #[tokio::test]
 async fn pull_streams_decode_messages_and_send_pricing_options() {
-    let body = "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:00Z\"}\n";
+    let body = concat!(
+        "{\"type\":\"PRICE\",\"instrument\":\"USD_JPY\",\"bids\":[],\"asks\":[],\"closeoutBid\":\"150.00\",\"closeoutAsk\":\"150.02\",\"time\":\"2026-09-12T00:00:00Z\"}\n",
+        "{\"homeConversions\":[{\"currency\":\"USD\",\"accountGain\":\"150.1\",\"accountLoss\":\"150.2\",\"positionValue\":\"150.15\"}]}\n",
+        "{\"type\":\"HEARTBEAT\",\"time\":\"2026-09-12T00:00:05Z\"}\n",
+    );
     let (url, request) = fixture("200 OK", body).await;
     let client = StreamClient::new_practice("fixture-token")
         .unwrap()
@@ -641,6 +645,14 @@ async fn pull_streams_decode_messages_and_send_pricing_options() {
         .await
         .unwrap();
     futures_util::pin_mut!(stream);
+    assert!(matches!(
+        stream.next().await.unwrap().unwrap(),
+        oanda_rust::pricing::PricingStreamItem::Price(_)
+    ));
+    assert!(matches!(
+        stream.next().await.unwrap().unwrap(),
+        oanda_rust::pricing::PricingStreamItem::HomeConversions(_)
+    ));
     assert!(matches!(
         stream.next().await.unwrap().unwrap(),
         oanda_rust::pricing::PricingStreamItem::Heartbeat(_)

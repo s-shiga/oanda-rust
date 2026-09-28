@@ -35,7 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `transactions_stream` methods for async consumers. Pricing options expose
   `snapshot` and `includeHomeConversions`; the callback methods remain.
 - `Transaction::Unknown` so a new transaction type does not terminate a stream
-  or history response.
+  or history response. Unknown transactions retain their ID, type, and other
+  fields for cursor tracking and reconciliation.
 - Optional legacy `price`, `gain_quote_home_conversion_factor`, and
   `loss_quote_home_conversion_factor` fields on `OrderFillTransaction` preserve
   values supplied by older payloads.
@@ -47,6 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Pricing streams decode standalone, untagged `homeConversions` messages when
+  `includeHomeConversions=true`.
 - Successful order responses, transaction history, and transaction stream items
   decode when fills omit price snapshots, conversion factors, or cost details.
   Missing values remain `None` instead of being replaced with zero or inferred.
