@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - `PricingService::candles_latest` with `LatestCandlesRequest` for the latest
   completed candles across multiple series, including units and alignment options.
+- `PricingService::candlesticks` with `AccountCandlesticksRequest`, reusing the
+  standard candle builder and adding account-specific volume-weighted `units`.
 
 ## [0.4.0] - 2026-09-28
 

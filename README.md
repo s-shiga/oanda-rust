@@ -41,6 +41,7 @@ trade-order methods:
 | Method | Purpose |
 | --- | --- |
 | `pricing().candles_latest(LatestCandlesRequest)` | Latest completed candles for multiple instrument/granularity/component series |
+| `pricing().candlesticks(AccountCandlesticksRequest)` | Account-specific candles, including volume-weighted bid/ask prices through `units` |
 
 
 HTTP response failures are wrapped in `APIError::Response`. The contained

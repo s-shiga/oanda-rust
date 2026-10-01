@@ -2,7 +2,8 @@ use crate::client::request_option_setter;
 use crate::errors::APIError;
 use crate::http::Connection;
 use crate::instrument::{
-    CandlestickGranularity, CandlesticksResponse, InstrumentName, WeeklyAlignment,
+    CandlestickGranularity, CandlesticksRequest, CandlesticksResponse, InstrumentName,
+    WeeklyAlignment,
 };
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
@@ -352,6 +353,32 @@ impl LatestCandlesRequest {
     }
 }
 
+/// An account-specific candle request, including volume-weighted bid/ask units.
+/// All standard candle options are configured on the wrapped request.
+///
+/// ```no_run
+/// use oanda_rust::instrument::CandlesticksRequest;
+/// use oanda_rust::pricing::AccountCandlesticksRequest;
+/// let request = AccountCandlesticksRequest::new(
+///     CandlesticksRequest::new("EUR_USD".into()).bid().ask().count(100).unwrap()
+/// ).units("1000".into());
+/// ```
+pub struct AccountCandlesticksRequest {
+    candlesticks: CandlesticksRequest,
+    units: Option<DecimalNumber>,
+}
+
+impl AccountCandlesticksRequest {
+    pub fn new(candlesticks: CandlesticksRequest) -> Self {
+        Self {
+            candlesticks,
+            units: None,
+        }
+    }
+
+    request_option_setter!(units, DecimalNumber);
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -408,6 +435,25 @@ impl<'a> PricingService<'a> {
     ) -> Result<LatestCandlesResponse, APIError> {
         let mut url = self.connection.account_url(&["candles", "latest"])?;
         req.set_params(&mut url)?;
+        self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches account-specific candles, optionally weighted for `units`.
+    /// Calls `GET /v3/accounts/{accountID}/instruments/{instrument}/candles`.
+    /// Missing account context returns [`APIError::InvalidRequest`].
+    pub async fn candlesticks(
+        &self,
+        req: AccountCandlesticksRequest,
+    ) -> Result<CandlesticksResponse, APIError> {
+        let mut url = self.connection.account_url(&[
+            "instruments",
+            req.candlesticks.instrument.trim(),
+            "candles",
+        ])?;
+        req.candlesticks.set_params(&mut url);
+        if let Some(units) = &req.units {
+            url.query_pairs_mut().append_pair("units", units);
+        }
         self.connection.http_client.get_json(url).await
     }
 }

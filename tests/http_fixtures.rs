@@ -2,10 +2,10 @@ use futures_util::StreamExt;
 use oanda_rust::account::ConfigureAccountRequest;
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
-use oanda_rust::instrument::{CandlesticksRequest, WeeklyAlignment};
+use oanda_rust::instrument::{CandlestickGranularity, CandlesticksRequest, WeeklyAlignment};
 use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
-use oanda_rust::pricing::LatestCandlesRequest;
+use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest};
 use oanda_rust::stream::{PricingStreamOptions, StreamClient};
 use oanda_rust::trade::{CloseTradeRequest, ListTradesRequest, TradeState, TradeStateFilter};
 use oanda_rust::transaction::{ClientExtensions, OrderCreateRejectTransaction};
@@ -121,6 +121,74 @@ async fn latest_candles_encodes_all_options_and_decodes_multiple_series() {
     assert_eq!(
         request_url(&request.await.unwrap()).query_pairs().count(),
         1
+    );
+}
+
+#[tokio::test]
+async fn account_candles_share_standard_options_and_add_units() {
+    let body = r#"{"instrument":"EUR_USD","granularity":"H1","candles":[{"time":"2026-09-12T00:00:00Z","bid":{"o":"1.1","h":"1.2","l":"1.0","c":"1.15"},"ask":{"o":"1.2","h":"1.3","l":"1.1","c":"1.25"},"volume":42,"complete":false}]}"#;
+    let (url, request) = fixture("200 OK", body).await;
+    let from = chrono::DateTime::parse_from_rfc3339("2026-09-12T00:00:00+09:00")
+        .unwrap()
+        .with_timezone(&chrono::Local);
+    let to = from + chrono::Duration::hours(2);
+    let response = client(url.join("gateway/").unwrap())
+        .pricing()
+        .candlesticks(
+            AccountCandlesticksRequest::new(
+                CandlesticksRequest::new(" EUR_USD ".into())
+                    .bid()
+                    .ask()
+                    .granularity(CandlestickGranularity::H1)
+                    .from(from)
+                    .to(to)
+                    .smooth(true)
+                    .include_first(false)
+                    .daily_alignment(17)
+                    .alignment_timezone("Asia/Tokyo".into())
+                    .weekly_alignment(WeeklyAlignment::Friday),
+            )
+            .units("500".into()),
+        )
+        .await
+        .unwrap();
+    assert!(response.candles[0].bid.is_some());
+    assert!(response.candles[0].ask.is_some());
+    assert!(!response.candles[0].complete);
+    let url = request_url(&request.await.unwrap());
+    assert_eq!(
+        url.path(),
+        "/gateway/v3/accounts/account/instruments/EUR_USD/candles"
+    );
+    let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+    assert_eq!(query["price"], "BA");
+    assert_eq!(query["granularity"], "H1");
+    assert_eq!(query["units"], "500");
+    assert_eq!(
+        chrono::DateTime::parse_from_rfc3339(&query["from"]).unwrap(),
+        from
+    );
+    assert_eq!(
+        chrono::DateTime::parse_from_rfc3339(&query["to"]).unwrap(),
+        to
+    );
+    assert_eq!(query["smooth"], "true");
+    assert_eq!(query["includeFirst"], "false");
+    assert_eq!(query["dailyAlignment"], "17");
+    assert_eq!(query["alignmentTimezone"], "Asia/Tokyo");
+    assert_eq!(query["weeklyAlignment"], "Friday");
+
+    let (url, request) = fixture("200 OK", body).await;
+    client(url)
+        .pricing()
+        .candlesticks(AccountCandlesticksRequest::new(
+            CandlesticksRequest::new("EUR_USD".into()).count(2).unwrap(),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        request_url(&request.await.unwrap()).query(),
+        Some("count=2")
     );
 }
 
