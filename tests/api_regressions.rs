@@ -1,5 +1,8 @@
-use oanda_rust::account::{Account, AccountSummary};
-use oanda_rust::instrument::{DayOfWeek, InstrumentFinancing};
+use oanda_rust::account::{Account, AccountSummary, GetInstrumentsResponse};
+use oanda_rust::instrument::{
+    DayOfWeek, GuaranteedStopLossOrderModeForInstrument, Instrument, InstrumentFinancing,
+    ListInstrumentsResponse,
+};
 use oanda_rust::order::*;
 use oanda_rust::position::ListPositionsResponse;
 use oanda_rust::pricing::{ClientPrice, PriceBucket, PricingStreamItem};
@@ -409,6 +412,70 @@ fn regression_replace_response_keeps_replacing_order_cancel_transaction() {
         cancel.reason,
         OrderCancelReason::InsufficientMargin
     ));
+}
+
+#[test]
+fn regression_documented_instruments_accept_omitted_metadata() {
+    let wire = include_str!("fixtures/instruments.json");
+    let listed: ListInstrumentsResponse = serde_json::from_str(wire).unwrap();
+    let account: GetInstrumentsResponse = serde_json::from_str(wire).unwrap();
+    assert_eq!(listed.last_transaction_id, "1");
+    assert_eq!(account.last_transaction_id, "1");
+    for instruments in [listed.instruments, account.instruments] {
+        assert_eq!(instruments.len(), 1);
+        let instrument = &instruments[0];
+        assert_eq!(instrument.name, "USD_THB");
+        assert!(instrument.guaranteed_stop_loss_order_mode.is_none());
+        assert!(instrument.financing.is_none());
+        assert!(instrument.tags.is_empty());
+        let serialized = serde_json::to_value(instrument).unwrap();
+        assert!(serialized.get("guaranteedStopLossOrderMode").is_none());
+        assert!(serialized.get("financing").is_none());
+        let decoded: Instrument = serde_json::from_value(serialized).unwrap();
+        assert!(decoded.guaranteed_stop_loss_order_mode.is_none());
+        assert!(decoded.financing.is_none());
+        assert!(decoded.tags.is_empty());
+    }
+}
+
+#[test]
+fn regression_instrument_metadata_is_preserved_and_validated_when_reported() {
+    let response: serde_json::Value =
+        serde_json::from_str(include_str!("fixtures/instruments.json")).unwrap();
+    let mut value = response["instruments"][0].clone();
+    value["guaranteedStopLossOrderMode"] = json!("ALLOWED");
+    value["financing"] = json!({
+        "longRate":"-0.0147", "shortRate":"-0.0053",
+        "financingDaysOfWeek":[{"dayOfWeek":"WEDNESDAY", "daysCharged":3}]
+    });
+    value["tags"] = json!([{"type":"ASSET_CLASS", "name":"FOREX"}]);
+    let instrument: Instrument = serde_json::from_value(value.clone()).unwrap();
+    assert!(matches!(
+        instrument.guaranteed_stop_loss_order_mode,
+        Some(GuaranteedStopLossOrderModeForInstrument::Allowed)
+    ));
+    let financing = instrument.financing.as_ref().unwrap();
+    assert_eq!(financing.long_rate, "-0.0147");
+    assert_eq!(financing.short_rate, "-0.0053");
+    let days = financing.financing_days_of_week.as_ref().unwrap();
+    assert!(matches!(days[0].day_of_week, DayOfWeek::Wednesday));
+    assert_eq!(days[0].days_charged, 3);
+    assert_eq!(instrument.tags[0].tag_type, "ASSET_CLASS");
+    assert_eq!(instrument.tags[0].name, "FOREX");
+    let serialized = serde_json::to_value(&instrument).unwrap();
+    for field in ["guaranteedStopLossOrderMode", "financing", "tags"] {
+        assert_eq!(serialized[field], value[field]);
+    }
+    for (field, invalid) in [
+        ("guaranteedStopLossOrderMode", json!("UNRECOGNIZED")),
+        ("financing", json!({"shortRate":"-0.0053"})),
+        ("financing", json!({"longRate":0.01, "shortRate":"-0.0053"})),
+        ("tags", json!({"type":"ASSET_CLASS", "name":"FOREX"})),
+    ] {
+        let mut invalid_instrument = value.clone();
+        invalid_instrument[field] = invalid;
+        assert!(serde_json::from_value::<Instrument>(invalid_instrument).is_err());
+    }
 }
 
 #[test]

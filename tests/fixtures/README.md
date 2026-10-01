@@ -1,4 +1,4 @@
-# Order response fixtures
+# API response fixtures
 
 `order_create_market_buy.json` and `order_create_market_sell.json` are the
 successful EUR/USD market-order examples from
@@ -12,3 +12,10 @@ order fills, including fills returned in transaction history.
 `trades.json` is the `GET /trades` example from
 [OANDA's trade endpoint documentation](https://developer.oanda.com/rest-live-v20/trade-ep/).
 Its omitted margin and dividend fields must remain absent.
+
+`instruments.json` contains the first instrument (USD/THB) from the
+`GET /accounts/{accountID}/instruments` example in
+[OANDA's account endpoint documentation](https://developer.oanda.com/rest-live-v20/account-ep/).
+The remaining instruments are removed and `lastTransactionID` is replaced with
+`"1"`. Keep `guaranteedStopLossOrderMode`, `financing`, and `tags` absent, as in
+the published example, to exercise decoding when this metadata is omitted.

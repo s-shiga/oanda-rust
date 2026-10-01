@@ -31,12 +31,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   fractional units without floating-point rounding. Use `.as_i64()` for integer
   quantities or `.to_string()` for the exact decimal value. Struct literals can
   convert integers with `.into()` or parse decimal strings with `.parse()`.
+- `Instrument::guaranteed_stop_loss_order_mode` and `Instrument::financing` are
+  now `Option` fields. Callers must handle `None` when OANDA omits this metadata.
 
 ### Fixed
 
 - REST prices and pricing streams accept integer and decimal liquidity, whether
   encoded as JSON numbers or legacy numeric strings. Malformed values still
   return decoding errors.
+- Both instrument-listing methods accept documented responses that omit GSLO
+  settings, financing, and tags. Missing GSLO settings and financing remain
+  unknown (`None`); missing tags default to an empty list. Reported metadata is
+  preserved and validated.
 
 ## [0.4.0] - 2026-09-28
 

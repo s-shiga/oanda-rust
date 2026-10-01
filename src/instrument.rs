@@ -151,7 +151,9 @@ pub struct Instrument {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub commission: Option<InstrumentCommission>,
     /// Whether GSLOs are disabled, allowed, or required for this instrument.
-    pub guaranteed_stop_loss_order_mode: GuaranteedStopLossOrderModeForInstrument,
+    /// `None` when OANDA omits the field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guaranteed_stop_loss_order_mode: Option<GuaranteedStopLossOrderModeForInstrument>,
     /// Additional premium (in price units) charged when a GSLO is executed,
     /// above the normal spread. Only present when GSLOs are available.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -162,8 +164,12 @@ pub struct Instrument {
     pub guaranteed_stop_loss_order_level_restriction:
         Option<GuaranteedStopLossOrderLevelRestriction>,
     /// Financing rates and schedule for this instrument.
-    pub financing: InstrumentFinancing,
+    /// `None` when OANDA omits the field.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub financing: Option<InstrumentFinancing>,
     /// Arbitrary metadata tags associated with this instrument.
+    /// Defaults to an empty list when OANDA omits the field.
+    #[serde(default)]
     pub tags: Vec<Tag>,
 }
 

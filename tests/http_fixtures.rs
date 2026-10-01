@@ -85,6 +85,34 @@ fn request_url(request: &str) -> Url {
 }
 
 #[tokio::test]
+async fn instrument_listing_accepts_documented_omitted_metadata() {
+    for configured_account in [false, true] {
+        let (url, request) = fixture("200 OK", include_str!("fixtures/instruments.json")).await;
+        let client = client(url);
+        let instruments = if configured_account {
+            client.instrument().list().await.unwrap().instruments
+        } else {
+            client
+                .account()
+                .get_instruments(&"account".into(), None)
+                .await
+                .unwrap()
+                .instruments
+        };
+        assert_eq!(instruments.len(), 1);
+        assert_eq!(instruments[0].name, "USD_THB");
+        assert!(instruments[0].guaranteed_stop_loss_order_mode.is_none());
+        assert!(instruments[0].financing.is_none());
+        assert!(instruments[0].tags.is_empty());
+        let request = request.await.unwrap();
+        assert_eq!(
+            request_url(&request).path(),
+            "/v3/accounts/account/instruments"
+        );
+    }
+}
+
+#[tokio::test]
 async fn latest_candles_encodes_all_options_and_decodes_multiple_series() {
     let body = r#"{"latestCandles":[{"instrument":"EUR_USD","granularity":"H1","candles":[{"time":"2026-09-12T00:00:00Z","mid":{"o":"1.1","h":"1.2","l":"1.0","c":"1.15"},"volume":100000,"complete":true}]},{"instrument":"USD_JPY","granularity":"M5","candles":[]}]}"#;
     let (url, request) = fixture("200 OK", body).await;
