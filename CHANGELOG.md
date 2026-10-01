@@ -33,6 +33,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   convert integers with `.into()` or parse decimal strings with `.parse()`.
 - `Instrument::guaranteed_stop_loss_order_mode` and `Instrument::financing` are
   now `Option` fields. Callers must handle `None` when OANDA omits this metadata.
+- `Trade::unrealized_pl` and `TradeSummary::unrealized_pl` are now
+  `Option<AccountUnits>`, so closed trades that omit `unrealizedPL` decode.
+- `FundingReason`, `MarketOrderReason`, `MarketOrderMarginCloseoutReason`,
+  `OrderFillReason`, and every `*OrderReason` enum gained an `Unknown` variant for
+  values added by OANDA later. Exhaustive matches must handle it.
+- `GetInstrumentsResponse` is now an alias of `ListInstrumentsResponse`; both
+  instrument-listing methods return the same type.
+- `StreamClient` ends a stream with `APIError::HTTPError` after 30 seconds without
+  data. A client passed to `with_http_client` uses its own timeouts instead.
 
 ### Fixed
 
@@ -43,6 +52,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   settings, financing, and tags. Missing GSLO settings and financing remain
   unknown (`None`); missing tags default to an empty list. Reported metadata is
   preserved and validated.
+- `TakeProfitDetails` and `TrailingStopLossDetails` omit unset `gtdTime` and
+  `clientExtensions` instead of sending `null`, and gain `new` constructors.
+- A known transaction type that fails to decode now reports the underlying
+  error, such as a missing field, instead of a generic untagged-enum error.
+- `InstrumentService::candlesticks` and the position endpoints trim instrument
+  names. Both candle endpoints reject `daily_alignment` above 23, `OrderService::list`
+  rejects a `count` outside 1–500, and `AccountService::get_instruments` rejects an
+  empty or blank instrument filter, all before sending a request.
 
 ## [0.4.0] - 2026-09-28
 

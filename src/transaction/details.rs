@@ -33,6 +33,10 @@ pub enum MarketOrderMarginCloseoutReason {
     RegulatoryMarginCallViolation,
     /// A regulatory margin check violation occurred.
     RegulatoryMarginCheckViolation,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Details of a trade that is being closed on a delayed basis (e.g. after a market halt).
@@ -72,9 +76,23 @@ pub struct TakeProfitDetails {
     /// How long the order remains active (`GTC`, `GTD`, or `GFD`).
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created take-profit order.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TakeProfitDetails {
+    /// Creates an on-fill take profit at an absolute price, with GTC time in force.
+    pub fn new(price: PriceValue) -> Self {
+        Self {
+            price,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            client_extensions: None,
+        }
+    }
 }
 
 /// Parameters for a stop-loss order to be created when a trade opens.
@@ -128,9 +146,23 @@ pub struct TrailingStopLossDetails {
     /// How long the order remains active.
     pub time_in_force: TimeInForce,
     /// Expiry timestamp when `time_in_force` is `GTD`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub gtd_time: Option<DateTime<Utc>>,
     /// Optional client extensions to attach to the created trailing stop-loss order.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TrailingStopLossDetails {
+    /// Creates an on-fill trailing stop loss at `distance`, with GTC time in force.
+    pub fn new(distance: DecimalNumber) -> Self {
+        Self {
+            distance,
+            time_in_force: TimeInForce::GTC,
+            gtd_time: None,
+            client_extensions: None,
+        }
+    }
 }
 
 /// Parameters for a guaranteed stop-loss order to be created when a trade opens.

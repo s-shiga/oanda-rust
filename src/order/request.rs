@@ -733,6 +733,16 @@ impl ListOrdersRequest {
         self
     }
 
+    /// Rejects a `count` outside OANDA's 1–500 range before a request is sent.
+    pub(crate) fn validate(&self) -> Result<(), APIError> {
+        if self.count.is_some_and(|count| !(1..=500).contains(&count)) {
+            return Err(APIError::InvalidRequest(
+                "count must be between 1 and 500".into(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Appends all configured query parameters to `url`.
     ///
     /// Called internally by [`OrderService::list`] before dispatching the

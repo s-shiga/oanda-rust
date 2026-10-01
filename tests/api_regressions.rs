@@ -10,7 +10,10 @@ use oanda_rust::trade::{ListTradesResponse, Trade, TradeStateFilter, TradeSummar
 use oanda_rust::transaction::{
     GetTransactionsResponse, OrderFillTransaction, Transaction, TransactionStreamItem,
 };
-use oanda_rust::transaction::{OrderCancelReason, TransactionRejectReason};
+use oanda_rust::transaction::{
+    MarketOrderReason, OrderCancelReason, OrderFillReason, TakeProfitDetails,
+    TrailingStopLossDetails, TransactionRejectReason,
+};
 use oanda_rust::transaction::{TransactionFilter, TransactionType};
 use serde_json::json;
 use url::Url;
@@ -662,4 +665,43 @@ fn regression_transaction_events_are_accessible_to_consumers() {
     assert!(
         matches!(&events[0], Transaction::OrderCancelTransaction(event) if event.order_id == "1")
     );
+}
+
+#[test]
+fn regression_on_fill_details_omit_unset_fields() {
+    let order = MarketOrderRequest::new("EUR_USD".into(), "1".into())
+        .take_profit_on_fill(TakeProfitDetails::new("1.2".into()))
+        .trailing_stop_loss_on_fill(TrailingStopLossDetails::new("0.01".into()));
+    let wire = serde_json::to_value(&order).unwrap();
+    assert_eq!(
+        wire["takeProfitOnFill"],
+        json!({"price":"1.2", "timeInForce":"GTC"})
+    );
+    assert_eq!(
+        wire["trailingStopLossOnFill"],
+        json!({"distance":"0.01", "timeInForce":"GTC"})
+    );
+}
+
+#[test]
+fn regression_malformed_known_transaction_reports_its_own_error() {
+    let error =
+        serde_json::from_str::<Transaction>(r#"{"type":"ORDER_CANCEL","id":"5","userID":1}"#)
+            .unwrap_err();
+    assert!(
+        error.to_string().contains("missing field `time`"),
+        "{error}"
+    );
+}
+
+#[test]
+fn regression_new_fill_and_order_reasons_decode_as_unknown() {
+    assert!(matches!(
+        serde_json::from_str(r#""REASON_ADDED_AFTER_THIS_RELEASE""#).unwrap(),
+        OrderFillReason::Unknown
+    ));
+    assert!(matches!(
+        serde_json::from_str(r#""REASON_ADDED_AFTER_THIS_RELEASE""#).unwrap(),
+        MarketOrderReason::Unknown
+    ));
 }

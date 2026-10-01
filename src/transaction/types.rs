@@ -79,6 +79,10 @@ pub enum FundingReason {
     SiteMigration,
     /// An administrative adjustment was applied to the account balance.
     Adjustment,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a market order was created.
@@ -95,6 +99,10 @@ pub enum MarketOrderReason {
     MarginCloseout,
     /// Created to close a trade that was deferred due to the market being closed.
     DelayedTradeClose,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a fixed-price order was created by OANDA internally.
@@ -107,6 +115,10 @@ pub enum FixedPriceOrderReason {
     TradeCloseDivisionAccountMigration,
     /// Created to close a trade as part of an administrative action.
     TradeCloseAdministrativeAction,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a limit order was created.
@@ -117,6 +129,10 @@ pub enum LimitOrderReason {
     ClientOrder,
     /// Created to replace a previously cancelled order.
     Replacement,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a stop order was created.
@@ -127,6 +143,10 @@ pub enum StopOrderReason {
     ClientOrder,
     /// Created to replace a previously cancelled order.
     Replacement,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a market-if-touched order was created.
@@ -137,6 +157,10 @@ pub enum MarketIfTouchedOrderReason {
     ClientOrder,
     /// Created to replace a previously cancelled order.
     Replacement,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a take-profit order was created.
@@ -149,6 +173,10 @@ pub enum TakeProfitOrderReason {
     Replacement,
     /// Created automatically when a trade was opened with `take_profit_on_fill` set.
     OnFill,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a stop-loss order was created.
@@ -161,6 +189,10 @@ pub enum StopLossOrderReason {
     Replacement,
     /// Created automatically when a trade was opened with `stop_loss_on_fill` set.
     OnFill,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a guaranteed stop-loss order was created.
@@ -173,6 +205,10 @@ pub enum GuaranteedStopLossOrderReason {
     Replacement,
     /// Created automatically when a trade was opened with `guaranteed_stop_loss_on_fill` set.
     OnFill,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a trailing stop-loss order was created.
@@ -185,6 +221,10 @@ pub enum TrailingStopLossOrderReason {
     Replacement,
     /// Created automatically when a trade was opened with `trailing_stop_loss_on_fill` set.
     OnFill,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why an order was filled (what type of order triggered the fill).
@@ -207,6 +247,10 @@ pub enum OrderFillReason {
     FixedPriceOrderPlatformAccountMigration,
     FixedPriceOrderDivisionAccountMigration,
     FixedPriceOrderAdministrativeAction,
+    /// A value not known to this version of the crate. OANDA adds new
+    /// values over time; this keeps such transactions decodable.
+    #[serde(other)]
+    Unknown,
 }
 
 /// Why a pending order was cancelled.

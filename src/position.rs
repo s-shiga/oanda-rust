@@ -281,7 +281,9 @@ impl<'a> PositionService<'a> {
         &self,
         instrument: InstrumentName,
     ) -> Result<GetPositionDetailsResponse, APIError> {
-        let url = self.connection.account_url(&["positions", &instrument])?;
+        let url = self
+            .connection
+            .account_url(&["positions", instrument.trim()])?;
         self.connection.http_client.get_json(url).await
     }
 
@@ -305,7 +307,7 @@ impl<'a> PositionService<'a> {
     ) -> Result<ClosePositionResponse, APIError> {
         let url = self
             .connection
-            .account_url(&["positions", &instrument, "close"])?;
+            .account_url(&["positions", instrument.trim(), "close"])?;
         let http_resp = self
             .connection
             .http_client

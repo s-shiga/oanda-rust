@@ -3,10 +3,11 @@ use crate::errors::APIError;
 use crate::http::{self, Connection};
 use crate::pricing::{instruments_query, PricingStreamItem};
 use crate::transaction::TransactionStreamItem;
-use futures_util::stream::StreamExt;
+use futures_util::stream::{Fuse, StreamExt};
 use futures_util::Stream;
 use serde::de::DeserializeOwned;
 use std::pin::Pin;
+use std::time::Duration;
 use url::Url;
 
 /// Optional parameters for the pricing stream. OANDA sends a current price on
@@ -31,6 +32,8 @@ impl Default for PricingStreamOptions {
 /// Unlike [`Client`](crate::client::Client), which targets the REST API,
 /// `StreamClient` connects to the separate OANDA streaming host and keeps the
 /// connection open, delivering newline-delimited JSON messages as they arrive.
+/// A stream that receives no data for 30 seconds, several missed heartbeats,
+/// ends with an [`APIError::HTTPError`] so the caller can reconnect.
 ///
 /// # Example
 ///
@@ -55,6 +58,9 @@ pub struct StreamClient {
 const FX_TRADE_PRACTICE_STREAMING_URL: &str = "https://stream-fxpractice.oanda.com";
 const FX_TRADE_STREAMING_URL: &str = "https://stream-fxtrade.oanda.com";
 const STREAM_ACCEPT: &str = "application/octet-stream";
+/// OANDA sends a heartbeat every 5 seconds, so a read that waits this long
+/// means the connection has stalled.
+const STREAM_READ_TIMEOUT: Duration = Duration::from_secs(30);
 
 impl StreamClient {
     /// Creates a `StreamClient` targeting the live trading streaming API.
@@ -65,7 +71,12 @@ impl StreamClient {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new(api_key: &str) -> Result<Self, APIError> {
         Ok(StreamClient {
-            connection: Connection::new(api_key, STREAM_ACCEPT, FX_TRADE_STREAMING_URL)?,
+            connection: Connection::new(
+                api_key,
+                STREAM_ACCEPT,
+                FX_TRADE_STREAMING_URL,
+                Some(STREAM_READ_TIMEOUT),
+            )?,
         })
     }
 
@@ -77,11 +88,18 @@ impl StreamClient {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new_practice(api_key: &str) -> Result<Self, APIError> {
         Ok(StreamClient {
-            connection: Connection::new(api_key, STREAM_ACCEPT, FX_TRADE_PRACTICE_STREAMING_URL)?,
+            connection: Connection::new(
+                api_key,
+                STREAM_ACCEPT,
+                FX_TRADE_PRACTICE_STREAMING_URL,
+                Some(STREAM_READ_TIMEOUT),
+            )?,
         })
     }
 
     /// Uses a custom HTTP client while preserving OANDA authentication headers.
+    /// The client's own timeouts replace the default 30-second read timeout;
+    /// set `read_timeout` on it to keep stalled streams from waiting forever.
     pub fn with_http_client(mut self, client: reqwest::Client) -> Self {
         self.connection.set_http_client(client);
         self
@@ -231,11 +249,12 @@ const MAX_MESSAGE_BYTES: usize = 1 << 20;
 
 /// Frames messages independently of HTTP chunk boundaries, including a final
 /// message without a newline. Incomplete JSON at EOF, or a message longer than
-/// [`MAX_MESSAGE_BYTES`], is reported as an error.
-struct FrameState<S> {
-    stream: Pin<Box<S>>,
+/// [`MAX_MESSAGE_BYTES`], is reported as an error. The source is fused, so it
+/// is not polled again after it ends.
+struct FrameState<S, B> {
+    stream: Pin<Box<Fuse<S>>>,
     buffer: Vec<u8>,
-    chunk: Vec<u8>,
+    chunk: Option<B>,
     offset: usize,
 }
 
@@ -247,17 +266,18 @@ where
 {
     futures_util::stream::try_unfold(
         FrameState {
-            stream: Box::pin(stream),
+            stream: Box::pin(stream.fuse()),
             buffer: Vec::new(),
-            chunk: Vec::new(),
+            chunk: None,
             offset: 0,
         },
-        |mut state| async move {
+        |mut state: FrameState<S, B>| async move {
             loop {
-                if state.offset == state.chunk.len() {
+                let chunk_len = state.chunk.as_ref().map_or(0, |chunk| chunk.as_ref().len());
+                if state.offset == chunk_len {
                     match state.stream.next().await {
                         Some(chunk) => {
-                            state.chunk = chunk?.as_ref().to_vec();
+                            state.chunk = Some(chunk?);
                             state.offset = 0;
                         }
                         None => {
@@ -272,7 +292,10 @@ where
                         }
                     }
                 }
-                let remaining = &state.chunk[state.offset..];
+                let Some(chunk) = &state.chunk else {
+                    continue;
+                };
+                let remaining = &chunk.as_ref()[state.offset..];
                 let end = remaining.iter().position(|byte| *byte == b'\n');
                 let length = end.map_or(remaining.len(), |position| position + 1);
                 state.buffer.extend_from_slice(&remaining[..length]);

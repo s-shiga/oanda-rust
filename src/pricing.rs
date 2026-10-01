@@ -493,11 +493,13 @@ impl<'a> PricingService<'a> {
 
     /// Fetches account-specific candles, optionally weighted for `units`.
     /// Calls `GET /v3/accounts/{accountID}/instruments/{instrument}/candles`.
-    /// Missing account context returns [`APIError::InvalidRequest`].
+    /// Daily alignment outside 0–23 or missing account context returns
+    /// [`APIError::InvalidRequest`].
     pub async fn candlesticks(
         &self,
         req: AccountCandlesticksRequest,
     ) -> Result<CandlesticksResponse, APIError> {
+        req.candlesticks.validate()?;
         let mut url = self.connection.account_url(&[
             "instruments",
             req.candlesticks.instrument.trim(),

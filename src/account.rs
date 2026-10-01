@@ -1,9 +1,10 @@
 use crate::client::request_option_setter;
 use crate::errors::{APIError, ErrorResponse};
 use crate::http::{decode_reject, decode_response, Connection};
-use crate::instrument::Instrument;
+use crate::instrument::ListInstrumentsResponse;
 use crate::order::{DynamicOrderState, Order};
 use crate::position::{CalculatedPositionState, Position};
+use crate::pricing::instruments_query;
 use crate::primitives::{deserialize_datetime, Currency, DecimalNumber};
 use crate::trade::{CalculatedTradeState, TradeSummary};
 use crate::transaction::{
@@ -512,15 +513,9 @@ pub struct GetAccountSummaryResponse {
     pub last_transaction_id: TransactionID,
 }
 
-/// Response body for `GET /v3/accounts/{accountID}/instruments`.
-#[derive(Debug, Serialize, Deserialize)]
-pub struct GetInstrumentsResponse {
-    /// The list of tradeable instruments for the account.
-    pub instruments: Vec<Instrument>,
-    /// ID of the most recent transaction on the account.
-    #[serde(rename = "lastTransactionID")]
-    pub last_transaction_id: TransactionID,
-}
+/// Response body for `GET /v3/accounts/{accountID}/instruments`, shared with
+/// [`InstrumentService::list`](crate::instrument::InstrumentService::list).
+pub type GetInstrumentsResponse = ListInstrumentsResponse;
 
 /// Response body for `PATCH /v3/accounts/{accountID}/configuration` (HTTP 200).
 #[derive(Debug, Serialize, Deserialize)]
@@ -622,7 +617,8 @@ impl<'a> AccountService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/instruments`.
     /// Pass `instruments` to filter by a specific set of instrument names;
-    /// `None` returns all available instruments.
+    /// `None` returns all available instruments. An empty list or a blank name
+    /// returns [`APIError::InvalidRequest`].
     pub async fn get_instruments(
         &self,
         account_id: &AccountID,
@@ -635,7 +631,7 @@ impl<'a> AccountService<'a> {
         )?;
         if let Some(names) = instruments {
             url.query_pairs_mut()
-                .append_pair("instruments", &names.join(","));
+                .append_pair("instruments", &instruments_query(&names)?);
         }
         self.connection.http_client.get_json(url).await
     }

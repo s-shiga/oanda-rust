@@ -49,7 +49,7 @@ impl Client {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new(api_key: &str) -> Result<Client, APIError> {
         Ok(Client {
-            connection: Connection::new(api_key, "application/json", FX_TRADE_URL)?,
+            connection: Connection::new(api_key, "application/json", FX_TRADE_URL, None)?,
         })
     }
 
@@ -62,7 +62,7 @@ impl Client {
     /// Returns an error if the token is invalid or the HTTP client cannot be built.
     pub fn new_practice(api_key: &str) -> Result<Client, APIError> {
         Ok(Client {
-            connection: Connection::new(api_key, "application/json", FX_TRADE_PRACTICE_URL)?,
+            connection: Connection::new(api_key, "application/json", FX_TRADE_PRACTICE_URL, None)?,
         })
     }
 

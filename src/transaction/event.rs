@@ -4,93 +4,110 @@ use super::*;
 // Transaction enum (tagged union)
 // ---------------------------------------------------------------------------
 
-/// A tagged union of every transaction type that the OANDA API can return.
-///
-/// Deserialized from the `"type"` field in the JSON payload. Use this when
-/// handling generic transaction streams or history endpoints where the exact
-/// sub-type is not known in advance.
-#[derive(Debug, Serialize, Deserialize)]
-#[serde(tag = "type")]
-pub enum Transaction {
-    #[serde(rename = "ORDER_FILL")]
-    OrderFillTransaction(Box<OrderFillTransaction>),
-    #[serde(rename = "ORDER_CANCEL")]
-    OrderCancelTransaction(OrderCancelTransaction),
-    #[serde(rename = "ORDER_CANCEL_REJECT")]
-    OrderCancelRejectTransaction(OrderCancelRejectTransaction),
-    #[serde(rename = "ORDER_CLIENT_EXTENSIONS_MODIFY")]
-    OrderClientExtensionsModifyTransaction(OrderClientExtensionsModifyTransaction),
-    #[serde(rename = "ORDER_CLIENT_EXTENSIONS_MODIFY_REJECT")]
-    OrderClientExtensionsModifyRejectTransaction(OrderClientExtensionsModifyRejectTransaction),
-    #[serde(rename = "CREATE")]
-    CreateTransaction(CreateTransaction),
-    #[serde(rename = "CLOSE")]
-    CloseTransaction(CloseTransaction),
-    #[serde(rename = "REOPEN")]
-    ReopenTransaction(ReopenTransaction),
-    #[serde(rename = "CLIENT_CONFIGURE")]
-    ClientConfigureTransaction(ClientConfigureTransaction),
-    #[serde(rename = "CLIENT_CONFIGURE_REJECT")]
-    ClientConfigureRejectTransaction(ClientConfigureRejectTransaction),
-    #[serde(rename = "TRANSFER_FUNDS")]
-    TransferFundsTransaction(TransferFundsTransaction),
-    #[serde(rename = "TRANSFER_FUNDS_REJECT")]
-    TransferFundsRejectTransaction(TransferFundsRejectTransaction),
-    #[serde(rename = "MARKET_ORDER")]
-    MarketOrderTransaction(MarketOrderTransaction),
-    #[serde(rename = "MARKET_ORDER_REJECT")]
-    MarketOrderRejectTransaction(MarketOrderRejectTransaction),
-    #[serde(rename = "FIXED_PRICE_ORDER")]
-    FixedPriceOrderTransaction(FixedPriceOrderTransaction),
-    #[serde(rename = "LIMIT_ORDER")]
-    LimitOrderTransaction(LimitOrderTransaction),
-    #[serde(rename = "LIMIT_ORDER_REJECT")]
-    LimitOrderRejectTransaction(LimitOrderRejectTransaction),
-    #[serde(rename = "STOP_ORDER")]
-    StopOrderTransaction(StopOrderTransaction),
-    #[serde(rename = "STOP_ORDER_REJECT")]
-    StopOrderRejectTransaction(StopOrderRejectTransaction),
-    #[serde(rename = "MARKET_IF_TOUCHED_ORDER")]
-    MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
-    #[serde(rename = "MARKET_IF_TOUCHED_ORDER_REJECT")]
-    MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
-    #[serde(rename = "TAKE_PROFIT_ORDER")]
-    TakeProfitOrderTransaction(TakeProfitOrderTransaction),
-    #[serde(rename = "TAKE_PROFIT_ORDER_REJECT")]
-    TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
-    #[serde(rename = "STOP_LOSS_ORDER")]
-    StopLossOrderTransaction(StopLossOrderTransaction),
-    #[serde(rename = "STOP_LOSS_ORDER_REJECT")]
-    StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
-    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER")]
-    GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
-    #[serde(rename = "GUARANTEED_STOP_LOSS_ORDER_REJECT")]
-    GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
-    #[serde(rename = "TRAILING_STOP_LOSS_ORDER")]
-    TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
-    #[serde(rename = "TRAILING_STOP_LOSS_ORDER_REJECT")]
-    TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderRejectTransaction),
-    #[serde(rename = "TRADE_CLIENT_EXTENSIONS_MODIFY")]
-    TradeClientExtensionsModifyTransaction(TradeClientExtensionsModifyTransaction),
-    #[serde(rename = "TRADE_CLIENT_EXTENSIONS_MODIFY_REJECT")]
-    TradeClientExtensionsModifyRejectTransaction(TradeClientExtensionsModifyRejectTransaction),
-    #[serde(rename = "MARGIN_CALL_ENTER")]
-    MarginCallEnterTransaction(MarginCallEnterTransaction),
-    #[serde(rename = "MARGIN_CALL_EXTEND")]
-    MarginCallExtendTransaction(MarginCallExtendTransaction),
-    #[serde(rename = "MARGIN_CALL_EXIT")]
-    MarginCallExitTransaction(MarginCallExitTransaction),
-    #[serde(rename = "DELAYED_TRADE_CLOSURE")]
-    DelayedTradeClosureTransaction(DelayedTradeClosureTransaction),
-    #[serde(rename = "DAILY_FINANCING")]
-    DailyFinancingTransaction(DailyFinancingTransaction),
-    #[serde(rename = "DIVIDEND_ADJUSTMENT")]
-    DividendAdjustmentTransaction(DividendAdjustmentTransaction),
-    #[serde(rename = "RESET_RESETTABLE_PL")]
-    ResetResettablePLTransaction(ResetResettablePLTransaction),
-    /// A transaction type introduced by OANDA after this crate was released.
-    #[serde(untagged)]
-    Unknown(UnknownTransaction),
+/// Defines [`Transaction`] and a private mirror without the `Unknown` fallback
+/// from one variant list, so both always agree on the modeled types.
+macro_rules! transactions {
+    ($($tag:literal => $variant:ident($ty:ty),)*) => {
+        /// A tagged union of every transaction type that the OANDA API can return.
+        ///
+        /// Deserialized from the `"type"` field in the JSON payload. Use this when
+        /// handling generic transaction streams or history endpoints where the exact
+        /// sub-type is not known in advance.
+        #[derive(Debug, Serialize)]
+        #[serde(tag = "type")]
+        pub enum Transaction {
+            $(
+                #[serde(rename = $tag)]
+                $variant($ty),
+            )*
+            /// A transaction type introduced by OANDA after this crate was released.
+            #[serde(untagged)]
+            Unknown(UnknownTransaction),
+        }
+
+        // Variant names mirror the public enum.
+        #[allow(clippy::enum_variant_names)]
+        #[derive(Deserialize)]
+        #[serde(tag = "type")]
+        enum KnownTransaction {
+            $(
+                #[serde(rename = $tag)]
+                $variant($ty),
+            )*
+        }
+
+        const KNOWN_TRANSACTION_TYPES: &[&str] = &[$($tag),*];
+
+        impl From<KnownTransaction> for Transaction {
+            fn from(transaction: KnownTransaction) -> Self {
+                match transaction {
+                    $(KnownTransaction::$variant(t) => Transaction::$variant(t),)*
+                }
+            }
+        }
+    };
+}
+
+transactions! {
+    "ORDER_FILL" => OrderFillTransaction(Box<OrderFillTransaction>),
+    "ORDER_CANCEL" => OrderCancelTransaction(OrderCancelTransaction),
+    "ORDER_CANCEL_REJECT" => OrderCancelRejectTransaction(OrderCancelRejectTransaction),
+    "ORDER_CLIENT_EXTENSIONS_MODIFY" => OrderClientExtensionsModifyTransaction(OrderClientExtensionsModifyTransaction),
+    "ORDER_CLIENT_EXTENSIONS_MODIFY_REJECT" => OrderClientExtensionsModifyRejectTransaction(OrderClientExtensionsModifyRejectTransaction),
+    "CREATE" => CreateTransaction(CreateTransaction),
+    "CLOSE" => CloseTransaction(CloseTransaction),
+    "REOPEN" => ReopenTransaction(ReopenTransaction),
+    "CLIENT_CONFIGURE" => ClientConfigureTransaction(ClientConfigureTransaction),
+    "CLIENT_CONFIGURE_REJECT" => ClientConfigureRejectTransaction(ClientConfigureRejectTransaction),
+    "TRANSFER_FUNDS" => TransferFundsTransaction(TransferFundsTransaction),
+    "TRANSFER_FUNDS_REJECT" => TransferFundsRejectTransaction(TransferFundsRejectTransaction),
+    "MARKET_ORDER" => MarketOrderTransaction(MarketOrderTransaction),
+    "MARKET_ORDER_REJECT" => MarketOrderRejectTransaction(MarketOrderRejectTransaction),
+    "FIXED_PRICE_ORDER" => FixedPriceOrderTransaction(FixedPriceOrderTransaction),
+    "LIMIT_ORDER" => LimitOrderTransaction(LimitOrderTransaction),
+    "LIMIT_ORDER_REJECT" => LimitOrderRejectTransaction(LimitOrderRejectTransaction),
+    "STOP_ORDER" => StopOrderTransaction(StopOrderTransaction),
+    "STOP_ORDER_REJECT" => StopOrderRejectTransaction(StopOrderRejectTransaction),
+    "MARKET_IF_TOUCHED_ORDER" => MarketIfTouchedOrderTransaction(MarketIfTouchedOrderTransaction),
+    "MARKET_IF_TOUCHED_ORDER_REJECT" => MarketIfTouchedOrderRejectTransaction(MarketIfTouchedOrderRejectTransaction),
+    "TAKE_PROFIT_ORDER" => TakeProfitOrderTransaction(TakeProfitOrderTransaction),
+    "TAKE_PROFIT_ORDER_REJECT" => TakeProfitOrderRejectTransaction(TakeProfitOrderRejectTransaction),
+    "STOP_LOSS_ORDER" => StopLossOrderTransaction(StopLossOrderTransaction),
+    "STOP_LOSS_ORDER_REJECT" => StopLossOrderRejectTransaction(StopLossOrderRejectTransaction),
+    "GUARANTEED_STOP_LOSS_ORDER" => GuaranteedStopLossOrderTransaction(GuaranteedStopLossOrderTransaction),
+    "GUARANTEED_STOP_LOSS_ORDER_REJECT" => GuaranteedStopLossOrderRejectTransaction(GuaranteedStopLossOrderRejectTransaction),
+    "TRAILING_STOP_LOSS_ORDER" => TrailingStopLossOrderTransaction(TrailingStopLossOrderTransaction),
+    "TRAILING_STOP_LOSS_ORDER_REJECT" => TrailingStopLossOrderRejectTransaction(TrailingStopLossOrderRejectTransaction),
+    "TRADE_CLIENT_EXTENSIONS_MODIFY" => TradeClientExtensionsModifyTransaction(TradeClientExtensionsModifyTransaction),
+    "TRADE_CLIENT_EXTENSIONS_MODIFY_REJECT" => TradeClientExtensionsModifyRejectTransaction(TradeClientExtensionsModifyRejectTransaction),
+    "MARGIN_CALL_ENTER" => MarginCallEnterTransaction(MarginCallEnterTransaction),
+    "MARGIN_CALL_EXTEND" => MarginCallExtendTransaction(MarginCallExtendTransaction),
+    "MARGIN_CALL_EXIT" => MarginCallExitTransaction(MarginCallExitTransaction),
+    "DELAYED_TRADE_CLOSURE" => DelayedTradeClosureTransaction(DelayedTradeClosureTransaction),
+    "DAILY_FINANCING" => DailyFinancingTransaction(DailyFinancingTransaction),
+    "DIVIDEND_ADJUSTMENT" => DividendAdjustmentTransaction(DividendAdjustmentTransaction),
+    "RESET_RESETTABLE_PL" => ResetResettablePLTransaction(ResetResettablePLTransaction),
+}
+
+/// Decodes a modeled type strictly, so a malformed known transaction reports
+/// its own decoding error, and keeps any other type as [`Transaction::Unknown`].
+impl<'de> Deserialize<'de> for Transaction {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = serde_json::Value::deserialize(deserializer)?;
+        let known = value
+            .get("type")
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|transaction_type| KNOWN_TRANSACTION_TYPES.contains(&transaction_type));
+        let transaction = if known {
+            KnownTransaction::deserialize(value).map(Transaction::from)
+        } else {
+            UnknownTransaction::deserialize(value).map(Transaction::Unknown)
+        };
+        transaction.map_err(serde::de::Error::custom)
+    }
 }
 
 /// A transaction whose type is not yet modeled by this crate. Retaining the

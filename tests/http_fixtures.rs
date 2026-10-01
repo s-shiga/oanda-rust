@@ -5,7 +5,9 @@ use oanda_rust::errors::{APIError, ErrorResponse};
 use oanda_rust::instrument::{
     CandlestickGranularity, CandlesticksRequest, InstrumentPricesRequest, WeeklyAlignment,
 };
-use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
+use oanda_rust::order::{
+    ListOrdersRequest, MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest,
+};
 use oanda_rust::position::ClosePositionRequest;
 use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest, PricingOptions};
 use oanda_rust::stream::{PricingStreamOptions, StreamClient};
@@ -607,6 +609,40 @@ async fn new_endpoint_validation_fails_before_dispatch() {
             .await,
         Err(APIError::InvalidRequest(_))
     ));
+    assert!(matches!(
+        client
+            .instrument()
+            .candlesticks(CandlesticksRequest::new("EUR_USD".into()).daily_alignment(24))
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .pricing()
+            .candlesticks(AccountCandlesticksRequest::new(
+                CandlesticksRequest::new("EUR_USD".into()).daily_alignment(24)
+            ))
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    for count in [0, 501] {
+        assert!(matches!(
+            client
+                .order()
+                .list(ListOrdersRequest::new().count(count))
+                .await,
+            Err(APIError::InvalidRequest(_))
+        ));
+    }
+    for names in [vec![], vec![" ".to_string()]] {
+        assert!(matches!(
+            client
+                .account()
+                .get_instruments(&"account".into(), Some(names))
+                .await,
+            Err(APIError::InvalidRequest(_))
+        ));
+    }
     let from = "2026-09-12T00:00:00Z"
         .parse::<chrono::DateTime<chrono::Utc>>()
         .unwrap();
@@ -733,6 +769,10 @@ async fn trade_list_can_retrieve_closed_trades_on_later_pages() {
             body["trades"][0]["id"] = json!(id);
             body["trades"][0]["state"] = json!("CLOSED");
             body["trades"][0]["currentUnits"] = json!("0");
+            body["trades"][0]
+                .as_object_mut()
+                .unwrap()
+                .remove("unrealizedPL");
         } else {
             body["trades"] = json!([]);
         }
@@ -756,6 +796,7 @@ async fn trade_list_can_retrieve_closed_trades_on_later_pages() {
         if let Some(id) = id {
             assert_eq!(page.trades[0].id, id);
             assert!(matches!(page.trades[0].state, TradeState::Closed));
+            assert!(page.trades[0].unrealized_pl.is_none());
             before_id = Some(page.trades[0].id.clone());
         } else {
             assert!(page.trades.is_empty());
@@ -1337,7 +1378,7 @@ async fn base_url_path_prefix_is_kept() {
     .await;
     client(url.join("gateway/").unwrap())
         .instrument()
-        .candlesticks(CandlesticksRequest::new("EUR_USD".into()))
+        .candlesticks(CandlesticksRequest::new(" EUR_USD ".into()))
         .await
         .unwrap();
     assert!(request

@@ -111,9 +111,9 @@ pub struct Trade {
     #[serde(rename = "realizedPL")]
     pub realized_pl: AccountUnits,
     /// Current unrealised profit/loss based on the live market price,
-    /// in home currency units.
+    /// in home currency units. `None` when OANDA omits it, as for closed trades.
     #[serde(rename = "unrealizedPL")]
-    pub unrealized_pl: AccountUnits,
+    pub unrealized_pl: Option<AccountUnits>,
     /// Margin currently consumed by this trade's open units, in home currency, if reported.
     pub margin_used: Option<AccountUnits>,
     /// The average price at which units have been closed. `None` if no units
@@ -175,9 +175,10 @@ pub struct TradeSummary {
     /// Cumulative realised profit/loss from partial closes, in home currency units.
     #[serde(rename = "realizedPL")]
     pub realized_pl: AccountUnits,
-    /// Current unrealised profit/loss, in home currency units.
+    /// Current unrealised profit/loss, in home currency units. `None` when
+    /// OANDA omits it, as for closed trades.
     #[serde(rename = "unrealizedPL")]
-    pub unrealized_pl: AccountUnits,
+    pub unrealized_pl: Option<AccountUnits>,
     /// Margin currently consumed by this trade's open units, in home currency, if reported.
     pub margin_used: Option<AccountUnits>,
     /// Average price at which units have been closed. `None` if no units have

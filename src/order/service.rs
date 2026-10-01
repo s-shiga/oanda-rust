@@ -46,8 +46,10 @@ impl<'a> OrderService<'a> {
     ///
     /// Calls `GET /v3/accounts/{accountID}/orders`.
     ///
-    /// Returns [`APIError::InvalidRequest`] if no account ID is configured.
+    /// Returns [`APIError::InvalidRequest`] if no account ID is configured or
+    /// `count` is outside 1–500.
     pub async fn list(&self, req: ListOrdersRequest) -> Result<ListOrdersResponse, APIError> {
+        req.validate()?;
         let mut url = self.connection.account_url(&["orders"])?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await

@@ -4,6 +4,7 @@ use crate::errors::{APIError, CommonErrorResponse, ErrorResponse, HttpResponseEr
 use reqwest::header::{HeaderMap, HeaderValue, ACCEPT, AUTHORIZATION};
 use reqwest::{RequestBuilder, Response, StatusCode};
 use serde::de::DeserializeOwned;
+use std::time::Duration;
 use url::Url;
 
 pub(crate) struct HttpClient {
@@ -12,7 +13,11 @@ pub(crate) struct HttpClient {
 }
 
 impl HttpClient {
-    pub(crate) fn new(api_key: &str, accept: &'static str) -> Result<Self, APIError> {
+    pub(crate) fn new(
+        api_key: &str,
+        accept: &'static str,
+        read_timeout: Option<Duration>,
+    ) -> Result<Self, APIError> {
         if api_key.is_empty()
             || api_key
                 .bytes()
@@ -28,8 +33,12 @@ impl HttpClient {
         let mut headers = HeaderMap::new();
         headers.insert(AUTHORIZATION, authorization);
         headers.insert(ACCEPT, HeaderValue::from_static(accept));
+        let mut builder = reqwest::Client::builder();
+        if let Some(timeout) = read_timeout {
+            builder = builder.read_timeout(timeout);
+        }
         Ok(Self {
-            client: reqwest::Client::builder().build()?,
+            client: builder.build()?,
             headers,
         })
     }
@@ -65,14 +74,16 @@ pub(crate) struct Connection {
 }
 
 impl Connection {
-    /// `base_url` is one of the crate's OANDA host constants.
+    /// `base_url` is one of the crate's OANDA host constants. `read_timeout`
+    /// bounds each read on the default transport.
     pub(crate) fn new(
         api_key: &str,
         accept: &'static str,
         base_url: &str,
+        read_timeout: Option<Duration>,
     ) -> Result<Self, APIError> {
         Ok(Self {
-            http_client: HttpClient::new(api_key, accept)?,
+            http_client: HttpClient::new(api_key, accept, read_timeout)?,
             base_url: Url::parse(base_url).expect("OANDA host constants are valid URLs"),
             account_id: None,
         })

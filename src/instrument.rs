@@ -426,6 +426,16 @@ impl CandlesticksRequest {
         self
     }
 
+    /// Rejects options OANDA would refuse, before a request is sent.
+    pub(crate) fn validate(&self) -> Result<(), APIError> {
+        if self.daily_alignment.is_some_and(|hour| hour > 23) {
+            return Err(APIError::InvalidRequest(
+                "daily_alignment must be between 0 and 23".into(),
+            ));
+        }
+        Ok(())
+    }
+
     /// Appends all configured query parameters to `url`.
     ///
     /// Called internally by [`InstrumentService::candlesticks`] before
@@ -603,13 +613,15 @@ impl<'a> InstrumentService<'a> {
     ///
     /// Calls `GET /v3/instruments/{instrument}/candles` with the parameters
     /// encoded in `req`. Build the request with [`CandlesticksRequest`].
+    /// Daily alignment outside 0–23 returns [`APIError::InvalidRequest`].
     pub async fn candlesticks(
         &self,
         req: CandlesticksRequest,
     ) -> Result<CandlesticksResponse, APIError> {
+        req.validate()?;
         let mut url = crate::http::api_url(
             &self.connection.base_url,
-            &["v3", "instruments", &req.instrument, "candles"],
+            &["v3", "instruments", req.instrument.trim(), "candles"],
         )?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
