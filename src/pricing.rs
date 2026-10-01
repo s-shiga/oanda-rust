@@ -264,6 +264,41 @@ pub struct LatestCandlesResponse {
     pub latest_candles: Vec<CandlesticksResponse>,
 }
 
+/// Optional filters for [`PricingService::get_with_options`].
+/// Unset values use OANDA's defaults.
+#[derive(Debug, Default)]
+pub struct PricingOptions {
+    pub since: Option<DateTime<Utc>>,
+    pub include_home_conversions: Option<bool>,
+    /// Deprecated by OANDA; retained for compatibility with its REST API.
+    pub include_units_available: Option<bool>,
+}
+
+impl PricingOptions {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    request_option_setter!(since, DateTime<Utc>);
+    request_option_setter!(include_home_conversions, bool);
+    request_option_setter!(include_units_available, bool);
+
+    fn set_params(&self, url: &mut Url) {
+        if let Some(since) = self.since {
+            url.query_pairs_mut()
+                .append_pair("since", &since.to_rfc3339());
+        }
+        if let Some(include) = self.include_home_conversions {
+            url.query_pairs_mut()
+                .append_pair("includeHomeConversions", &include.to_string());
+        }
+        if let Some(include) = self.include_units_available {
+            url.query_pairs_mut()
+                .append_pair("includeUnitsAvailable", &include.to_string());
+        }
+    }
+}
+
 /// Builder for the latest completed candles across one or more series.
 /// Specifications use `"EUR_USD:H1:MBA"` (instrument, granularity, components).
 ///
@@ -419,9 +454,21 @@ impl<'a> PricingService<'a> {
     /// Returns [`APIError::InvalidRequest`] if no account ID is configured or
     /// the instrument list is empty or contains a blank name.
     pub async fn get(&self, instruments: Vec<InstrumentName>) -> Result<PricesResponse, APIError> {
+        self.get_with_options(instruments, PricingOptions::default())
+            .await
+    }
+
+    /// Fetches prices with an optional `since` filter and conversion options.
+    /// Uses the same account endpoint and validation as [`Self::get`].
+    pub async fn get_with_options(
+        &self,
+        instruments: Vec<InstrumentName>,
+        options: PricingOptions,
+    ) -> Result<PricesResponse, APIError> {
         let mut url = self.connection.account_url(&["pricing"])?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments_query(&instruments)?);
+        options.set_params(&mut url);
         self.connection.http_client.get_json(url).await
     }
 

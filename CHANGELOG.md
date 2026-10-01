@@ -13,10 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   completed candles across multiple series, including units and alignment options.
 - `PricingService::candlesticks` with `AccountCandlesticksRequest`, reusing the
   standard candle builder and adding account-specific volume-weighted `units`.
-- `InstrumentService::order_book` for optional-time order-book snapshots.
-- `InstrumentService::position_book` for optional-time position-book snapshots.
-- `InstrumentService::price` for current and historical instrument quotes.
-- `InstrumentService::prices` and `InstrumentPricesRequest` for time ranges.
+- `PricingService::get_with_options` and `PricingOptions` for `since`,
+  `includeHomeConversions`, and deprecated `includeUnitsAvailable`. The existing
+  `get(instruments)` signature and default behavior are preserved.
+- `InstrumentService::order_book`, `position_book`, `price`, and `prices`, with
+  typed book buckets and response envelopes. Snapshot times are optional;
+  `InstrumentPricesRequest` requires a start time and accepts an optional end time.
 - `TradeService::update_orders`, typed dependent-order updates, success responses,
   and structured rejection responses. Omitted orders remain unchanged; explicit
   null orders are cancelled. Omitted detail fields inherit values on replacement.

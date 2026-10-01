@@ -7,7 +7,7 @@ use oanda_rust::instrument::{
 };
 use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
-use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest};
+use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest, PricingOptions};
 use oanda_rust::stream::{PricingStreamOptions, StreamClient};
 use oanda_rust::trade::{
     CloseTradeRequest, GuaranteedStopLossOrderUpdate, ListTradesRequest, StopLossOrderUpdate,
@@ -196,6 +196,35 @@ async fn account_candles_share_standard_options_and_add_units() {
         request_url(&request.await.unwrap()).query(),
         Some("count=2")
     );
+}
+
+#[tokio::test]
+async fn rest_pricing_exposes_time_and_conversion_filters() {
+    let (url, request) = fixture("200 OK", r#"{"prices":[],"homeConversions":[{"currency":"USD","accountGain":"1","accountLoss":"1","positionValue":"1"}],"time":"2026-09-12T00:00:01Z"}"#).await;
+    let since = "2026-09-12T00:00:00.123456789Z"
+        .parse::<chrono::DateTime<chrono::Utc>>()
+        .unwrap();
+    let response = client(url)
+        .pricing()
+        .get_with_options(
+            vec![" EUR_USD ".into(), "USD_JPY".into()],
+            PricingOptions::new()
+                .since(since)
+                .include_home_conversions(true)
+                .include_units_available(false),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.home_conversions.unwrap()[0].currency, "USD");
+    let url = request_url(&request.await.unwrap());
+    let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+    assert_eq!(query["instruments"], "EUR_USD,USD_JPY");
+    assert_eq!(
+        chrono::DateTime::parse_from_rfc3339(&query["since"]).unwrap(),
+        since
+    );
+    assert_eq!(query["includeHomeConversions"], "true");
+    assert_eq!(query["includeUnitsAvailable"], "false");
 }
 
 #[tokio::test]
@@ -423,6 +452,172 @@ async fn trade_order_rejections_keep_typed_transactions_and_http_context() {
         );
         request.await.unwrap();
     }
+}
+
+#[tokio::test]
+async fn new_endpoints_use_common_errors_for_authentication_and_not_found() {
+    for status in ["401 Unauthorized", "404 Not Found"] {
+        for endpoint in 0..7 {
+            let (url, request) = fixture(status, r#"{"errorMessage":"unavailable"}"#).await;
+            let client = client(url);
+            let from = "2026-09-12T00:00:00Z".parse().unwrap();
+            let error = match endpoint {
+                0 => client
+                    .pricing()
+                    .candles_latest(LatestCandlesRequest::new(vec!["EUR_USD:H1:M".into()]))
+                    .await
+                    .unwrap_err(),
+                1 => client
+                    .pricing()
+                    .candlesticks(AccountCandlesticksRequest::new(CandlesticksRequest::new(
+                        "EUR_USD".into(),
+                    )))
+                    .await
+                    .unwrap_err(),
+                2 => client
+                    .instrument()
+                    .order_book("EUR_USD".into(), None)
+                    .await
+                    .unwrap_err(),
+                3 => client
+                    .instrument()
+                    .position_book("EUR_USD".into(), None)
+                    .await
+                    .unwrap_err(),
+                4 => client
+                    .instrument()
+                    .price("EUR_USD".into(), None)
+                    .await
+                    .unwrap_err(),
+                5 => client
+                    .instrument()
+                    .prices(InstrumentPricesRequest::new("EUR_USD".into(), from))
+                    .await
+                    .unwrap_err(),
+                _ => client
+                    .trade()
+                    .update_orders("6397".into(), UpdateTradeOrdersRequest::new())
+                    .await
+                    .unwrap_err(),
+            };
+            let APIError::Response(context) = error else {
+                panic!("missing HTTP context")
+            };
+            assert_eq!(
+                context.status.as_u16(),
+                if status.starts_with("401") { 401 } else { 404 }
+            );
+            assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
+            let APIError::ErrorResponse(error) = context.source else {
+                panic!("missing API error")
+            };
+            assert!(matches!(*error, ErrorResponse::CommonError(_)));
+            request.await.unwrap();
+        }
+    }
+}
+
+#[tokio::test]
+async fn new_endpoint_validation_fails_before_dispatch() {
+    let client = Client::new_practice("fixture-token")
+        .unwrap()
+        .with_base_url(Url::parse("http://127.0.0.1:1").unwrap())
+        .unwrap();
+    assert!(matches!(
+        client
+            .pricing()
+            .candles_latest(LatestCandlesRequest::new(vec!["EUR_USD:H1:M".into()]))
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .pricing()
+            .candlesticks(AccountCandlesticksRequest::new(CandlesticksRequest::new(
+                "EUR_USD".into()
+            )))
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .pricing()
+            .get_with_options(vec!["EUR_USD".into()], PricingOptions::new())
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .trade()
+            .update_orders("6397".into(), UpdateTradeOrdersRequest::new())
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    let client = client.with_account_id("account".into());
+    for specs in [
+        vec![],
+        vec!["".into()],
+        vec!["EUR_USD:H1".into()],
+        vec!["EUR_USD:H1:X".into()],
+        vec!["EUR_USD:INVALID:M".into()],
+        vec!["EUR_USD:H1:M,USD_JPY:H1:M".into()],
+    ] {
+        assert!(matches!(
+            client
+                .pricing()
+                .candles_latest(LatestCandlesRequest::new(specs))
+                .await,
+            Err(APIError::InvalidRequest(_))
+        ));
+    }
+    assert!(matches!(
+        client
+            .pricing()
+            .candles_latest(
+                LatestCandlesRequest::new(vec!["EUR_USD:H1:M".into()]).daily_alignment(24)
+            )
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    let from = "2026-09-12T00:00:00Z"
+        .parse::<chrono::DateTime<chrono::Utc>>()
+        .unwrap();
+    assert!(matches!(
+        client
+            .instrument()
+            .prices(
+                InstrumentPricesRequest::new("EUR_USD".into(), from)
+                    .to(from - chrono::Duration::seconds(1))
+            )
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client.instrument().order_book(" ".into(), None).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client.instrument().position_book("..".into(), None).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client.instrument().price("".into(), None).await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .instrument()
+            .prices(InstrumentPricesRequest::new("".into(), from))
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
+    assert!(matches!(
+        client
+            .trade()
+            .update_orders("".into(), UpdateTradeOrdersRequest::new())
+            .await,
+        Err(APIError::InvalidRequest(_))
+    ));
 }
 
 #[tokio::test]
