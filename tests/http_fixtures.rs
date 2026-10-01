@@ -9,7 +9,11 @@ use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExten
 use oanda_rust::position::ClosePositionRequest;
 use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest};
 use oanda_rust::stream::{PricingStreamOptions, StreamClient};
-use oanda_rust::trade::{CloseTradeRequest, ListTradesRequest, TradeState, TradeStateFilter};
+use oanda_rust::trade::{
+    CloseTradeRequest, GuaranteedStopLossOrderUpdate, ListTradesRequest, StopLossOrderUpdate,
+    TakeProfitOrderUpdate, TradeState, TradeStateFilter, TrailingStopLossOrderUpdate,
+    UpdateTradeOrdersRequest,
+};
 use oanda_rust::transaction::{ClientExtensions, OrderCreateRejectTransaction};
 use serde_json::json;
 use std::time::Duration;
@@ -311,6 +315,113 @@ async fn instrument_prices_decode_without_account_specific_fields() {
                 to
             );
         }
+    }
+}
+
+#[tokio::test]
+async fn trade_order_updates_preserve_omitted_null_and_partial_details() {
+    let transaction = json!({"id":"6400","time":"2026-09-12T00:00:00Z","userID":1,
+        "accountID":"account","batchID":"6400","tradeID":"6397","timeInForce":"GTC",
+        "triggerCondition":"DEFAULT","reason":"CLIENT_ORDER","price":"1.08"});
+    let body = json!({"lastTransactionID":"6400","relatedTransactionIDs":["6400"],
+        "stopLossOrderTransaction":transaction})
+    .to_string();
+    let (url, request) = fixture("200 OK", &body).await;
+    let response = client(url.join("gateway/").unwrap())
+        .trade()
+        .update_orders(
+            "@strategy/trade".into(),
+            UpdateTradeOrdersRequest::new()
+                .take_profit(None)
+                .stop_loss(Some(StopLossOrderUpdate::new().price("1.08".into())))
+                .trailing_stop_loss(Some(TrailingStopLossOrderUpdate::new())),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.stop_loss_order_transaction.unwrap().price, "1.08");
+    assert!(response.take_profit_order_transaction.is_none());
+    let request = request.await.unwrap();
+    assert!(
+        request.starts_with("PUT /gateway/v3/accounts/account/trades/@strategy%2Ftrade/orders ")
+    );
+    let body: serde_json::Value =
+        serde_json::from_str(request.split("\r\n\r\n").nth(1).unwrap()).unwrap();
+    assert_eq!(
+        body,
+        json!({"takeProfit":null,"stopLoss":{"price":"1.08"},"trailingStopLoss":{}})
+    );
+    assert!(!body.as_object().unwrap().contains_key("guaranteedStopLoss"));
+
+    let cancels = UpdateTradeOrdersRequest::new()
+        .take_profit(None)
+        .stop_loss(None)
+        .trailing_stop_loss(None)
+        .guaranteed_stop_loss(None);
+    assert_eq!(
+        serde_json::to_value(cancels).unwrap(),
+        json!({"takeProfit":null,"stopLoss":null,"trailingStopLoss":null,"guaranteedStopLoss":null})
+    );
+    assert_eq!(
+        serde_json::to_value(UpdateTradeOrdersRequest::new()).unwrap(),
+        json!({})
+    );
+    let details = UpdateTradeOrdersRequest::new()
+        .take_profit(Some(TakeProfitOrderUpdate::new().price("1.2".into())))
+        .stop_loss(Some(
+            StopLossOrderUpdate::new()
+                .price("1.0".into())
+                .distance("0.01".into()),
+        ))
+        .trailing_stop_loss(Some(
+            TrailingStopLossOrderUpdate::new().distance("0.02".into()),
+        ))
+        .guaranteed_stop_loss(Some(
+            GuaranteedStopLossOrderUpdate::new()
+                .distance("0.03".into())
+                .price("1.01".into()),
+        ));
+    assert_eq!(
+        serde_json::to_value(details).unwrap(),
+        json!({"takeProfit":{"price":"1.2"},
+        "stopLoss":{"distance":"0.01"},"trailingStopLoss":{"distance":"0.02"},"guaranteedStopLoss":{"price":"1.01"}})
+    );
+}
+
+#[tokio::test]
+async fn trade_order_rejections_keep_typed_transactions_and_http_context() {
+    let reject = json!({"id":"6401","time":"2026-09-12T00:00:00Z","userID":1,
+        "accountID":"account","batchID":"6401","tradeID":"6397","timeInForce":"GTC",
+        "triggerCondition":"DEFAULT","reason":"CLIENT_ORDER","price":"1.08",
+        "rejectReason":"STOP_LOSS_ORDER_PRICE_INVALID"});
+    for body in [
+        json!({"errorMessage":"rejected"}),
+        json!({"errorMessage":"rejected",
+        "errorCode":"STOP_LOSS_ORDER_PRICE_INVALID","lastTransactionID":"6401",
+        "relatedTransactionIDs":["6401"],"stopLossOrderRejectTransaction":reject}),
+    ] {
+        let (url, request) = fixture("400 Bad Request", &body.to_string()).await;
+        let error = client(url)
+            .trade()
+            .update_orders("6397".into(), UpdateTradeOrdersRequest::new())
+            .await
+            .unwrap_err();
+        let APIError::Response(context) = error else {
+            panic!("missing HTTP context")
+        };
+        assert_eq!(context.status, reqwest::StatusCode::BAD_REQUEST);
+        assert_eq!(context.request_id.as_deref(), Some("fixture-123"));
+        let APIError::ErrorResponse(error) = context.source else {
+            panic!("missing API error")
+        };
+        let ErrorResponse::UpdateTradeOrdersError(error) = *error else {
+            panic!("missing trade-order rejection")
+        };
+        assert_eq!(error.error_message, "rejected");
+        assert_eq!(
+            error.stop_loss_order_reject_transaction.is_some(),
+            body.get("stopLossOrderRejectTransaction").is_some()
+        );
+        request.await.unwrap();
     }
 }
 

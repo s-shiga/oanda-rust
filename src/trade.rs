@@ -3,15 +3,19 @@ use crate::errors::{APIError, ErrorResponse};
 use crate::http::{decode_reject, decode_response, Connection};
 use crate::instrument::InstrumentName;
 use crate::order::{
-    GuaranteedStopLossOrder, StopLossOrder, TakeProfitOrder, TrailingStopLossOrder,
+    GuaranteedStopLossOrder, StopLossOrder, StopLossPrice, TakeProfitOrder, TimeInForce,
+    TrailingStopLossOrder,
 };
 use crate::pricing::PriceValue;
 use crate::primitives::DecimalNumber;
 use crate::transaction::{
-    AccountUnits, ClientExtensions, MarketOrderRejectTransaction, MarketOrderTransaction,
-    OrderCancelTransaction, OrderFillTransaction, OrderID,
-    TradeClientExtensionsModifyRejectTransaction, TradeClientExtensionsModifyTransaction, TradeID,
-    TransactionID,
+    AccountUnits, ClientExtensions, GuaranteedStopLossOrderRejectTransaction,
+    GuaranteedStopLossOrderTransaction, MarketOrderRejectTransaction, MarketOrderTransaction,
+    OrderCancelRejectTransaction, OrderCancelTransaction, OrderFillTransaction, OrderID,
+    StopLossOrderRejectTransaction, StopLossOrderTransaction, TakeProfitOrderRejectTransaction,
+    TakeProfitOrderTransaction, TradeClientExtensionsModifyRejectTransaction,
+    TradeClientExtensionsModifyTransaction, TradeID, TrailingStopLossOrderRejectTransaction,
+    TrailingStopLossOrderTransaction, TransactionID,
 };
 use chrono::{DateTime, Utc};
 use reqwest::StatusCode;
@@ -326,6 +330,130 @@ impl CloseTradeRequest {
     request_option_setter!(units, String);
 }
 
+/// Take-profit fields to create or replace on an existing trade.
+/// Unset fields are omitted: OANDA supplies defaults on creation and inherits
+/// the existing order's values on replacement.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TakeProfitOrderUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price: Option<PriceValue>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TakeProfitOrderUpdate {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    request_option_setter!(price, PriceValue);
+    request_option_setter!(time_in_force, TimeInForce);
+    request_option_setter!(gtd_time, DateTime<Utc>);
+    request_option_setter!(client_extensions, ClientExtensions);
+}
+
+/// Regular or guaranteed stop-loss fields to create or replace on a trade.
+/// Unset fields inherit existing values on replacement. Setting a distance
+/// replaces an absolute price, and setting a price replaces a distance.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StopLossOrderUpdate {
+    #[serde(flatten)]
+    pub price: Option<StopLossPrice>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+impl StopLossOrderUpdate {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    pub fn price(mut self, price: PriceValue) -> Self {
+        self.price = Some(StopLossPrice::Price(price));
+        self
+    }
+
+    pub fn distance(mut self, distance: DecimalNumber) -> Self {
+        self.price = Some(StopLossPrice::Distance(distance));
+        self
+    }
+
+    request_option_setter!(time_in_force, TimeInForce);
+    request_option_setter!(gtd_time, DateTime<Utc>);
+    request_option_setter!(client_extensions, ClientExtensions);
+}
+
+/// Guaranteed stop-loss updates accept the same fields as regular stop losses.
+pub type GuaranteedStopLossOrderUpdate = StopLossOrderUpdate;
+
+/// Trailing-stop-loss fields to create or replace on an existing trade.
+/// Unset fields inherit existing values on replacement.
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrailingStopLossOrderUpdate {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub distance: Option<DecimalNumber>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub time_in_force: Option<TimeInForce>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gtd_time: Option<DateTime<Utc>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_extensions: Option<ClientExtensions>,
+}
+
+impl TrailingStopLossOrderUpdate {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    request_option_setter!(distance, DecimalNumber);
+    request_option_setter!(time_in_force, TimeInForce);
+    request_option_setter!(gtd_time, DateTime<Utc>);
+    request_option_setter!(client_extensions, ClientExtensions);
+}
+
+/// Creates, replaces, or cancels dependent orders on an existing trade.
+/// Each field distinguishes three operations: `None` leaves the order alone,
+/// `Some(None)` cancels it, and `Some(Some(details))` creates or replaces it.
+/// Builder setters accept `None` to cancel and `Some(details)` to set an order.
+///
+/// ```no_run
+/// use oanda_rust::trade::{StopLossOrderUpdate, UpdateTradeOrdersRequest};
+/// let request = UpdateTradeOrdersRequest::new()
+///     .stop_loss(Some(StopLossOrderUpdate::new().price("1.0800".into())))
+///     .take_profit(None); // Cancel the existing take profit.
+/// ```
+#[derive(Debug, Default, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTradeOrdersRequest {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub take_profit: Option<Option<TakeProfitOrderUpdate>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stop_loss: Option<Option<StopLossOrderUpdate>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trailing_stop_loss: Option<Option<TrailingStopLossOrderUpdate>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub guaranteed_stop_loss: Option<Option<GuaranteedStopLossOrderUpdate>>,
+}
+
+impl UpdateTradeOrdersRequest {
+    pub fn new() -> Self {
+        Self::default()
+    }
+    request_option_setter!(take_profit, Option<TakeProfitOrderUpdate>);
+    request_option_setter!(stop_loss, Option<StopLossOrderUpdate>);
+    request_option_setter!(trailing_stop_loss, Option<TrailingStopLossOrderUpdate>);
+    request_option_setter!(guaranteed_stop_loss, Option<GuaranteedStopLossOrderUpdate>);
+}
+
 // ---------------------------------------------------------------------------
 // Response types
 // ---------------------------------------------------------------------------
@@ -454,6 +582,54 @@ pub struct UpdateTradeClientExtensionsErrorResponse {
     pub error_message: String,
 }
 
+/// Transactions produced by a successful trade dependent-order update.
+/// A transaction is absent when its corresponding action did not occur.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTradeOrdersResponse {
+    pub take_profit_order_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub take_profit_order_transaction: Option<Box<TakeProfitOrderTransaction>>,
+    pub take_profit_order_fill_transaction: Option<Box<OrderFillTransaction>>,
+    pub take_profit_order_created_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub stop_loss_order_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub stop_loss_order_transaction: Option<Box<StopLossOrderTransaction>>,
+    pub stop_loss_order_fill_transaction: Option<Box<OrderFillTransaction>>,
+    pub stop_loss_order_created_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub trailing_stop_loss_order_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub trailing_stop_loss_order_transaction: Option<Box<TrailingStopLossOrderTransaction>>,
+    pub guaranteed_stop_loss_order_cancel_transaction: Option<Box<OrderCancelTransaction>>,
+    pub guaranteed_stop_loss_order_transaction: Option<Box<GuaranteedStopLossOrderTransaction>>,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Vec<TransactionID>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: TransactionID,
+}
+
+/// Rejection body for a trade dependent-order update (HTTP 400).
+#[derive(Debug, Error, Serialize, Deserialize)]
+#[error("Trade dependent orders update error{}: {error_message}", crate::errors::code_suffix(.error_code.as_deref()))]
+#[serde(rename_all = "camelCase")]
+pub struct UpdateTradeOrdersErrorResponse {
+    pub take_profit_order_cancel_reject_transaction: Option<Box<OrderCancelRejectTransaction>>,
+    pub take_profit_order_reject_transaction: Option<Box<TakeProfitOrderRejectTransaction>>,
+    pub stop_loss_order_cancel_reject_transaction: Option<Box<OrderCancelRejectTransaction>>,
+    pub stop_loss_order_reject_transaction: Option<Box<StopLossOrderRejectTransaction>>,
+    pub trailing_stop_loss_order_cancel_reject_transaction:
+        Option<Box<OrderCancelRejectTransaction>>,
+    pub trailing_stop_loss_order_reject_transaction:
+        Option<Box<TrailingStopLossOrderRejectTransaction>>,
+    pub guaranteed_stop_loss_order_cancel_reject_transaction:
+        Option<Box<OrderCancelRejectTransaction>>,
+    pub guaranteed_stop_loss_order_reject_transaction:
+        Option<Box<GuaranteedStopLossOrderRejectTransaction>>,
+    #[serde(rename = "lastTransactionID")]
+    pub last_transaction_id: Option<TransactionID>,
+    #[serde(rename = "relatedTransactionIDs")]
+    pub related_transaction_ids: Option<Vec<TransactionID>>,
+    pub error_code: Option<String>,
+    pub error_message: String,
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
@@ -469,6 +645,39 @@ impl<'a> TradeService<'a> {
     /// Creates a new `TradeService` bound to the given client.
     pub(crate) fn new(connection: &'a Connection) -> Self {
         Self { connection }
+    }
+
+    /// Creates, replaces, or cancels this trade's dependent orders.
+    /// Calls `PUT /v3/accounts/{accountID}/trades/{tradeSpecifier}/orders`.
+    /// Omitted orders are unchanged; explicit null orders are cancelled.
+    /// HTTP 400 is decoded as [`UpdateTradeOrdersErrorResponse`]. Other HTTP
+    /// failures retain their status and request ID in [`APIError::Response`].
+    pub async fn update_orders(
+        &self,
+        specifier: TradeSpecifier,
+        req: UpdateTradeOrdersRequest,
+    ) -> Result<UpdateTradeOrdersResponse, APIError> {
+        let url = self
+            .connection
+            .account_url(&["trades", &specifier, "orders"])?;
+        let response = self
+            .connection
+            .http_client
+            .put(url)
+            .json(&req)
+            .send()
+            .await?;
+        decode_response(
+            response,
+            StatusCode::OK,
+            Some(|status, body| match status {
+                StatusCode::BAD_REQUEST => {
+                    decode_reject(body, ErrorResponse::UpdateTradeOrdersError)
+                }
+                _ => None,
+            }),
+        )
+        .await
     }
 
     /// Retrieves one page of trades matching `req`.

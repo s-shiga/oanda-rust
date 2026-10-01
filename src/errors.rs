@@ -3,7 +3,10 @@ use crate::order::{
     OrderCancelErrorResponse, OrderCreateErrorResponse, UpdateOrderClientExtensionsErrorResponse,
 };
 use crate::position::ClosePositionErrorResponse;
-use crate::trade::{CloseTradeErrorResponse, UpdateTradeClientExtensionsErrorResponse};
+use crate::trade::{
+    CloseTradeErrorResponse, UpdateTradeClientExtensionsErrorResponse,
+    UpdateTradeOrdersErrorResponse,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
@@ -73,6 +76,9 @@ pub enum ErrorResponse {
     /// A trade client-extensions update was rejected.
     #[error(transparent)]
     UpdateTradeClientExtensionsError(#[from] UpdateTradeClientExtensionsErrorResponse),
+    /// A trade dependent-orders update was rejected.
+    #[error(transparent)]
+    UpdateTradeOrdersError(#[from] UpdateTradeOrdersErrorResponse),
     /// A trade close request was rejected.
     #[error(transparent)]
     CloseTradeError(#[from] CloseTradeErrorResponse),

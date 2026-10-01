@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `InstrumentService::position_book` for optional-time position-book snapshots.
 - `InstrumentService::price` for current and historical instrument quotes.
 - `InstrumentService::prices` and `InstrumentPricesRequest` for time ranges.
+- `TradeService::update_orders`, typed dependent-order updates, success responses,
+  and structured rejection responses. Omitted orders remain unchanged; explicit
+  null orders are cancelled. Omitted detail fields inherit values on replacement.
+- `ErrorResponse::UpdateTradeOrdersError` for HTTP 400 dependent-order rejections.
+  Exhaustive matches on `ErrorResponse` must handle this new variant.
 
 ## [0.4.0] - 2026-09-28
 
