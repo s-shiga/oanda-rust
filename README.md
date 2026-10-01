@@ -42,6 +42,7 @@ trade-order methods:
 | --- | --- |
 | `pricing().candles_latest(LatestCandlesRequest)` | Latest completed candles for multiple instrument/granularity/component series |
 | `pricing().candlesticks(AccountCandlesticksRequest)` | Account-specific candles, including volume-weighted bid/ask prices through `units` |
+| `instrument().order_book(instrument, time)` | Latest order-book snapshot, or a snapshot at the supplied UTC time |
 
 
 HTTP response failures are wrapped in `APIError::Response`. The contained

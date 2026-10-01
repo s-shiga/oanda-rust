@@ -3,7 +3,7 @@ use crate::http::Connection;
 use crate::pricing::{PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
-use chrono::{DateTime, Local};
+use chrono::{DateTime, Local, Utc};
 use serde::{Deserialize, Serialize};
 use strum_macros::{Display, EnumString};
 use url::Url;
@@ -477,6 +477,35 @@ pub struct CandlesticksResponse {
     pub candles: Vec<Candlestick>,
 }
 
+/// An instrument's aggregated pending orders at a point in time.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderBook {
+    pub instrument: InstrumentName,
+    pub time: DateTime<Utc>,
+    /// Midpoint price when the snapshot was created.
+    pub price: PriceValue,
+    pub bucket_width: PriceValue,
+    pub buckets: Vec<OrderBookBucket>,
+}
+
+/// Percentage of pending long and short orders in a price interval.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderBookBucket {
+    /// Inclusive lower bound of the bucket's price interval.
+    pub price: PriceValue,
+    pub long_count_percent: DecimalNumber,
+    pub short_count_percent: DecimalNumber,
+}
+
+/// Response body for `GET /v3/instruments/{instrument}/orderBook`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OrderBookResponse {
+    pub order_book: OrderBook,
+}
+
 /// Provides access to the OANDA Instrument endpoints.
 ///
 /// Obtain an instance via [`Client::instrument`](crate::client::Client::instrument).
@@ -514,6 +543,34 @@ impl<'a> InstrumentService<'a> {
         )?;
         req.set_params(&mut url);
         self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches an order-book snapshot. Omitting `time` fetches the latest.
+    /// Calls `GET /v3/instruments/{instrument}/orderBook`; no account is required.
+    pub async fn order_book(
+        &self,
+        instrument: InstrumentName,
+        time: Option<DateTime<Utc>>,
+    ) -> Result<OrderBookResponse, APIError> {
+        let url = self.snapshot_url(&instrument, "orderBook", time)?;
+        self.connection.http_client.get_json(url).await
+    }
+
+    fn snapshot_url(
+        &self,
+        instrument: &str,
+        endpoint: &str,
+        time: Option<DateTime<Utc>>,
+    ) -> Result<Url, APIError> {
+        let mut url = crate::http::api_url(
+            &self.connection.base_url,
+            &["v3", "instruments", instrument.trim(), endpoint],
+        )?;
+        if let Some(time) = time {
+            url.query_pairs_mut()
+                .append_pair("time", &time.to_rfc3339());
+        }
+        Ok(url)
     }
 }
 

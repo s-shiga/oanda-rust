@@ -93,7 +93,7 @@ impl Client {
         AccountService::new(&self.connection)
     }
 
-    /// Returns an [`InstrumentService`] for instrument/candlestick API operations.
+    /// Returns an [`InstrumentService`] for candles, books, and instrument prices.
     pub fn instrument(&self) -> InstrumentService<'_> {
         InstrumentService::new(&self.connection)
     }

@@ -193,6 +193,50 @@ async fn account_candles_share_standard_options_and_add_units() {
 }
 
 #[tokio::test]
+async fn instrument_books_decode_decimal_buckets_and_optional_snapshot_times() {
+    let snapshot = "2026-09-12T00:00:00.123456789Z"
+        .parse::<chrono::DateTime<chrono::Utc>>()
+        .unwrap();
+    for (key, endpoint) in [("orderBook", "orderBook")] {
+        for time in [None, Some(snapshot)] {
+            let body = json!({key: {"instrument":"EUR_USD", "time":snapshot,
+                "price":"1.12345", "bucketWidth":"0.00050", "buckets":[{
+                    "price":"1.12000", "longCountPercent":"12.34000", "shortCountPercent":"0.56000"}]}}).to_string();
+            let (url, request) = fixture("200 OK", &body).await;
+            // These instrument endpoints must work without account context.
+            let client = Client::new_practice("fixture-token")
+                .unwrap()
+                .with_http_client(custom_http_client())
+                .with_base_url(url.join("gateway/").unwrap())
+                .unwrap();
+            let book = client
+                .instrument()
+                .order_book(" EUR_USD ".into(), time)
+                .await
+                .unwrap()
+                .order_book;
+            assert_eq!(book.time, snapshot);
+            assert_eq!(book.bucket_width, "0.00050");
+            assert_eq!(book.buckets[0].long_count_percent, "12.34000");
+            let url = request_url(&request.await.unwrap());
+            assert_eq!(
+                url.path(),
+                format!("/gateway/v3/instruments/EUR_USD/{endpoint}")
+            );
+            if time.is_some() {
+                let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+                assert_eq!(
+                    chrono::DateTime::parse_from_rfc3339(&query["time"]).unwrap(),
+                    snapshot
+                );
+            } else {
+                assert_eq!(url.query(), None);
+            }
+        }
+    }
+}
+
+#[tokio::test]
 async fn pricing_rejects_empty_instrument_lists_before_dispatch() {
     let rest = Client::new_practice("fixture-token")
         .unwrap()
