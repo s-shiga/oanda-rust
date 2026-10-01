@@ -1,6 +1,6 @@
 use crate::errors::APIError;
 use crate::http::Connection;
-use crate::pricing::{PriceValue, PricingComponent};
+use crate::pricing::{ClientPrice, PriceValue, PricingComponent};
 use crate::primitives::{DecimalNumber, Tag};
 use crate::transaction::TransactionID;
 use chrono::{DateTime, Local, Utc};
@@ -535,6 +535,14 @@ pub struct PositionBookResponse {
     pub position_book: PositionBook,
 }
 
+/// Response body for `GET /v3/instruments/{instrument}/price`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InstrumentPriceResponse {
+    /// Bid/ask liquidity and closeout prices. Account-specific fields on
+    /// [`ClientPrice`] may be absent for this endpoint.
+    pub price: ClientPrice,
+}
+
 /// Provides access to the OANDA Instrument endpoints.
 ///
 /// Obtain an instance via [`Client::instrument`](crate::client::Client::instrument).
@@ -593,6 +601,17 @@ impl<'a> InstrumentService<'a> {
         time: Option<DateTime<Utc>>,
     ) -> Result<PositionBookResponse, APIError> {
         let url = self.snapshot_url(&instrument, "positionBook", time)?;
+        self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches an instrument price at `time`, or the current price when omitted.
+    /// Calls `GET /v3/instruments/{instrument}/price`; no account is required.
+    pub async fn price(
+        &self,
+        instrument: InstrumentName,
+        time: Option<DateTime<Utc>>,
+    ) -> Result<InstrumentPriceResponse, APIError> {
+        let url = self.snapshot_url(&instrument, "price", time)?;
         self.connection.http_client.get_json(url).await
     }
 

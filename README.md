@@ -44,6 +44,7 @@ trade-order methods:
 | `pricing().candlesticks(AccountCandlesticksRequest)` | Account-specific candles, including volume-weighted bid/ask prices through `units` |
 | `instrument().order_book(instrument, time)` | Latest order-book snapshot, or a snapshot at the supplied UTC time |
 | `instrument().position_book(instrument, time)` | Latest position-book snapshot, or a snapshot at the supplied UTC time |
+| `instrument().price(instrument, time)` | Current instrument price, or the price at the supplied UTC time |
 
 
 HTTP response failures are wrapped in `APIError::Response`. The contained

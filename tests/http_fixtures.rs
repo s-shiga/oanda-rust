@@ -249,6 +249,41 @@ async fn instrument_books_decode_decimal_buckets_and_optional_snapshot_times() {
 }
 
 #[tokio::test]
+async fn instrument_prices_decode_without_account_specific_fields() {
+    let from = "2026-09-12T00:00:00.123456789Z"
+        .parse::<chrono::DateTime<chrono::Utc>>()
+        .unwrap();
+    let price = json!({"time":from,"bids":[{"price":"1.10000","liquidity":1000000}],
+        "asks":[{"price":"1.10010","liquidity":"1000000"}],"closeoutBid":"1.09999","closeoutAsk":"1.10011"});
+    for time in [None, Some(from)] {
+        let (url, request) = fixture("200 OK", &json!({"price":price}).to_string()).await;
+        let client = Client::new_practice("fixture-token")
+            .unwrap()
+            .with_http_client(custom_http_client())
+            .with_base_url(url.join("gateway/").unwrap())
+            .unwrap();
+        let response = client
+            .instrument()
+            .price("EUR_USD".into(), time)
+            .await
+            .unwrap();
+        assert_eq!(response.price.timestamp, Some(from));
+        assert!(response.price.instrument.is_none());
+        assert_eq!(response.price.bids[0].liquidity, 1000000);
+        assert_eq!(response.price.asks[0].liquidity, 1000000);
+        let url = request_url(&request.await.unwrap());
+        assert_eq!(url.path(), "/gateway/v3/instruments/EUR_USD/price");
+        assert_eq!(url.query_pairs().count(), usize::from(time.is_some()));
+        if time.is_some() {
+            assert_eq!(
+                chrono::DateTime::parse_from_rfc3339(&url.query_pairs().next().unwrap().1).unwrap(),
+                from
+            );
+        }
+    }
+}
+
+#[tokio::test]
 async fn pricing_rejects_empty_instrument_lists_before_dispatch() {
     let rest = Client::new_practice("fixture-token")
         .unwrap()
