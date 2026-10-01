@@ -2,7 +2,9 @@ use futures_util::StreamExt;
 use oanda_rust::account::ConfigureAccountRequest;
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
-use oanda_rust::instrument::{CandlestickGranularity, CandlesticksRequest, WeeklyAlignment};
+use oanda_rust::instrument::{
+    CandlestickGranularity, CandlesticksRequest, InstrumentPricesRequest, WeeklyAlignment,
+};
 use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
 use oanda_rust::pricing::{AccountCandlesticksRequest, LatestCandlesRequest};
@@ -253,6 +255,7 @@ async fn instrument_prices_decode_without_account_specific_fields() {
     let from = "2026-09-12T00:00:00.123456789Z"
         .parse::<chrono::DateTime<chrono::Utc>>()
         .unwrap();
+    let to = from + chrono::Duration::minutes(1);
     let price = json!({"time":from,"bids":[{"price":"1.10000","liquidity":1000000}],
         "asks":[{"price":"1.10010","liquidity":"1000000"}],"closeoutBid":"1.09999","closeoutAsk":"1.10011"});
     for time in [None, Some(from)] {
@@ -278,6 +281,34 @@ async fn instrument_prices_decode_without_account_specific_fields() {
             assert_eq!(
                 chrono::DateTime::parse_from_rfc3339(&url.query_pairs().next().unwrap().1).unwrap(),
                 from
+            );
+        }
+    }
+    for end in [None, Some(to)] {
+        let (url, request) = fixture("200 OK", &json!({"prices":[price]}).to_string()).await;
+        let client = Client::new_practice("fixture-token")
+            .unwrap()
+            .with_http_client(custom_http_client())
+            .with_base_url(url.join("gateway/").unwrap())
+            .unwrap();
+        let mut req = InstrumentPricesRequest::new("EUR_USD".into(), from);
+        if let Some(end) = end {
+            req = req.to(end);
+        }
+        let response = client.instrument().prices(req).await.unwrap();
+        assert_eq!(response.prices[0].timestamp, Some(from));
+        let url = request_url(&request.await.unwrap());
+        assert_eq!(url.path(), "/gateway/v3/instruments/EUR_USD/price/range");
+        let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+        assert_eq!(
+            chrono::DateTime::parse_from_rfc3339(&query["from"]).unwrap(),
+            from
+        );
+        assert_eq!(query.contains_key("to"), end.is_some());
+        if end.is_some() {
+            assert_eq!(
+                chrono::DateTime::parse_from_rfc3339(&query["to"]).unwrap(),
+                to
             );
         }
     }

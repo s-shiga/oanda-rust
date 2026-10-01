@@ -45,6 +45,7 @@ trade-order methods:
 | `instrument().order_book(instrument, time)` | Latest order-book snapshot, or a snapshot at the supplied UTC time |
 | `instrument().position_book(instrument, time)` | Latest position-book snapshot, or a snapshot at the supplied UTC time |
 | `instrument().price(instrument, time)` | Current instrument price, or the price at the supplied UTC time |
+| `instrument().prices(InstrumentPricesRequest)` | One page of prices starting at a required UTC time, with an optional end time |
 
 
 HTTP response failures are wrapped in `APIError::Response`. The contained

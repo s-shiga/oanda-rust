@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `InstrumentService::order_book` for optional-time order-book snapshots.
 - `InstrumentService::position_book` for optional-time position-book snapshots.
 - `InstrumentService::price` for current and historical instrument quotes.
+- `InstrumentService::prices` and `InstrumentPricesRequest` for time ranges.
 
 ## [0.4.0] - 2026-09-28
 

@@ -1,3 +1,4 @@
+use crate::client::request_option_setter;
 use crate::errors::APIError;
 use crate::http::Connection;
 use crate::pricing::{ClientPrice, PriceValue, PricingComponent};
@@ -543,6 +544,32 @@ pub struct InstrumentPriceResponse {
     pub price: ClientPrice,
 }
 
+/// Response body for `GET /v3/instruments/{instrument}/price/range`.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct InstrumentPricesResponse {
+    pub prices: Vec<ClientPrice>,
+}
+
+/// Builder for a time range of instrument prices. `from` is required;
+/// omitting `to` uses the current time on the server.
+pub struct InstrumentPricesRequest {
+    instrument: InstrumentName,
+    from: DateTime<Utc>,
+    to: Option<DateTime<Utc>>,
+}
+
+impl InstrumentPricesRequest {
+    pub fn new(instrument: InstrumentName, from: DateTime<Utc>) -> Self {
+        Self {
+            instrument,
+            from,
+            to: None,
+        }
+    }
+
+    request_option_setter!(to, DateTime<Utc>);
+}
+
 /// Provides access to the OANDA Instrument endpoints.
 ///
 /// Obtain an instance via [`Client::instrument`](crate::client::Client::instrument).
@@ -612,6 +639,30 @@ impl<'a> InstrumentService<'a> {
         time: Option<DateTime<Utc>>,
     ) -> Result<InstrumentPriceResponse, APIError> {
         let url = self.snapshot_url(&instrument, "price", time)?;
+        self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches one page of instrument prices over a time range.
+    /// Calls `GET /v3/instruments/{instrument}/price/range`; no account is required.
+    /// An end time earlier than `from` returns [`APIError::InvalidRequest`].
+    pub async fn prices(
+        &self,
+        req: InstrumentPricesRequest,
+    ) -> Result<InstrumentPricesResponse, APIError> {
+        if req.to.is_some_and(|to| to < req.from) {
+            return Err(APIError::InvalidRequest(
+                "to must not be earlier than from".into(),
+            ));
+        }
+        let mut url = crate::http::api_url(
+            &self.connection.base_url,
+            &["v3", "instruments", req.instrument.trim(), "price", "range"],
+        )?;
+        url.query_pairs_mut()
+            .append_pair("from", &req.from.to_rfc3339());
+        if let Some(to) = req.to {
+            url.query_pairs_mut().append_pair("to", &to.to_rfc3339());
+        }
         self.connection.http_client.get_json(url).await
     }
 
