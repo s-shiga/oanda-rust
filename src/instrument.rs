@@ -499,11 +499,40 @@ pub struct OrderBookBucket {
     pub short_count_percent: DecimalNumber,
 }
 
+/// An instrument's aggregated open positions at a point in time.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionBook {
+    pub instrument: InstrumentName,
+    pub time: DateTime<Utc>,
+    /// Midpoint price when the snapshot was created.
+    pub price: PriceValue,
+    pub bucket_width: PriceValue,
+    pub buckets: Vec<PositionBookBucket>,
+}
+
+/// Percentage of long and short positions in a price interval.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionBookBucket {
+    /// Inclusive lower bound of the bucket's price interval.
+    pub price: PriceValue,
+    pub long_count_percent: DecimalNumber,
+    pub short_count_percent: DecimalNumber,
+}
+
 /// Response body for `GET /v3/instruments/{instrument}/orderBook`.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct OrderBookResponse {
     pub order_book: OrderBook,
+}
+
+/// Response body for `GET /v3/instruments/{instrument}/positionBook`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PositionBookResponse {
+    pub position_book: PositionBook,
 }
 
 /// Provides access to the OANDA Instrument endpoints.
@@ -553,6 +582,17 @@ impl<'a> InstrumentService<'a> {
         time: Option<DateTime<Utc>>,
     ) -> Result<OrderBookResponse, APIError> {
         let url = self.snapshot_url(&instrument, "orderBook", time)?;
+        self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches a position-book snapshot. Omitting `time` fetches the latest.
+    /// Calls `GET /v3/instruments/{instrument}/positionBook`; no account is required.
+    pub async fn position_book(
+        &self,
+        instrument: InstrumentName,
+        time: Option<DateTime<Utc>>,
+    ) -> Result<PositionBookResponse, APIError> {
+        let url = self.snapshot_url(&instrument, "positionBook", time)?;
         self.connection.http_client.get_json(url).await
     }
 

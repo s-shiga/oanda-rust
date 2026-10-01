@@ -197,7 +197,7 @@ async fn instrument_books_decode_decimal_buckets_and_optional_snapshot_times() {
     let snapshot = "2026-09-12T00:00:00.123456789Z"
         .parse::<chrono::DateTime<chrono::Utc>>()
         .unwrap();
-    for (key, endpoint) in [("orderBook", "orderBook")] {
+    for (key, endpoint) in [("orderBook", "orderBook"), ("positionBook", "positionBook")] {
         for time in [None, Some(snapshot)] {
             let body = json!({key: {"instrument":"EUR_USD", "time":snapshot,
                 "price":"1.12345", "bucketWidth":"0.00050", "buckets":[{
@@ -209,15 +209,27 @@ async fn instrument_books_decode_decimal_buckets_and_optional_snapshot_times() {
                 .with_http_client(custom_http_client())
                 .with_base_url(url.join("gateway/").unwrap())
                 .unwrap();
-            let book = client
-                .instrument()
-                .order_book(" EUR_USD ".into(), time)
-                .await
-                .unwrap()
-                .order_book;
-            assert_eq!(book.time, snapshot);
-            assert_eq!(book.bucket_width, "0.00050");
-            assert_eq!(book.buckets[0].long_count_percent, "12.34000");
+            if key == "orderBook" {
+                let book = client
+                    .instrument()
+                    .order_book(" EUR_USD ".into(), time)
+                    .await
+                    .unwrap()
+                    .order_book;
+                assert_eq!(book.time, snapshot);
+                assert_eq!(book.bucket_width, "0.00050");
+                assert_eq!(book.buckets[0].long_count_percent, "12.34000");
+            } else {
+                let book = client
+                    .instrument()
+                    .position_book(" EUR_USD ".into(), time)
+                    .await
+                    .unwrap()
+                    .position_book;
+                assert_eq!(book.time, snapshot);
+                assert_eq!(book.bucket_width, "0.00050");
+                assert_eq!(book.buckets[0].short_count_percent, "0.56000");
+            }
             let url = request_url(&request.await.unwrap());
             assert_eq!(
                 url.path(),
