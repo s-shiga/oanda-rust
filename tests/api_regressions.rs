@@ -104,7 +104,7 @@ fn regression_order_fills_preserve_additional_details_when_reported() {
     let price = event.full_price.as_ref().unwrap();
     assert_eq!(price.bids[0].price, "1.22809");
     assert_eq!(price.asks[0].price, "1.22821");
-    assert_eq!(price.bids[0].liquidity, 10_000_000);
+    assert_eq!(price.bids[0].liquidity.as_i64(), Some(10_000_000));
     let serialized = serde_json::to_value(event).unwrap();
     for field in [
         "homeConversionFactors",
@@ -539,13 +539,46 @@ fn regression_accounts_round_trip_optional_resettable_pl_time() {
 }
 
 #[test]
+fn regression_liquidity_preserves_integer_and_fractional_values() {
+    for (wire, expected) in [
+        ("10000000", "10000000"),
+        (r#""10000000""#, "10000000"),
+        ("1.5", "1.5"),
+        (r#""1.5""#, "1.5"),
+        ("0.123456789012345678901", "0.123456789012345678901"),
+        (r#""0.123456789012345678901""#, "0.123456789012345678901"),
+        ("9007199254740993", "9007199254740993"),
+        (r#""+00100""#, "100"),
+    ] {
+        let bucket: PriceBucket =
+            serde_json::from_str(&format!(r#"{{"price":"1.1","liquidity":{wire}}}"#)).unwrap();
+        assert_eq!(bucket.liquidity.to_string(), expected);
+        let serialized = serde_json::to_value(&bucket).unwrap();
+        assert!(serialized["liquidity"].is_number());
+        assert_eq!(serialized["liquidity"].to_string(), expected);
+        let decoded: PriceBucket = serde_json::from_value(serialized).unwrap();
+        assert_eq!(decoded.liquidity, bucket.liquidity);
+    }
+}
+
+#[test]
 fn regression_invalid_liquidity_is_a_decode_error_not_a_panic() {
-    let bucket: PriceBucket =
-        serde_json::from_value(json!({"price":"1.1", "liquidity":"10000000"})).unwrap();
-    assert_eq!(bucket.liquidity, 10_000_000);
-    assert!(
-        serde_json::from_value::<PriceBucket>(json!({"price":"1.1", "liquidity":"1.5"})).is_err()
-    );
+    for liquidity in [
+        json!(null),
+        json!(true),
+        json!([]),
+        json!({}),
+        json!(""),
+        json!("NaN"),
+        json!("Infinity"),
+        json!("1.2.3"),
+        json!("12units"),
+    ] {
+        assert!(serde_json::from_value::<PriceBucket>(
+            json!({"price":"1.1", "liquidity":liquidity})
+        )
+        .is_err());
+    }
 }
 
 #[test]

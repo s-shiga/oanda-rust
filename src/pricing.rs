@@ -59,12 +59,14 @@ pub enum PriceStatus {
 pub struct PriceBucket {
     /// The price at this level.
     pub price: PriceValue,
-    /// The number of units available at this price level.
+    /// The number of units available at this price level, including fractional units.
+    /// Decimal precision is preserved; use `to_string()` for the exact value or
+    /// `as_i64()` when an integer is required.
     #[serde(deserialize_with = "deserialize_liquidity")]
-    pub liquidity: i64,
+    pub liquidity: serde_json::Number,
 }
 
-fn deserialize_liquidity<'de, D>(deserializer: D) -> Result<i64, D::Error>
+fn deserialize_liquidity<'de, D>(deserializer: D) -> Result<serde_json::Number, D::Error>
 where
     D: Deserializer<'de>,
 {
@@ -72,12 +74,16 @@ where
     #[serde(untagged)]
     enum Liquidity {
         String(String),
-        Integer(i64),
+        Number(serde_json::Number),
     }
 
     match Liquidity::deserialize(deserializer)? {
-        Liquidity::String(s) => s.parse::<i64>().map_err(serde::de::Error::custom),
-        Liquidity::Integer(i) => Ok(i),
+        Liquidity::String(s) => s
+            .parse::<i64>()
+            .map(serde_json::Number::from)
+            .or_else(|_| s.parse::<serde_json::Number>())
+            .map_err(serde::de::Error::custom),
+        Liquidity::Number(n) => Ok(n),
     }
 }
 

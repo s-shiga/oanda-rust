@@ -25,6 +25,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ErrorResponse::UpdateTradeOrdersError` for HTTP 400 dependent-order rejections.
   Exhaustive matches on `ErrorResponse` must handle this new variant.
 
+### Changed
+
+- `PriceBucket::liquidity` is now `serde_json::Number` instead of `i64`, preserving
+  fractional units without floating-point rounding. Use `.as_i64()` for integer
+  quantities or `.to_string()` for the exact decimal value. Struct literals can
+  convert integers with `.into()` or parse decimal strings with `.parse()`.
+
+### Fixed
+
+- REST prices and pricing streams accept integer and decimal liquidity, whether
+  encoded as JSON numbers or legacy numeric strings. Malformed values still
+  return decoding errors.
+
 ## [0.4.0] - 2026-09-28
 
 ### Changed

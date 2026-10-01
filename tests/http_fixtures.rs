@@ -305,8 +305,8 @@ async fn instrument_prices_decode_without_account_specific_fields() {
             .unwrap();
         assert_eq!(response.price.timestamp, Some(from));
         assert!(response.price.instrument.is_none());
-        assert_eq!(response.price.bids[0].liquidity, 1000000);
-        assert_eq!(response.price.asks[0].liquidity, 1000000);
+        assert_eq!(response.price.bids[0].liquidity.as_i64(), Some(1000000));
+        assert_eq!(response.price.asks[0].liquidity.as_i64(), Some(1000000));
         let url = request_url(&request.await.unwrap());
         assert_eq!(url.path(), "/gateway/v3/instruments/EUR_USD/price");
         assert_eq!(url.query_pairs().count(), usize::from(time.is_some()));
@@ -1171,6 +1171,50 @@ async fn streams_accept_captured_handlers_and_custom_transport() {
             assert!(request.starts_with("get /v3/accounts/account/transactions/stream "));
         }
     }
+}
+
+#[tokio::test]
+async fn fractional_liquidity_decodes_in_rest_and_keeps_pricing_stream_open() {
+    let price = r#"{"type":"PRICE","instrument":"EUR_USD","bids":[{"price":"1.1","liquidity":1.5}],"asks":[{"price":"1.2","liquidity":"0.123456789012345678901"}],"closeoutBid":"1.0","closeoutAsk":"1.3","time":"2026-10-02T00:00:00Z"}"#;
+    let (url, request) = fixture("200 OK", &format!(r#"{{"prices":[{price}]}}"#)).await;
+    let response = client(url)
+        .pricing()
+        .get(vec!["EUR_USD".into()])
+        .await
+        .unwrap();
+    assert_eq!(response.prices[0].bids[0].liquidity.to_string(), "1.5");
+    assert_eq!(
+        response.prices[0].asks[0].liquidity.to_string(),
+        "0.123456789012345678901"
+    );
+    request.await.unwrap();
+
+    let body = format!("{price}\n{{\"type\":\"HEARTBEAT\",\"time\":\"2026-10-02T00:00:05Z\"}}\n");
+    let (url, request) = fixture("200 OK", &body).await;
+    let client = StreamClient::new_practice("fixture-token")
+        .unwrap()
+        .with_http_client(custom_http_client())
+        .with_base_url(url)
+        .unwrap()
+        .with_account_id("account".into());
+    let stream = client.pricing_stream(&["EUR_USD"]).await.unwrap();
+    futures_util::pin_mut!(stream);
+    let oanda_rust::pricing::PricingStreamItem::Price(price) =
+        stream.next().await.unwrap().unwrap()
+    else {
+        panic!("expected price")
+    };
+    assert_eq!(price.bids[0].liquidity.to_string(), "1.5");
+    assert_eq!(
+        price.asks[0].liquidity.to_string(),
+        "0.123456789012345678901"
+    );
+    assert!(matches!(
+        stream.next().await.unwrap().unwrap(),
+        oanda_rust::pricing::PricingStreamItem::Heartbeat(_)
+    ));
+    assert!(stream.next().await.is_none());
+    request.await.unwrap();
 }
 
 #[tokio::test]
