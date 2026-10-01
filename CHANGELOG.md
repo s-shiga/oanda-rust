@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `PricingService::candles_latest` with `LatestCandlesRequest` for the latest
+  completed candles across multiple series, including units and alignment options.
+
 ## [0.4.0] - 2026-09-28
 
 ### Changed

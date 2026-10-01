@@ -35,6 +35,14 @@ accept `FnMut` and use the same newline-delimited JSON parser. A complete final
 message without a newline is delivered; truncated JSON at EOF returns an error.
 Returning an error from a handler stops dispatch immediately.
 
+The REST services also expose the following candle, book, price-history, and
+trade-order methods:
+
+| Method | Purpose |
+| --- | --- |
+| `pricing().candles_latest(LatestCandlesRequest)` | Latest completed candles for multiple instrument/granularity/component series |
+
+
 HTTP response failures are wrapped in `APIError::Response`. The contained
 `HttpResponseError` exposes `status`, `request_id`, and `source`; structured OANDA
 errors remain available as `APIError::ErrorResponse` inside `source`. Transport

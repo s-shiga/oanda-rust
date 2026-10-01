@@ -118,7 +118,7 @@ impl Client {
         TradeService::new(&self.connection)
     }
 
-    /// Returns a [`PricingService`] for real-time pricing API operations.
+    /// Returns a [`PricingService`] for account pricing and candle API operations.
     pub fn pricing(&self) -> PricingService<'_> {
         PricingService::new(&self.connection)
     }

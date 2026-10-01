@@ -2,9 +2,10 @@ use futures_util::StreamExt;
 use oanda_rust::account::ConfigureAccountRequest;
 use oanda_rust::client::Client;
 use oanda_rust::errors::{APIError, ErrorResponse};
-use oanda_rust::instrument::CandlesticksRequest;
+use oanda_rust::instrument::{CandlesticksRequest, WeeklyAlignment};
 use oanda_rust::order::{MarketOrderRequest, OrderRequest, UpdateOrderClientExtensionsRequest};
 use oanda_rust::position::ClosePositionRequest;
+use oanda_rust::pricing::LatestCandlesRequest;
 use oanda_rust::stream::{PricingStreamOptions, StreamClient};
 use oanda_rust::trade::{CloseTradeRequest, ListTradesRequest, TradeState, TradeStateFilter};
 use oanda_rust::transaction::{ClientExtensions, OrderCreateRejectTransaction};
@@ -67,6 +68,60 @@ fn client(url: Url) -> Client {
         .with_base_url(url)
         .unwrap()
         .with_account_id("account".into())
+}
+
+fn request_url(request: &str) -> Url {
+    Url::parse(&format!(
+        "http://fixture{}",
+        request.split_whitespace().nth(1).unwrap()
+    ))
+    .unwrap()
+}
+
+#[tokio::test]
+async fn latest_candles_encodes_all_options_and_decodes_multiple_series() {
+    let body = r#"{"latestCandles":[{"instrument":"EUR_USD","granularity":"H1","candles":[{"time":"2026-09-12T00:00:00Z","mid":{"o":"1.1","h":"1.2","l":"1.0","c":"1.15"},"volume":100000,"complete":true}]},{"instrument":"USD_JPY","granularity":"M5","candles":[]}]}"#;
+    let (url, request) = fixture("200 OK", body).await;
+    let response = client(url.join("gateway/").unwrap())
+        .pricing()
+        .candles_latest(
+            LatestCandlesRequest::new(vec![" EUR_USD:H1:M ".into(), "USD_JPY:M5:BA".into()])
+                .units("1000.5".into())
+                .smooth(false)
+                .daily_alignment(23)
+                .alignment_timezone("America/New_York".into())
+                .weekly_alignment(WeeklyAlignment::Monday),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.latest_candles.len(), 2);
+    assert!(response.latest_candles[0].candles[0].complete);
+    assert_eq!(response.latest_candles[0].candles[0].volume, 100000);
+    let request = request.await.unwrap();
+    assert!(request.starts_with("GET "));
+    assert!(request
+        .to_ascii_lowercase()
+        .contains("authorization: bearer fixture-token\r\n"));
+    let url = request_url(&request);
+    assert_eq!(url.path(), "/gateway/v3/accounts/account/candles/latest");
+    let query: std::collections::HashMap<_, _> = url.query_pairs().collect();
+    assert_eq!(query["candleSpecifications"], "EUR_USD:H1:M,USD_JPY:M5:BA");
+    assert_eq!(query["units"], "1000.5");
+    assert_eq!(query["smooth"], "false");
+    assert_eq!(query["dailyAlignment"], "23");
+    assert_eq!(query["alignmentTimezone"], "America/New_York");
+    assert_eq!(query["weeklyAlignment"], "Monday");
+
+    let (url, request) = fixture("200 OK", r#"{"latestCandles":[]}"#).await;
+    client(url)
+        .pricing()
+        .candles_latest(LatestCandlesRequest::new(vec!["EUR_USD:D:M".into()]))
+        .await
+        .unwrap();
+    assert_eq!(
+        request_url(&request.await.unwrap()).query_pairs().count(),
+        1
+    );
 }
 
 #[tokio::test]

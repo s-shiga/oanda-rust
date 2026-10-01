@@ -1,9 +1,13 @@
+use crate::client::request_option_setter;
 use crate::errors::APIError;
 use crate::http::Connection;
-use crate::instrument::InstrumentName;
+use crate::instrument::{
+    CandlestickGranularity, CandlesticksResponse, InstrumentName, WeeklyAlignment,
+};
 use crate::primitives::{Currency, DecimalNumber};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
+use url::Url;
 
 /// A price expressed as a decimal string (e.g. `"1.08523"`).
 ///
@@ -251,12 +255,109 @@ pub struct PricesResponse {
     pub time: Option<DateTime<Utc>>,
 }
 
+/// Response body for `GET /v3/accounts/{accountID}/candles/latest`.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LatestCandlesResponse {
+    /// The most recently completed candles for each requested series.
+    pub latest_candles: Vec<CandlesticksResponse>,
+}
+
+/// Builder for the latest completed candles across one or more series.
+/// Specifications use `"EUR_USD:H1:MBA"` (instrument, granularity, components).
+///
+/// ```no_run
+/// use oanda_rust::pricing::LatestCandlesRequest;
+/// let request = LatestCandlesRequest::new(vec!["EUR_USD:H1:M".into()])
+///     .units("1000".into()).smooth(false);
+/// ```
+pub struct LatestCandlesRequest {
+    candle_specifications: Vec<CandleSpecification>,
+    units: Option<DecimalNumber>,
+    smooth: Option<bool>,
+    daily_alignment: Option<u8>,
+    alignment_timezone: Option<String>,
+    weekly_alignment: Option<WeeklyAlignment>,
+}
+
+impl LatestCandlesRequest {
+    pub fn new(candle_specifications: Vec<CandleSpecification>) -> Self {
+        Self {
+            candle_specifications,
+            units: None,
+            smooth: None,
+            daily_alignment: None,
+            alignment_timezone: None,
+            weekly_alignment: None,
+        }
+    }
+
+    request_option_setter!(units, DecimalNumber);
+    request_option_setter!(smooth, bool);
+    request_option_setter!(daily_alignment, u8);
+    request_option_setter!(alignment_timezone, String);
+    request_option_setter!(weekly_alignment, WeeklyAlignment);
+
+    fn set_params(&self, url: &mut Url) -> Result<(), APIError> {
+        if self.candle_specifications.is_empty() {
+            return Err(APIError::InvalidRequest(
+                "At least one candle specification is required".into(),
+            ));
+        }
+        let specifications: Vec<&str> = self
+            .candle_specifications
+            .iter()
+            .map(|s| s.trim())
+            .collect();
+        for specification in &specifications {
+            let parts: Vec<&str> = specification.split(':').collect();
+            if parts.len() != 3
+                || parts[0].is_empty()
+                || matches!(parts[0], "." | "..")
+                || parts[0].chars().any(|c| c == ',' || c.is_whitespace())
+                || parts[1].parse::<CandlestickGranularity>().is_err()
+                || parts[2].is_empty()
+                || !parts[2].chars().all(|c| matches!(c, 'M' | 'B' | 'A'))
+            {
+                return Err(APIError::InvalidRequest("Candle specifications must use instrument:granularity:components (e.g. EUR_USD:H1:MBA)".into()));
+            }
+        }
+        if self.daily_alignment.is_some_and(|hour| hour > 23) {
+            return Err(APIError::InvalidRequest(
+                "daily_alignment must be between 0 and 23".into(),
+            ));
+        }
+        url.query_pairs_mut()
+            .append_pair("candleSpecifications", &specifications.join(","));
+        if let Some(units) = &self.units {
+            url.query_pairs_mut().append_pair("units", units);
+        }
+        if let Some(smooth) = self.smooth {
+            url.query_pairs_mut()
+                .append_pair("smooth", &smooth.to_string());
+        }
+        if let Some(hour) = self.daily_alignment {
+            url.query_pairs_mut()
+                .append_pair("dailyAlignment", &hour.to_string());
+        }
+        if let Some(timezone) = &self.alignment_timezone {
+            url.query_pairs_mut()
+                .append_pair("alignmentTimezone", timezone);
+        }
+        if let Some(day) = &self.weekly_alignment {
+            url.query_pairs_mut()
+                .append_pair("weeklyAlignment", &day.to_string());
+        }
+        Ok(())
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Service
 // ---------------------------------------------------------------------------
 
-/// Provides access to the OANDA Pricing endpoints
-/// (`/v3/accounts/{id}/pricing/...`).
+/// Provides access to account pricing and candle endpoints under
+/// `/v3/accounts/{id}`.
 ///
 /// Obtain an instance via [`Client::pricing`](crate::client::Client::pricing).
 pub struct PricingService<'a> {
@@ -294,6 +395,19 @@ impl<'a> PricingService<'a> {
         let mut url = self.connection.account_url(&["pricing"])?;
         url.query_pairs_mut()
             .append_pair("instruments", &instruments_query(&instruments)?);
+        self.connection.http_client.get_json(url).await
+    }
+
+    /// Fetches the most recently completed candles for the requested series.
+    /// Calls `GET /v3/accounts/{accountID}/candles/latest`.
+    /// Invalid/empty specifications, daily alignment outside 0–23, or missing
+    /// account context return [`APIError::InvalidRequest`] before dispatch.
+    pub async fn candles_latest(
+        &self,
+        req: LatestCandlesRequest,
+    ) -> Result<LatestCandlesResponse, APIError> {
+        let mut url = self.connection.account_url(&["candles", "latest"])?;
+        req.set_params(&mut url)?;
         self.connection.http_client.get_json(url).await
     }
 }
